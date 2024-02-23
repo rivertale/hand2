@@ -7,6 +7,18 @@ typedef int curl_socket_t;
 #include "linux_git2.h"
 #include "linux_curl.h"
 
+static time_t
+linux_calender_time_to_time(tm *calender_time, int time_zone)
+{
+    time_t result = 0;
+    time_t time_plus_time_zone = timegm(calender_time);
+    if(time_plus_time_zone != -1)
+    {
+        result = time_plus_time_zone - time_zone * 3600;
+    }
+    return result;
+}
+
 static int
 linux_directory_exists(char *path)
 {
@@ -313,6 +325,7 @@ linux_cleanup_git(void)
 static void
 linux_init_platform(Platform *linux_code)
 {
+    linux_code->calender_time_to_time = linux_calender_time_to_time;
     linux_code->copy_directory = linux_copy_directory;
     linux_code->create_directory = linux_create_directory;
     linux_code->create_process = linux_create_process;

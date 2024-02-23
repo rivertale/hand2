@@ -1,8 +1,13 @@
-#include <stdlib.h>
 #include <assert.h>
+#include <stdarg.h>
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+typedef struct tm tm;
+
 #include "cjson/cJSON.c"
-#include "hand_common.h"
 #include "hand_platform.h"
+#include "hand_common.h"
 #include "hand_buffer.h"
 #include "hand_curl.h"
 #include "hand_git2.h"

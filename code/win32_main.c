@@ -23,6 +23,18 @@ win32_compare_utf16(wchar_t *a, wchar_t *b)
     return 1;
 }
 
+static time_t
+win32_calender_time_to_time(tm *calender_time, int time_zone)
+{
+    time_t result = 0;
+    time_t time_plus_time_zone = _mkgmtime(calender_time);
+    if(time_plus_time_zone != -1)
+    {
+        result = time_plus_time_zone - time_zone * 3600;
+    }
+    return result;
+}
+
 static int
 win32_directory_exists(char *path)
 {
@@ -377,6 +389,7 @@ win32_cleanup_git(void)
 static void
 win32_init_platform(Platform *win32_code)
 {
+    win32_code->calender_time_to_time = win32_calender_time_to_time;
     win32_code->copy_directory = win32_copy_directory;
     win32_code->create_directory = win32_create_directory;
     win32_code->create_process = win32_create_process;

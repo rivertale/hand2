@@ -651,9 +651,9 @@ retrieve_issue_body(char *github_token, char *organization, char *revise_repo, c
 }
 
 static void
-retrieve_pushes_before_time(GitCommitHash *out_hash, time_t *out_push_time, 
-                            StringArray *repos, StringArray *default_branchs, GitCommitHash *latest_commits, 
-                            char *github_token, char *organization, time_t deadline)
+retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, 
+                              StringArray *repos, StringArray *default_branchs, GitCommitHash *latest_commits, 
+                              char *github_token, char *organization, time_t cutoff)
 {
     clear_memory(out_hash, repos->count * sizeof(*out_hash));
     clear_memory(out_push_time, repos->count * sizeof(*out_push_time));
@@ -702,8 +702,8 @@ retrieve_pushes_before_time(GitCommitHash *out_hash, time_t *out_push_time,
                            cJSON_IsString(created_at) && cJSON_IsString(last_commit_hash) &&
                            cJSON_IsString(ref) && compare_string(ref->valuestring, ref_name))
                         {
-                            time_t push_time = parse_iso8601(created_at->valuestring);
-                            if(push_time < deadline)
+                            time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
+                            if(push_time < cutoff)
                             {
                                 worker_done[i] = 1;
                                 out_push_time[at + i] = push_time;
@@ -715,8 +715,8 @@ retrieve_pushes_before_time(GitCommitHash *out_hash, time_t *out_push_time,
                                 cJSON_IsString(created_at) && cJSON_IsString(master_branch) &&
                                 compare_string(master_branch->valuestring, default_branchs->elem[at + i]))
                         {
-                            time_t push_time = parse_iso8601(created_at->valuestring);
-                            if(push_time < deadline)
+                            time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
+                            if(push_time < cutoff)
                             {
                                 worker_done[i] = 1;
                                 out_push_time[at + i] = push_time;

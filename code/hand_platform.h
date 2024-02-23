@@ -6,6 +6,7 @@ typedef struct FileIter
 
 typedef struct Platform
 {
+    time_t (*calender_time_to_time)(tm *calender_time, int time_zone);
     int (*copy_directory)(char *target_path, char *source_path);
     int (*create_directory)(char *path);
     int (*create_process)(char *command, char *working_directory);

@@ -1,15 +1,8 @@
-#include <stdarg.h>
-#include <malloc.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-
 #define MAX_PATH_LEN 65536
-#define TIME_ZONE (+8)
+#define TIME_ZONE_UTC0 (+0)
+#define TIME_ZONE_UTC8 (+8)
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #define max(a, b) (((a) > (b)) ? (a) : (b))
-
-typedef struct tm tm;
 
 static FILE *global_log_file = {0};
 
@@ -105,7 +98,7 @@ static tm
 calendar_time(time_t time)
 {
     tm result = {0};
-    time_t local_time = time + TIME_ZONE * 3600;
+    time_t local_time = time + TIME_ZONE_UTC8 * 3600;
     tm *local_tm = gmtime(&local_time);
     if(local_tm) { result = *local_tm; }
     return result;
@@ -119,39 +112,32 @@ current_calendar_time(void)
 }
 
 static time_t
-current_time_with_time_zone(void)
+parse_time(char *string, int time_zone)
 {
-    time_t result = time(0) + TIME_ZONE * 3600;
-    return result;
-}
-
-static time_t
-parse_iso8601(char *string)
-{
+    // NOTE: only accept YYYY-MM-DD or YYYY-MM-DD-hh-mm-ss
     time_t result = 0;
     if(string_len(string) == 10)
     {
+        // NOTE: YYYY-MM-DD
         tm t = {0};
         t.tm_mday = (string[8] - '0') * 10 + (string[9] - '0');
         t.tm_mon  = (string[5] - '0') * 10 + (string[6] - '0') - 1;
-        t.tm_year = (string[0] - '0') * 1000 + (string[1] - '0') * 100 +
-                    (string[2] - '0') * 10 + (string[3] - '0') - 1900;
-        result = mktime(&t) + TIME_ZONE * 3600;
+        t.tm_year = (string[0] - '0') * 1000 + (string[1] - '0') * 100 + (string[2] - '0') * 10 + (string[3] - '0') - 1900;
+        result = platform.calender_time_to_time(&t, time_zone);
     }
     else if(string_len(string) == 20)
     {
+        // NOTE: YYYY-MM-DD-hh-mm-ss
         tm t = {0};
         t.tm_sec  = (string[17] - '0') * 10 + (string[18] - '0');
         t.tm_min  = (string[14] - '0') * 10 + (string[15] - '0');
         t.tm_hour = (string[11] - '0') * 10 + (string[12] - '0');
         t.tm_mday = (string[8] - '0') * 10 + (string[9] - '0');
         t.tm_mon  = (string[5] - '0') * 10 + (string[6] - '0') - 1;
-        t.tm_year = (string[0] - '0') * 1000 + (string[1] - '0') * 100 +
-                    (string[2] - '0') * 10 + (string[3] - '0') - 1900;
-        result = mktime(&t) + TIME_ZONE * 3600;
+        t.tm_year = (string[0] - '0') * 1000 + (string[1] - '0') * 100 + (string[2] - '0') * 10 + (string[3] - '0') - 1900;
+        result = platform.calender_time_to_time(&t, time_zone);
     }
     return result;
-
 }
 
 static void

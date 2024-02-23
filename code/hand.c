@@ -102,8 +102,8 @@ collect_homework(char *title, char *github_token, char *organization, time_t lat
     write_log("[collect homework] title='%s', organization='%s', "
               "late_submission_start='%d-%02d-%02d_%02d:%02d:%02d', late_submission_end='%d-%02d-%02d_%02d:%02d:%02d'",
               title, organization,
-              t0.tm_year, t0.tm_mon, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
-              t1.tm_year, t1.tm_mon, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
+              t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
+              t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
 
     write_output("Retrieving repos with prefix '%s'...", title);
     StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
@@ -120,8 +120,8 @@ collect_homework(char *title, char *github_token, char *organization, time_t lat
     write_output("Retrieving pushes before deadline...");
     GitCommitHash *hash = (GitCommitHash *)allocate_memory(repos.count * sizeof(*hash));
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
-    retrieve_pushes_before_time(hash, push_time, &repos, &default_branchs, latest_commits,
-                                github_token, organization, late_submission_end);
+    retrieve_pushes_before_cutoff(hash, push_time, &repos, &default_branchs, latest_commits,
+                                  github_token, organization, late_submission_end);
 
     write_output("[Late submission]");
     write_output("    %2s %-5s  %-24s  %-19s  %-40s", "#", "delay", "repo_name", "push_time", "hash");
@@ -157,17 +157,19 @@ grade_homework(char *title, char *template_repo_name, char *github_token, char *
     write_output("retrieving repos with prefix '%s'...", title);
     StringArray repo_names = retrieve_repos_by_prefix(github_token, organization, title);
 
-    time_t *push_time = (time_t *)allocate_memory(repo_names.count * sizeof(*push_time));
-    GitCommitHash *hash = (GitCommitHash *)allocate_memory(repo_names.count * sizeof(*hash));
-    GitCommitHash *latest_commits = (GitCommitHash *)allocate_memory(repo_names.count * sizeof(*latest_commits));
     write_output("retrieving default branches...");
     StringArray default_branchs = retrieve_default_branchs(&repo_names, github_token, organization);
     assert(default_branchs.count == repo_names.count);
+    
     write_output("retrieving latest commits...");
+    GitCommitHash *latest_commits = (GitCommitHash *)allocate_memory(repo_names.count * sizeof(*latest_commits));
     retrieve_latest_commits(latest_commits, &repo_names, &default_branchs, github_token, organization);
+    
     write_output("retrieving pushes before deadline...");
-    retrieve_pushes_before_time(hash, push_time, &repo_names, &default_branchs, latest_commits,
-                                github_token, organization, late_submission_end);
+    GitCommitHash *hash = (GitCommitHash *)allocate_memory(repo_names.count * sizeof(*hash));
+    time_t *push_time = (time_t *)allocate_memory(repo_names.count * sizeof(*push_time));
+    retrieve_pushes_before_cutoff(hash, push_time, &repo_names, &default_branchs, latest_commits,
+                                  github_token, organization, late_submission_end);
 
     static char username[MAX_URL_LEN];
     static char source_url[MAX_URL_LEN];
@@ -538,7 +540,7 @@ eval(ArgParser *parser, Config *config)
             if(format_string(log_dir, MAX_PATH_LEN, "%s/logs", global_root_dir) &&
                format_string(log_path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
                              log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                             time.tm_year, time.tm_min, time.tm_sec))
+                             time.tm_hour, time.tm_min, time.tm_sec))
             {
                 platform.create_directory(log_dir);
                 global_log_file = fopen(log_path, "wb");
@@ -565,7 +567,7 @@ eval(ArgParser *parser, Config *config)
             "usage: hand2 [--options] ... command [--command-options] ... [args] ..."   "\n"
             "[options]"                                                                 "\n"
             "    --help    show this message"                                           "\n"
-            "    --log     log to yyyy-mm-dd_hh-mm-ss.log"                              "\n"
+            "    --log     log to YYYY-MM-DD_hh-mm-ss.log"                              "\n"
             "[command]"                                                                 "\n"
             "    invite-students    invite student into github organization"            "\n"
             "    collect-homework   collect homework and retrieve late submission info" "\n"
@@ -631,7 +633,7 @@ eval(ArgParser *parser, Config *config)
                                                                                                     "\n"
                 "[arguments]"                                                                       "\n"
                 "    title          title of the homework"                                          "\n"
-                "    deadline       deadline of the homework in yyyy-mm-dd"                         "\n"
+                "    deadline       deadline of the homework in YYYY-MM-DD-hh-mm-ss"                "\n"
                 "    cutoff_time    max late submission time after deadline (in days)"              "\n"
                 "[command-options]"                                                                 "\n";
             write_output(usage);
@@ -639,7 +641,7 @@ eval(ArgParser *parser, Config *config)
         }
         char *github_token = config->value[Config_github_token];
         char *organization = config->value[Config_organization];
-        time_t late_submission_start = parse_iso8601(deadline);
+        time_t late_submission_start = parse_time(deadline, TIME_ZONE_UTC8);
         time_t late_submission_end = late_submission_start + atoi(cutoff_time) * 86400;
         collect_homework(title, github_token, organization, late_submission_start, late_submission_end);
     }
@@ -668,7 +670,7 @@ eval(ArgParser *parser, Config *config)
                 "[arguments]"                                                                                   "\n"
                 "    title             title of the homework"                                                   "\n"
                 "    template_repo     homework template repository name"                                       "\n"
-                "    deadline          deadline of the homework in yyyy-mm-dd"                                  "\n"
+                "    deadline          deadline of the homework in YYYY-MM-DD"                                  "\n"
                 "    cutoff_time       max late submission time after deadline (in days)"                       "\n"
                 "[command-options]"                                                                             "\n";
             write_output(usage);
@@ -677,7 +679,7 @@ eval(ArgParser *parser, Config *config)
         char *github_token = config->value[Config_github_token];
         char *organization = config->value[Config_organization];
         char *grade_command = config->value[Config_grade_command];
-        time_t late_submission_start = parse_iso8601(deadline);
+        time_t late_submission_start = parse_time(deadline, TIME_ZONE_UTC8);
         time_t late_submission_end = late_submission_start + atoi(cutoff_time) * 86400;
         grade_homework(title, template_repo, github_token, organization,
                        late_submission_start, late_submission_end, grade_command);
