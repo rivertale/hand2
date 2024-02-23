@@ -11,8 +11,7 @@ The program depends on libcurl to invoke RESTful API, and use libgit2 to perform
 ## Download
 x64 prebuilt binaries can be downloaded from [release](https://github.com/Compiler-s24/hand2/releases).
 
-### Build
-
+## Build
 #### Windows
 1. Run `build.bat` under `code\` to build the program on Windows. In default, it tries to build with MSVC, GCC, and clang.
 2. To build with MSVC, you must run `build.bat` under MSVC x64 native tools command prompt. Note that it is required to call `vcvarsall.bat x64` to setup the developer prompt to x64 mode.\
