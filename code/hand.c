@@ -95,8 +95,17 @@ invite_students(char *input_path, char *github_token, char *organization, char *
 }
 
 static void
-collect_homework(char *title, char *github_token, char *organization, time_t late_submission_start, time_t late_submission_end)
+collect_homework(char *title, char *out_path, time_t late_submission_start, time_t late_submission_end, 
+                 int penalty_per_day, int is_weekends_one_day, 
+                 char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *user_key)
 {
+    FILE *out_file = fopen(out_path, "wb");
+    if(!out_file)
+    {
+        write_error("unable to create '%s'", out_path);
+        return;
+    }
+    
     tm t0 = calendar_time(late_submission_start);
     tm t1 = calendar_time(late_submission_end);
     write_log("[collect homework] title='%s', organization='%s', "
@@ -104,7 +113,7 @@ collect_homework(char *title, char *github_token, char *organization, time_t lat
               title, organization,
               t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
               t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
-
+    
     write_output("Retrieving repos with prefix '%s'...", title);
     StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
 
@@ -112,39 +121,79 @@ collect_homework(char *title, char *github_token, char *organization, time_t lat
     StringArray default_branchs = retrieve_default_branchs(&repos, github_token, organization);
     assert(default_branchs.count == repos.count);
 
-    // TODO: move into retrieve_pushes_before_time()
-    write_output("Retrieving latest commits...");
-    GitCommitHash *latest_commits = (GitCommitHash *)allocate_memory(repos.count * sizeof(*latest_commits));
-    retrieve_latest_commits(latest_commits, &repos, &default_branchs, github_token, organization);
-
     write_output("Retrieving pushes before deadline...");
     GitCommitHash *hash = (GitCommitHash *)allocate_memory(repos.count * sizeof(*hash));
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
-    retrieve_pushes_before_cutoff(hash, push_time, &repos, &default_branchs, latest_commits,
-                                  github_token, organization, late_submission_end);
+    retrieve_pushes_before_cutoff(hash, push_time, &repos, &default_branchs, github_token, organization, late_submission_end);
 
+    // NOTE: for the weekends-count-as-1-day policy, the examples use the time format 0:00:00 ~ 23:59:59.
+    // 1. if the late submission starts at 11:59:59 (Fri.):
+    //    (1) submit at 11:59:59 (Sat.) is counted as 1-day, hour  0-24 are treated as Friday.
+    //    (2) submit at 11:59:59 (Sun.) is counted as 2-day, hour 24-48 are treated as Saturday.
+    //    (3) submit at 11:59:59 (Mon.) is counted as 2-day, hour 48-72 are treated as Sunday.
+    // 2. if the late submission starts at 12:00:00 (Fri.):
+    //    (1) submit at 12:00:00 (Sat.) is counted as 1-day, hour  0-24 are treated as Saturday.
+    //    (2) submit at 12:00:00 (Sun.) is counted as 1-day, hour 24-48 are treated as Sunday.
+    //    (3) submit at 12:00:00 (Mon.) is counted as 2-day, hour 48-72 are treated as Monday.
     write_output("[Late submission]");
-    write_output("    %2s %-5s  %-24s  %-19s  %-40s", "#", "delay", "repo_name", "push_time", "hash");
+    write_output("%3s  %12s  %-19s  %-24s  %-40s", 
+                 "#", "delay (days)", "push_time", "repository", "hash");
     int late_submission_count = 0;
-    for(int i = 0; i < repos.count; ++i)
+    int start_weekday = (t0.tm_hour < 12) ? t0.tm_wday : (t0.tm_wday + 1) % 7;
+    
+    Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
+    int user_x = find_key_index(&sheet, user_key);
+    for(int y = 0; y < sheet.height; ++y)
     {
-        if(push_time[i] > late_submission_start)
+        int index = -1;
+        static char repo_name[256];
+        if(format_string(repo_name, sizeof(repo_name), "%s-%s", title, get_value(&sheet, user_x, y)))
+        {
+            for(int i = 0; i < repos.count; ++i)
+            {
+                if(compare_case_insensitive(repo_name, repos.elem[i]))
+                {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        
+        int delay = 0;
+        if(index != -1 && push_time[index] > late_submission_start)
         {
             ++late_submission_count;
-            int delay = (int)((push_time[i] - late_submission_start + 86400 - 1) / 86400);
-            tm t = calendar_time(push_time[i]);
-            write_output("    %2d %1d-day  %-24s  %d-%02d-%02d_%02d:%02d:%02d  %-8s",
-                         late_submission_count, delay, repos.elem[i],
+            delay = (int)((push_time[index] - late_submission_start + 86399) / 86400);
+            assert(delay > 0);
+            if(is_weekends_one_day)
+            {
+                int weekend_before_late_submission_start = (start_weekday + 6) / 7 + start_weekday / 7;
+                int weekend_before_late_submission_end = (start_weekday + delay + 6) / 7 + (start_weekday + delay) / 7;
+                int weekend_day_count = weekend_before_late_submission_end - weekend_before_late_submission_start;
+                delay -= (weekend_day_count / 2);
+            }
+            
+            tm t = calendar_time(push_time[index]);
+            write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s", 
+                         late_submission_count, delay, 
                          t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
-                         hash[i].string);
+                         repos.elem[index], hash[index]);
         }
+        fprintf(out_file, "%d%%\n", max(100 - penalty_per_day * delay, 0));
     }
+    write_output("");
     write_output("[Summary]");
+    write_output("    Total student: %d", sheet.height);
     write_output("    Total submission: %d", repos.count);
     write_output("    Late submission: %d", late_submission_count);
+    write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d", 
+                 t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
+    write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d", 
+                 t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
+    fclose(out_file);
+    
     free_memory(push_time);
     free_memory(hash);
-    free_memory(latest_commits);
     free_string_array(&default_branchs);
     free_string_array(&repos);
 }
@@ -161,15 +210,10 @@ grade_homework(char *title, char *template_repo_name, char *github_token, char *
     StringArray default_branchs = retrieve_default_branchs(&repo_names, github_token, organization);
     assert(default_branchs.count == repo_names.count);
     
-    write_output("retrieving latest commits...");
-    GitCommitHash *latest_commits = (GitCommitHash *)allocate_memory(repo_names.count * sizeof(*latest_commits));
-    retrieve_latest_commits(latest_commits, &repo_names, &default_branchs, github_token, organization);
-    
     write_output("retrieving pushes before deadline...");
     GitCommitHash *hash = (GitCommitHash *)allocate_memory(repo_names.count * sizeof(*hash));
     time_t *push_time = (time_t *)allocate_memory(repo_names.count * sizeof(*push_time));
-    retrieve_pushes_before_cutoff(hash, push_time, &repo_names, &default_branchs, latest_commits,
-                                  github_token, organization, late_submission_end);
+    retrieve_pushes_before_cutoff(hash, push_time, &repo_names, &default_branchs, github_token, organization, late_submission_end);
 
     static char username[MAX_URL_LEN];
     static char source_url[MAX_URL_LEN];
@@ -613,9 +657,11 @@ eval(ArgParser *parser, Config *config)
     else if(compare_string(command, "collect-homework"))
     {
         int show_command_usage = 0;
+        int is_weekends_one_day = 1;
         for(char *option = next_option(parser); option; option = next_option(parser))
         {
             if(compare_string(option, "--help")) { show_command_usage = 1; }
+            else if(compare_string(option, "--no-weekends")) { is_weekends_one_day = 0; }
             else
             {
                 show_command_usage = 1;
@@ -626,24 +672,33 @@ eval(ArgParser *parser, Config *config)
         char *title = next_arg(parser);
         char *deadline = next_arg(parser);
         char *cutoff_time = next_arg(parser);
+        char *out_path = next_arg(parser);
         if(!title || !deadline || !cutoff_time || show_command_usage)
         {
             char *usage =
-                "usage: hand2 collect-homework [--command-option] ... title deadline cutoff_time"   "\n"
-                                                                                                    "\n"
-                "[arguments]"                                                                       "\n"
-                "    title          title of the homework"                                          "\n"
-                "    deadline       deadline of the homework in YYYY-MM-DD-hh-mm-ss"                "\n"
-                "    cutoff_time    max late submission time after deadline (in days)"              "\n"
-                "[command-options]"                                                                 "\n";
+                "usage: hand2 collect-homework [--command-option] ... title deadline cutoff_time out_path"  "\n"
+                                                                                                            "\n"
+                "[arguments]"                                                                               "\n"
+                "    title          title of the homework"                                                  "\n"
+                "    deadline       deadline of the homework in YYYY-MM-DD-hh-mm-ss"                        "\n"
+                "    cutoff_time    max late submission time after deadline (in days)"                      "\n"
+                "    out_path       output file that lists penalty for all students (in the same order of"  "\n"
+                "                   the spreadsheet)"                                                       "\n"
+                "[command-options]"                                                                         "\n"
+                "    --no-weekends  weekends are not considered as one day"                                 "\n";
             write_output(usage);
             return;
         }
         char *github_token = config->value[Config_github_token];
         char *organization = config->value[Config_organization];
+        char *google_token = config->value[Config_google_token];
+        char *spreadsheet_id = config->value[Config_spreadsheet];
+        char *user_key = config->value[Config_key_username];
+        int penalty_per_day = atoi(config->value[Config_penalty_per_day]);
         time_t late_submission_start = parse_time(deadline, TIME_ZONE_UTC8);
         time_t late_submission_end = late_submission_start + atoi(cutoff_time) * 86400;
-        collect_homework(title, github_token, organization, late_submission_start, late_submission_end);
+        collect_homework(title, out_path, late_submission_start, late_submission_end, penalty_per_day, is_weekends_one_day, 
+                         github_token, organization, google_token, spreadsheet_id, user_key);
     }
     else if(compare_string(command, "grade-homework"))
     {

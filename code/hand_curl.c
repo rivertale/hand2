@@ -299,6 +299,7 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
             {
                 if(worker_done[i]) continue;
                 static char url[MAX_URL_LEN];
+                // TODO: aren't prev_pages always the same for all workers?
                 if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues/?state=all&per_page=100&page=%d", 
                                  organization, repos->elem[at + i], ++prev_pages[i]))
                 {
@@ -331,6 +332,39 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
             }
             end_curl_group(&group);
         }
+    }
+#undef MAX_WORKER
+}
+
+static void
+retrieve_creation_times(time_t *out_times, StringArray *repos, char *github_token, char *organization)
+{
+    clear_memory(out_times, repos->count * sizeof(*out_times));
+#define MAX_WORKER 64
+    for(int at = 0; at < repos->count; at += MAX_WORKER)
+    {
+        int worker_count = min(repos->count - at, MAX_WORKER);
+        CurlGroup group = begin_curl_group(worker_count);
+        for(int i = 0; i < worker_count; ++i)
+        {
+            static char url[MAX_URL_LEN];
+            if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s", organization, repos->elem[at + i]))
+            {
+                assign_github_get(&group, i, url, github_token);
+            }
+        }
+        complete_all_works(&group);
+        
+        for(int i = 0; i < worker_count; ++i)
+        {
+            cJSON *json = cJSON_Parse(get_response(&group, i));
+            cJSON *creation_time = cJSON_GetObjectItemCaseSensitive(json, "created_at");
+            if(cJSON_IsString(creation_time))
+            {
+                out_times[at + i] = parse_time(creation_time->valuestring, TIME_ZONE_UTC0);
+            }
+        }
+        end_curl_group(&group);
     }
 #undef MAX_WORKER
 }
@@ -650,13 +684,24 @@ retrieve_issue_body(char *github_token, char *organization, char *revise_repo, c
 	return result;
 }
 
+// NOTE: 
+// - we don't believe commit time since it can be modifed by students. 
+// - we return creation time of the repository and the latest commit as the last resort, this will 
+//   happen when there aren't any push events before the cutoff (the creation of the repo is not a 
+//   push event). if the students never push, the latest commit is the commit they accept the homework.
+
+// NOTE: push events only retain for 90 days, if the student only push 90 days before you collect and
+// grade it, it will assume the student pushes the latest commit in Day 1 (when accepting homework).
 static void
-retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, 
-                              StringArray *repos, StringArray *default_branchs, GitCommitHash *latest_commits, 
+retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, StringArray *repos, StringArray *requested_branchs, 
                               char *github_token, char *organization, time_t cutoff)
 {
     clear_memory(out_hash, repos->count * sizeof(*out_hash));
     clear_memory(out_push_time, repos->count * sizeof(*out_push_time));
+    time_t *last_resort_push_times = (time_t *)allocate_memory(repos->count * sizeof(*last_resort_push_times));
+    GitCommitHash *last_resort_hashes = (GitCommitHash *)allocate_memory(repos->count * sizeof(*last_resort_hashes));
+    retrieve_creation_times(last_resort_push_times, repos, github_token, organization);
+    retrieve_latest_commits(last_resort_hashes, repos, requested_branchs, github_token, organization);
     
 #define MAX_WORKER 64
 	for(int at = 0; at < repos->count; at += MAX_WORKER)
@@ -682,9 +727,10 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time,
             for(int i = 0; i < worker_count; ++i)
             {
                 if(worker_done[i]) continue;
+                
                 int event_count_in_page = 0;
-                char ref_name[256];
-                if(format_string(ref_name, 256, "refs/heads/%s", default_branchs->elem[at + i]))
+                static char requested_ref[256];
+                if(format_string(requested_ref, sizeof(requested_ref), "refs/heads/%s", requested_branchs->elem[at + i]))
                 {
                     cJSON *json = cJSON_Parse(get_response(&group, i));
                     cJSON *event = 0;
@@ -694,37 +740,61 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time,
                         cJSON *event_type = cJSON_GetObjectItemCaseSensitive(event, "type");
                         cJSON *created_at = cJSON_GetObjectItemCaseSensitive(event, "created_at");
                         cJSON *payload = cJSON_GetObjectItemCaseSensitive(event, "payload");
+                        cJSON *push_hash = cJSON_GetObjectItemCaseSensitive(payload, "head");
+                        cJSON *ref_type = cJSON_GetObjectItemCaseSensitive(payload, "ref_type");
                         cJSON *ref = cJSON_GetObjectItemCaseSensitive(payload, "ref");
-                        cJSON *master_branch = cJSON_GetObjectItemCaseSensitive(payload, "master_branch");
-                        cJSON *last_commit = cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(payload, "commits"), 0);
-                        cJSON *last_commit_hash = cJSON_GetObjectItemCaseSensitive(last_commit, "sha");
+                        cJSON *default_branch = cJSON_GetObjectItemCaseSensitive(payload, "master_branch");
                         if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "PushEvent") &&
-                           cJSON_IsString(created_at) && cJSON_IsString(last_commit_hash) &&
-                           cJSON_IsString(ref) && compare_string(ref->valuestring, ref_name))
+                           cJSON_IsString(created_at) && cJSON_IsString(push_hash) &&
+                           cJSON_IsString(ref) && compare_string(ref->valuestring, requested_ref))
                         {
                             time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
                             if(push_time < cutoff)
                             {
                                 worker_done[i] = 1;
                                 out_push_time[at + i] = push_time;
-                                out_hash[at + i] = init_git_commit_hash(last_commit_hash->valuestring);
+                                out_hash[at + i] = init_git_commit_hash(push_hash->valuestring);
                                 break;
                             }
                         }
                         else if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "CreateEvent") &&
-                                cJSON_IsString(created_at) && cJSON_IsString(master_branch) &&
-                                compare_string(master_branch->valuestring, default_branchs->elem[at + i]))
+                                cJSON_IsString(created_at) &&
+                                cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "branch") &&
+                                // NOTE: weird github api, create event's ref is 'branch', 
+                                // while push event's ref is 'refs/heads/branch'
+                                cJSON_IsString(ref) && compare_string(ref->valuestring, requested_branchs->elem[at + i]))
                         {
                             time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
                             if(push_time < cutoff)
                             {
                                 worker_done[i] = 1;
                                 out_push_time[at + i] = push_time;
-                                out_hash[at + i] = init_git_commit_hash(latest_commits[at + i].string);
+                                out_hash[at + i] = init_git_commit_hash(last_resort_hashes[at + i].string);
+                                break;
+                            }
+                        }
+                        else if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "CreateEvent") &&
+                                cJSON_IsString(created_at) &&
+                                cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "repository") &&
+                                cJSON_IsString(default_branch) && 
+                                compare_string(default_branch->valuestring, requested_branchs->elem[at + i]))
+                        {
+                            time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
+                            if(push_time < cutoff)
+                            {
+                                worker_done[i] = 1;
+                                out_push_time[at + i] = push_time;
+                                out_hash[at + i] = init_git_commit_hash(last_resort_hashes[at + i].string);
                                 break;
                             }
                         }
                     }
+                }
+                
+                if(!out_push_time[at + i])
+                {
+                    out_push_time[at + i] = last_resort_push_times[at + i];
+                    out_hash[at + i] = last_resort_hashes[at + i];
                 }
                 
                 if(event_count_in_page == 0) { worker_done[i] = 1; }

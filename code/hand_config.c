@@ -295,7 +295,10 @@ ensure_config_exists(char *path)
                 "spreadsheet = \"spreadsheet-id\""                                  "\n"
                                                                                     "\n"
                 "# sheet_key_username"                                              "\n"
-                "sheet_key_username = \"key-for-username-in-sheet\""                "\n";
+                "sheet_key_username = \"key-for-username-in-sheet\""                "\n"
+                                                                                    "\n"
+                "# penalty per day"                                                 "\n"
+                "penalty_per_day = \"15\""                                          "\n";
             size_t default_config_size = sizeof(default_config_content) - 1;
             fwrite(default_config_content, default_config_size, 1, default_config_handle);
             fclose(default_config_handle);

@@ -116,7 +116,8 @@ parse_time(char *string, int time_zone)
 {
     // NOTE: only accept YYYY-MM-DD or YYYY-MM-DD-hh-mm-ss
     time_t result = 0;
-    if(string_len(string) == 10)
+    size_t len = string_len(string);
+    if(len == 10)
     {
         // NOTE: YYYY-MM-DD
         tm t = {0};
@@ -125,9 +126,9 @@ parse_time(char *string, int time_zone)
         t.tm_year = (string[0] - '0') * 1000 + (string[1] - '0') * 100 + (string[2] - '0') * 10 + (string[3] - '0') - 1900;
         result = platform.calender_time_to_time(&t, time_zone);
     }
-    else if(string_len(string) == 20)
+    else if(len == 19 || len == 20)
     {
-        // NOTE: YYYY-MM-DD-hh-mm-ss
+        // NOTE: YYYY-MM-DD-hh-mm-ss or YYYY-MM-DDThh:mm:ssZ
         tm t = {0};
         t.tm_sec  = (string[17] - '0') * 10 + (string[18] - '0');
         t.tm_min  = (string[14] - '0') * 10 + (string[15] - '0');

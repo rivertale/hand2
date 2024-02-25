@@ -2,17 +2,33 @@
 
 enum
 {
-    Config_email         = 0,
-    Config_github_token  = 1,
-    Config_google_token  = 2,
-    Config_organization  = 3,
-    Config_ta_team       = 4,
-    Config_student_team  = 5,
-    Config_grade_command = 6,
-    Config_feedback_repo = 7,
-    Config_spreadsheet   = 8,
-    Config_key_username  = 9,
+    Config_email            = 0,
+    Config_github_token     = 1,
+    Config_google_token     = 2,
+    Config_organization     = 3,
+    Config_ta_team          = 4,
+    Config_student_team     = 5,
+    Config_grade_command    = 6,
+    Config_feedback_repo    = 7,
+    Config_spreadsheet      = 8,
+    Config_key_username     = 9,
+    Config_penalty_per_day  = 10,
     Config_one_past_last,
+};
+
+static char *global_config_key_name[] =
+{
+    "email",
+    "github_access_token",
+    "google_api_key",
+    "organization",
+    "ta_team",
+    "student_team",
+    "grade_command",
+    "feedback_repository",
+    "spreadsheet",
+    "sheet_key_username",
+    "penalty_per_day",
 };
 
 enum
@@ -52,17 +68,3 @@ typedef struct ArgParser
     int arg_count;
     char **args;
 } ArgParser;
-
-static char *global_config_key_name[] =
-{
-    "email",
-    "github_access_token",
-    "google_api_key",
-    "organization",
-    "ta_team",
-    "student_team",
-    "grade_command",
-    "feedback_repository",
-    "spreadsheet",
-    "sheet_key_username",
-};
