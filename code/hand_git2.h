@@ -32,6 +32,53 @@
 
 typedef enum
 {
+	GIT_OPT_GET_MWINDOW_SIZE,
+	GIT_OPT_SET_MWINDOW_SIZE,
+	GIT_OPT_GET_MWINDOW_MAPPED_LIMIT,
+	GIT_OPT_SET_MWINDOW_MAPPED_LIMIT,
+	GIT_OPT_GET_SEARCH_PATH,
+	GIT_OPT_SET_SEARCH_PATH,
+	GIT_OPT_SET_CACHE_OBJECT_LIMIT,
+	GIT_OPT_SET_CACHE_MAX_SIZE,
+	GIT_OPT_ENABLE_CACHING,
+	GIT_OPT_GET_CACHED_MEMORY,
+	GIT_OPT_GET_TEMPLATE_PATH,
+	GIT_OPT_SET_TEMPLATE_PATH,
+	GIT_OPT_SET_SSL_CERT_LOCATIONS,
+	GIT_OPT_SET_USER_AGENT,
+	GIT_OPT_ENABLE_STRICT_OBJECT_CREATION,
+	GIT_OPT_ENABLE_STRICT_SYMBOLIC_REF_CREATION,
+	GIT_OPT_SET_SSL_CIPHERS,
+	GIT_OPT_GET_USER_AGENT,
+	GIT_OPT_ENABLE_OFS_DELTA,
+	GIT_OPT_ENABLE_FSYNC_GITDIR,
+	GIT_OPT_GET_WINDOWS_SHAREMODE,
+	GIT_OPT_SET_WINDOWS_SHAREMODE,
+	GIT_OPT_ENABLE_STRICT_HASH_VERIFICATION,
+	GIT_OPT_SET_ALLOCATOR,
+	GIT_OPT_ENABLE_UNSAVED_INDEX_SAFETY,
+	GIT_OPT_GET_PACK_MAX_OBJECTS,
+	GIT_OPT_SET_PACK_MAX_OBJECTS,
+	GIT_OPT_DISABLE_PACK_KEEP_FILE_CHECKS,
+	GIT_OPT_ENABLE_HTTP_EXPECT_CONTINUE,
+	GIT_OPT_GET_MWINDOW_FILE_LIMIT,
+	GIT_OPT_SET_MWINDOW_FILE_LIMIT,
+	GIT_OPT_SET_ODB_PACKED_PRIORITY,
+	GIT_OPT_SET_ODB_LOOSE_PRIORITY,
+	GIT_OPT_GET_EXTENSIONS,
+	GIT_OPT_SET_EXTENSIONS,
+	GIT_OPT_GET_OWNER_VALIDATION,
+	GIT_OPT_SET_OWNER_VALIDATION,
+	GIT_OPT_GET_HOMEDIR,
+	GIT_OPT_SET_HOMEDIR,
+	GIT_OPT_SET_SERVER_CONNECT_TIMEOUT,
+	GIT_OPT_GET_SERVER_CONNECT_TIMEOUT,
+	GIT_OPT_SET_SERVER_TIMEOUT,
+	GIT_OPT_GET_SERVER_TIMEOUT
+} git_libgit2_opt_t;
+
+typedef enum
+{
 	GIT_BRANCH_LOCAL = 1,
 	GIT_BRANCH_REMOTE = 2,
 	GIT_BRANCH_ALL = GIT_BRANCH_LOCAL|GIT_BRANCH_REMOTE
@@ -473,11 +520,14 @@ typedef struct git_error
 typedef char *GitOidToStr(char *out, size_t n, const git_oid *id);
 typedef const char *GitCommitMessage(const git_commit *commit);
 typedef const char *GitReferenceName(const git_reference *ref);
-typedef const void *GitBlobRawContent(const git_blob *blob);
+typedef const git_error *GitErrorLast(void);
 typedef const git_oid *GitCommitId(const git_commit *commit);
 typedef const git_oid *GitTreeEntryId(const git_tree_entry *entry);
 typedef const git_signature *GitCommitAuthor(const git_commit *commit);
 typedef const git_signature *GitCommitCommitter(const git_commit *commit);
+typedef const void *GitBlobRawContent(const git_blob *blob);
+typedef git_object_size_t GitBlobRawSize(const git_blob *blob);
+typedef git_object_t GitTreeEntryType(const git_tree_entry *entry);
 typedef int GitBlobCreateFromBuffer(git_oid *id, git_repository *repo, const void *buffer, size_t len);
 typedef int GitBlobLookup(git_blob **blob, git_repository *repo, const git_oid *id);
 typedef int GitBranchCreate(git_reference **out, git_repository *repo, const char *branch_name, const git_commit *target, int force);
@@ -494,6 +544,7 @@ typedef int GitCommitParent(git_commit **out, const git_commit *commit, unsigned
 typedef int GitCommitTree(git_tree **tree_out, const git_commit *commit);
 typedef int GitDiffTreeToTree(git_diff **diff, git_repository *repo, git_tree *old_tree, git_tree *new_tree, const git_diff_options *opts);
 typedef int GitLibgit2Init(void);
+typedef int	GitLibgit2Opts(int option, ...);
 typedef int GitLibgit2Shutdown(void);
 typedef int GitOidCmp(const git_oid *a, const git_oid *b);
 typedef int GitOidFromStrN(git_oid *out, const char *str, size_t length);
@@ -513,10 +564,10 @@ typedef int GitRevwalkPush(git_revwalk *walk, const git_oid *id);
 typedef int GitRevwalkPushHead(git_revwalk *walk);
 typedef int GitRevwalkSorting(git_revwalk *walk, unsigned int sort_mode);
 typedef int GitSignatureNew(git_signature **out, const char *name, const char *email, git_time_t time, int offset);
-typedef int GitTreebuilderNew(git_treebuilder **out, git_repository *repo, const git_tree *source);
-typedef int GitTreebuilderWrite(git_oid *id, git_treebuilder *bld);
 typedef int GitTreeLookup(git_tree **out, git_repository *repo, const git_oid *id);
 typedef int GitTreeWalk(const git_tree *tree, git_treewalk_mode mode, git_treewalk_cb callback, void *payload);
+typedef int GitTreebuilderNew(git_treebuilder **out, git_repository *repo, const git_tree *source);
+typedef int GitTreebuilderWrite(git_oid *id, git_treebuilder *bld);
 typedef size_t GitDiffNumDeltas(const git_diff *diff);
 typedef unsigned int GitCommitParentCount(const git_commit *commit);
 typedef void GitBranchIteratorFree(git_branch_iterator *iter);
@@ -525,76 +576,74 @@ typedef void GitDiffFree(git_diff *diff);
 typedef void GitReferenceFree(git_reference *ref);
 typedef void GitRemoteFree(git_remote *remote);
 typedef void GitRevwalkFree(git_revwalk *walk);
-typedef void GitTreebuilderFree(git_treebuilder *bld);
-typedef void GitTreeFree(git_tree *tree);
 typedef void GitSignatureFree(git_signature *sig);
-typedef git_error *GitErrorLast(void);
-typedef git_object_size_t GitBlobRawSize(const git_blob *blob);
-typedef git_object_t GitTreeEntryType(const git_tree_entry *entry);
+typedef void GitTreeFree(git_tree *tree);
+typedef void GitTreebuilderFree(git_treebuilder *bld);
 
 typedef struct Git2Code
 {
-    GitOidToStr *git_oid_tostr;
-    GitCommitMessage *git_commit_message;
-    GitReferenceName *git_reference_name;
-    GitBlobRawContent *git_blob_rawcontent;
-    GitCommitId *git_commit_id;
-    GitTreeEntryId *git_tree_entry_id;
-    GitCommitAuthor *git_commit_author;
-    GitCommitCommitter *git_commit_committer;
     GitBlobCreateFromBuffer *git_blob_create_from_buffer;
     GitBlobLookup *git_blob_lookup;
+    GitBlobRawContent *git_blob_rawcontent;
+    GitBlobRawSize *git_blob_rawsize;
     GitBranchCreate *git_branch_create;
     GitBranchDelete *git_branch_delete;
+    GitBranchIteratorFree *git_branch_iterator_free;
     GitBranchIteratorNew *git_branch_iterator_new;
     GitBranchName *git_branch_name;
     GitBranchNext *git_branch_next;
     GitBranchSetUpstream *git_branch_set_upstream;
     GitBranchUpstream *git_branch_upstream;
     GitClone *git_clone;
+    GitCommitAuthor *git_commit_author;
+    GitCommitCommitter *git_commit_committer;
     GitCommitCreate *git_commit_create;
+    GitCommitFree *git_commit_free;
+    GitCommitId *git_commit_id;
     GitCommitLookup *git_commit_lookup;
+    GitCommitMessage *git_commit_message;
     GitCommitParent *git_commit_parent;
+    GitCommitParentCount *git_commit_parentcount;
     GitCommitTree *git_commit_tree;
+    GitDiffFree *git_diff_free;
+    GitDiffNumDeltas *git_diff_num_deltas;
     GitDiffTreeToTree *git_diff_tree_to_tree;
+    GitErrorLast *git_error_last;
     GitLibgit2Init *git_libgit2_init;
+    GitLibgit2Opts *git_libgit2_opts;
     GitLibgit2Shutdown *git_libgit2_shutdown;
     GitOidCmp *git_oid_cmp;
     GitOidFromStrN *git_oid_fromstrn;
+    GitOidToStr *git_oid_tostr;
+    GitReferenceFree *git_reference_free;
     GitReferenceLookup *git_reference_lookup;
+    GitReferenceName *git_reference_name;
     GitReferenceNameToId *git_reference_name_to_id;
     GitRemoteCreate *git_remote_create;
     GitRemoteFetch *git_remote_fetch;
+    GitRemoteFree *git_remote_free;
     GitRemoteLookup *git_remote_lookup;
     GitRemotePrune *git_remote_prune;
     GitRemotePush *git_remote_push;
     GitRepositoryOpen *git_repository_open;
     GitReset *git_reset;
+    GitRevwalkFree *git_revwalk_free;
     GitRevwalkHide *git_revwalk_hide;
     GitRevwalkNew *git_revwalk_new;
     GitRevwalkNext *git_revwalk_next;
     GitRevwalkPush *git_revwalk_push;
     GitRevwalkPushHead *git_revwalk_push_head;
     GitRevwalkSorting *git_revwalk_sorting;
+    GitSignatureFree *git_signature_free;
     GitSignatureNew *git_signature_new;
-    GitTreebuilderNew *git_treebuilder_new;
-    GitTreebuilderWrite *git_treebuilder_write;
+    GitTreeEntryId *git_tree_entry_id;
+    GitTreeEntryType *git_tree_entry_type;
+    GitTreeFree *git_tree_free;
     GitTreeLookup *git_tree_lookup;
     GitTreeWalk *git_tree_walk;
-    GitDiffNumDeltas *git_diff_num_deltas;
-    GitCommitParentCount *git_commit_parentcount;
-    GitBranchIteratorFree *git_branch_iterator_free;
-    GitCommitFree *git_commit_free;
-    GitDiffFree *git_diff_free;
-    GitReferenceFree *git_reference_free;
-    GitRemoteFree *git_remote_free;
-    GitRevwalkFree *git_revwalk_free;
     GitTreebuilderFree *git_treebuilder_free;
-    GitTreeFree *git_tree_free;
-    GitSignatureFree *git_signature_free;
-    GitErrorLast *git_error_last;
-    GitBlobRawSize *git_blob_rawsize;
-    GitTreeEntryType *git_tree_entry_type;
+    GitTreebuilderNew *git_treebuilder_new;
+    GitTreebuilderWrite *git_treebuilder_write;
 } Git2Code;
 
 static Git2Code git2 = {0};

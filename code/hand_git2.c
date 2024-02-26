@@ -140,7 +140,6 @@ sync_repository(char *dir_path, char *url, GitCommitHash *hash)
     git_repository *repo = 0;
     if(platform.directory_exists(dir_path) && git2.git_repository_open(&repo, dir_path) == GIT_ERROR_NONE)
     {
-
         git_remote *remote = 0;
         if(git2.git_remote_lookup(&remote, repo, "origin") != GIT_ERROR_NONE)
         {

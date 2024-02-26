@@ -12,27 +12,27 @@ install ./apps/ct_log_list.cnf -> /deps/ssl/ssl/ct_log_list.cnf.dist
 install ./apps/ct_log_list.cnf -> /deps/ssl/ssl/ct_log_list.cnf
 make[1]: Entering directory '/deps/openssl-3.2.0'
 make[1]: Entering directory '/deps/openssl-3.2.0'
-make[1]: Leaving directory '/deps/openssl-3.2.0'
-make[1]: Leaving directory '/deps/openssl-3.2.0'
 make[1]: Entering directory '/deps/openssl-3.2.0'
+make[1]: Leaving directory '/deps/openssl-3.2.0'
+make[1]: Leaving directory '/deps/openssl-3.2.0'
 make[1]: Leaving directory '/deps/openssl-3.2.0'
 make[1]: Entering directory '/deps/openssl-3.2.0'
 make[1]: Nothing to be done for '_build_modules'.
 make[1]: Leaving directory '/deps/openssl-3.2.0'
 make[1]: Entering directory '/deps/openssl-3.2.0'
-make[1]: Nothing to be done for '_build_libs'.
+make[1]: Nothing to be done for '_build_programs'.
 make[1]: Leaving directory '/deps/openssl-3.2.0'
 make[1]: Entering directory '/deps/openssl-3.2.0'
-make[1]: Nothing to be done for '_build_programs'.
+make[1]: Nothing to be done for '_build_libs'.
 make[1]: Leaving directory '/deps/openssl-3.2.0'
 created directory `/deps/ssl/lib64'
 *** Installing runtime libraries
 *** Installing development files
 created directory `/deps/ssl/lib64/engines-3'
-created directory `/deps/ssl/lib64/ossl-modules'
 created directory `/deps/ssl/include'
 created directory `/deps/ssl/include/openssl'
 *** Installing engines
+created directory `/deps/ssl/lib64/ossl-modules'
 created directory `/deps/ssl/bin'
 *** Installing modules
 *** Installing runtime programs

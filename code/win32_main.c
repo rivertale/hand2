@@ -267,7 +267,7 @@ win32_init_curl(void)
 
         static char root_dir[MAX_PATH_LEN];
         if(win32_get_root_dir(root_dir, MAX_PATH_LEN) &&
-           format_string(global_crt_path, sizeof(global_crt_path), "%s/curl-ca-bundle.crt", root_dir))
+           format_string(global_certificate_path, sizeof(global_certificate_path), "%s/curl-ca-bundle.crt", root_dir))
         {
             CURLcode error = curl.curl_global_init(CURL_GLOBAL_SSL | CURL_GLOBAL_WIN32);
             if(error == 0)
@@ -325,6 +325,7 @@ win32_init_git(void)
         git2.git_commit_tree = (GitCommitTree *)GetProcAddress(module, "git_commit_tree");
         git2.git_diff_tree_to_tree = (GitDiffTreeToTree *)GetProcAddress(module, "git_diff_tree_to_tree");
         git2.git_libgit2_init = (GitLibgit2Init *)GetProcAddress(module, "git_libgit2_init");
+        git2.git_libgit2_opts = (GitLibgit2Opts *)GetProcAddress(module, "git_libgit2_opts");
         git2.git_libgit2_shutdown = (GitLibgit2Shutdown *)GetProcAddress(module, "git_libgit2_shutdown");
         git2.git_oid_cmp = (GitOidCmp *)GetProcAddress(module, "git_oid_cmp");
         git2.git_oid_fromstrn = (GitOidFromStrN *)GetProcAddress(module, "git_oid_fromstrn");
@@ -363,14 +364,31 @@ win32_init_git(void)
         git2.git_blob_rawsize = (GitBlobRawSize *)GetProcAddress(module, "git_blob_rawsize");
         git2.git_tree_entry_type = (GitTreeEntryType *)GetProcAddress(module, "git_tree_entry_type");
 
-        if(git2.git_libgit2_init() > 0)
+        static char root_dir[MAX_PATH_LEN];
+        static char certificate_path[MAX_PATH_LEN];
+        if(win32_get_root_dir(root_dir, MAX_PATH_LEN) &&
+           format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir))
         {
-            success = 1;
+            if(git2.git_libgit2_init() > 0)
+            {
+                if(git2.git_libgit2_opts(GIT_OPT_SET_SSL_CERT_LOCATIONS, certificate_path, 0) == 0)
+                {
+                    success = 1;
+                }
+                else
+                {
+                    git2.git_libgit2_shutdown();
+                }
+            }
+            else
+            {
+                const git_error *error = git2.git_error_last();
+                write_error("git_libgit2_init error: %s", error->message);
+            }
         }
         else
         {
-            git_error *error = git2.git_error_last();
-            write_error("git_libgit2_init error: %s", error->message);
+            // TODO: log
         }
     }
     else
