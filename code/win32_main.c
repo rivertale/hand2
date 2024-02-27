@@ -371,7 +371,8 @@ win32_init_git(void)
         {
             if(git2.git_libgit2_init() > 0)
             {
-                if(git2.git_libgit2_opts(GIT_OPT_SET_SSL_CERT_LOCATIONS, certificate_path, 0) == 0)
+                if(git2.git_libgit2_opts(GIT_OPT_SET_SSL_CERT_LOCATIONS, certificate_path, 0) == 0 &&
+                   git2.git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 0) == 0)
                 {
                     success = 1;
                 }
