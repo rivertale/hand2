@@ -135,11 +135,13 @@ linux_copy_directory(char *target_dir, char *source_dir)
                         {
                             result = 0;
                         }
+                        free_memory(content);
                     }
                     if(source) fclose(source);
                     if(target) fclose(target);
                 }
-                free_memory(child);
+                free_memory(source_child);
+                free_memory(target_child);
             }
             closedir(dir_handle);
         }
