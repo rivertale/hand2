@@ -46,6 +46,7 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
                (curl.curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, worker->error) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, curl_write_func) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_WRITEDATA, &worker->response) == 0) &&
+               (curl.curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 60000) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_HTTPHEADER, worker->header_list) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_URL, url) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, post_type) == 0) &&
@@ -67,6 +68,7 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
                (curl.curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, worker->error) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, curl_write_func) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_WRITEDATA, &worker->response) == 0) &&
+               (curl.curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 60000) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_HTTPHEADER, worker->header_list) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_URL, url) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_HTTPGET, 1) == 0) &&
@@ -769,7 +771,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                             {
                                 worker_done[i] = 1;
                                 out_push_time[at + i] = push_time;
-                                out_hash[at + i] = init_git_commit_hash(last_resort_hashes[at + i].string);
+                                out_hash[at + i] = last_resort_hashes[at + i];
                                 break;
                             }
                         }
@@ -784,7 +786,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                             {
                                 worker_done[i] = 1;
                                 out_push_time[at + i] = push_time;
-                                out_hash[at + i] = init_git_commit_hash(last_resort_hashes[at + i].string);
+                                out_hash[at + i] = last_resort_hashes[at + i];
                                 break;
                             }
                         }

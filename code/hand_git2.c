@@ -52,20 +52,6 @@ git_copy_blob_callback(const char *root, const git_tree_entry *entry, void *payl
 }
 
 static GitCommitHash
-get_local_branch_commit(git_repository *repo, char *branch)
-{
-    GitCommitHash result = {0};
-    static char ref[MAX_REF_LEN];
-    git_oid id;
-    if(format_string(ref, MAX_REF_LEN, "refs/heads/%s", branch) &&
-       git2.git_reference_name_to_id(&id, repo, ref) == 0)
-    {
-        git2.git_oid_tostr(result.string, GIT_HASH_LEN + 1, &id);
-    }
-    return result;
-}
-
-static GitCommitHash
 get_root_commit(git_repository *repo)
 {
     GitCommitHash result = {0};
@@ -77,7 +63,7 @@ get_root_commit(git_repository *repo)
            git2.git_revwalk_push_head(walker) == 0 &&
            git2.git_revwalk_next(&id, walker) == 0)
         {
-            git2.git_oid_tostr(result.string, GIT_HASH_LEN + 1, &id);
+            git2.git_oid_tostr(result.full, GIT_HASH_LEN + 1, &id);
         }
         git2.git_revwalk_free(walker);
     }
@@ -94,8 +80,8 @@ find_latest_identical_commit(git_repository *search_repo, GitCommitHash search_h
     git_commit *desired_commit = 0;
     git_tree *desired_tree = 0;
     git_revwalk *walker = 0;
-    if(git2.git_oid_fromstrn(&search_id, search_hash.string, GIT_HASH_LEN) == 0 &&
-       git2.git_oid_fromstrn(&desired_id, desired_hash.string, GIT_HASH_LEN) == 0 &&
+    if(git2.git_oid_fromstrn(&search_id, search_hash.full, GIT_HASH_LEN) == 0 &&
+       git2.git_oid_fromstrn(&desired_id, desired_hash.full, GIT_HASH_LEN) == 0 &&
        git2.git_commit_lookup(&desired_commit, desired_repo, &desired_id) == 0 &&
        git2.git_commit_tree(&desired_tree, desired_commit) == 0 &&
        git2.git_revwalk_new(&walker, search_repo) == 0 &&
@@ -115,7 +101,7 @@ find_latest_identical_commit(git_repository *search_repo, GitCommitHash search_h
                git2.git_diff_num_deltas(diff) == 0)
             {
                 found = 1;
-                git2.git_oid_tostr(result.string, GIT_HASH_LEN + 1, git2.git_commit_id(commit));
+                git2.git_oid_tostr(result.full, GIT_HASH_LEN + 1, git2.git_commit_id(commit));
             }
 
             if(diff) { git2.git_diff_free(diff); }
@@ -198,9 +184,12 @@ sync_repository(char *dir_path, char *url, GitCommitHash *hash)
     else
     {
         platform.delete_directory(dir_path);
-        if(git2.git_clone(&repo, url, dir_path, 0) == GIT_ERROR_NONE)
+        platform.delete_directory(global_temporary_clone_dir);
+        if(git2.git_clone(&repo, url, global_temporary_clone_dir, 0) == GIT_ERROR_NONE)
         {
-
+            git2.git_repository_free(repo);
+            platform.rename_directory(dir_path, global_temporary_clone_dir);
+            git2.git_repository_open(&repo, dir_path);
         }
         else
         {
@@ -218,7 +207,7 @@ sync_repository(char *dir_path, char *url, GitCommitHash *hash)
         reset_options.notify_payload = dir_path;
         if(hash)
         {
-            if(git2.git_oid_fromstrn(&commit_id, hash->string, GIT_HASH_LEN) == 0 &&
+            if(git2.git_oid_fromstrn(&commit_id, hash->full, GIT_HASH_LEN) == 0 &&
                git2.git_commit_lookup(&commit, repo, &commit_id) == 0)
             {
                 git2.git_reset(repo, (git_object *)commit, GIT_RESET_HARD, &reset_options);
@@ -254,9 +243,9 @@ apply_commit_chain(git_repository *target_repo, char *branch, GitCommitHash targ
     static char push_spec[MAX_PATH_LEN * 2];
     if(format_string(ref, MAX_PATH_LEN, "refs/heads/%s", branch) &&
        format_string(push_spec, MAX_PATH_LEN * 2, "refs/heads/%s:refs/heads/%s", branch, branch) &&
-       git2.git_oid_fromstrn(&source_start_id, source_start_hash.string, GIT_HASH_LEN) == 0 &&
-       git2.git_oid_fromstrn(&source_end_id, source_end_hash.string, GIT_HASH_LEN) == 0 &&
-       git2.git_oid_fromstrn(&target_start_id, target_start_hash.string, GIT_HASH_LEN) == 0 &&
+       git2.git_oid_fromstrn(&source_start_id, source_start_hash.full, GIT_HASH_LEN) == 0 &&
+       git2.git_oid_fromstrn(&source_end_id, source_end_hash.full, GIT_HASH_LEN) == 0 &&
+       git2.git_oid_fromstrn(&target_start_id, target_start_hash.full, GIT_HASH_LEN) == 0 &&
        git2.git_commit_lookup(&target_start_commit, target_repo, &target_start_id) == 0 &&
        git2.git_branch_create(&target_branch_ref, target_repo, branch, target_start_commit, 0) == 0 &&
        git2.git_branch_set_upstream(target_branch_ref, branch) == 0 &&

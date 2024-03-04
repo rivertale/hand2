@@ -59,7 +59,7 @@ x64 prebuilt binaries can be downloaded from [release](https://github.com/Compil
     - TODO: Get the student list from the spreadsheet, currently it needs to be copied and sent to program as a file.
 - ⚠️ collect-homework: output late submissions.
     - TODO: Get the student list from the spreadsheet, and output in a spreadsheet-friendly format (direct copy-pasta).
-- ❌ grade-homework: replacing HW-manager, grade students' homework
+- ⚠️ grade-homework: replacing HW-manager, grade students' homework
     - TODO: Get the student list from the spreadsheet, and output in a spreadsheet-friendly format (direct copy-pasta).
 - ⚠️ announce-grade: retrieve grade from the spreadsheet, and announce it in students' issue.
     - TODO: Support HW-manager format

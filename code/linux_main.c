@@ -1,11 +1,24 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <dlfcn.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/prctl.h>
 typedef int curl_socket_t;
 #include "hand.c"
 #include "linux_git2.h"
 #include "linux_curl.h"
+
+typedef struct LinuxWaitPidData
+{
+    int exit_code;
+    pid_t *process_id;
+    pthread_cond_t condition;
+    pthread_mutex_t lock;
+} LinuxWaitPidData;
 
 static time_t
 linux_calender_time_to_time(tm *calender_time, int time_zone)
@@ -28,6 +41,41 @@ linux_directory_exists(char *path)
     {
         result = S_ISDIR(file_status.st_mode);
     }
+    return result;
+}
+
+static int
+linux_rename_directory(char *target_path, char *source_path)
+{
+    int result = 0;
+    if(rename(source_path, target_path) == 0)
+    {
+        result = 1;
+    }
+    return result;
+}
+
+static int
+linux_copy_file(char *target_path, char *source_path)
+{
+    int result = 0;
+    FILE *source_handle = fopen(source_path, "rb");
+    FILE *target_handle = fopen(target_path, "wb");
+    if(source_handle && target_handle)
+    {
+        fseek(source_handle, 0, SEEK_END);
+        size_t file_size = ftell(source_handle);
+        fseek(source_handle, 0, SEEK_SET);
+        char *content = allocate_memory(file_size);
+        if(fread(content, file_size, 1, source_handle) > 0 &&
+           fwrite(content, file_size, 1, target_handle) > 0)
+        {
+            result = 1;
+        }
+        free_memory(content);
+    }
+    if(source_handle) { fclose(source_handle); }
+    if(target_handle) { fclose(target_handle); }
     return result;
 }
 
@@ -123,22 +171,7 @@ linux_copy_directory(char *target_dir, char *source_dir)
                 }
                 else
                 {
-                    FILE *source = fopen(source_child, "rb");
-                    FILE *target = fopen(target_child, "wb");
-                    if(source && target)
-                    {
-                        fseek(source, 0, SEEK_END);
-                        size_t copy_size = ftell(source);
-                        fseek(source, 0, SEEK_SET);
-                        char *content = allocate_memory(copy_size);
-                        if(fread(content, copy_size, 1, source) == 0 || fwrite(content, copy_size, 1, target) == 0)
-                        {
-                            result = 0;
-                        }
-                        free_memory(content);
-                    }
-                    if(source) fclose(source);
-                    if(target) fclose(target);
+                    linux_copy_file(target_child, source_child);
                 }
                 free_memory(source_child);
                 free_memory(target_child);
@@ -180,24 +213,6 @@ linux_get_root_dir(char *out_buffer, size_t size)
     }
     return result;
 }
-
-static int
-linux_create_process(char *command, char *workdir)
-{
-    int result = 0;
-    pid_t process_id = fork();
-    if(process_id == 0)
-    {
-        execl("/bin/sh", "sh", "-c", command, (char *)0);
-        exit(0);
-    }
-    else if(process_id != -1)
-    {
-        result = 1;
-    }
-    return result;
-}
-
 static int
 linux_init_curl(void)
 {
@@ -238,6 +253,117 @@ static void
 linux_cleanup_curl(void)
 {
     curl_global_cleanup();
+}
+
+static int
+linux_exec_process(ThreadContext *context, int index, char *command, char *work_dir, char *stdout_path, char *stderr_path)
+{
+    int exit_code = -1;
+    pthread_mutex_t *callback_lock = (pthread_mutex_t *)context->callback_lock;
+    if(context->on_progress)
+    {
+        pthread_mutex_lock(callback_lock);
+        context->on_progress(index, context->work_count, work_dir);
+        pthread_mutex_unlock(callback_lock);
+    }
+    
+    pid_t process_id = fork();
+    if(process_id == 0) // NOTE: child
+    {
+        if(chdir(work_dir) == 0)
+        {
+            setpgid(getpid(), getpid());
+            if(global_log_file && stdout_path)
+            {
+                int stdout_handle = open(stdout_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                if(stdout_handle != -1)
+                {
+                    dup2(stdout_handle, 1);
+                    close(stdout_handle);
+                }
+            }
+            if(global_log_file && stderr_path)
+            {
+                int stderr_handle = open(stderr_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                if(stderr_handle != -1)
+                {
+                    dup2(stderr_handle, 2);
+                    close(stderr_handle);
+                }
+            }
+            execl("/bin/sh", "sh", "-c", command, (char *)0);
+        }
+        exit(-1);
+    }
+    else if(process_id != -1)
+    {
+        int status;
+        if(waitpid(process_id, &status, 0) != -1 && WIFEXITED(status))
+        {
+            exit_code = WEXITSTATUS(status);
+        }
+    }
+    
+    if(context->on_done)
+    {
+        pthread_mutex_lock(callback_lock);
+        context->on_done(index, context->work_count, exit_code, work_dir, stderr_path);
+        pthread_mutex_unlock(callback_lock);
+    }
+    return exit_code;
+}
+
+static void *
+linux_thread_proc(void *param)
+{
+    ThreadContext *context = (ThreadContext *)param;
+    for(int next_to_work = *context->next_to_work;
+        next_to_work != context->work_count;
+        next_to_work = *context->next_to_work)
+    {
+        if(__sync_bool_compare_and_swap(context->next_to_work, next_to_work, next_to_work + 1))
+        {
+            Work *work = context->works + next_to_work;
+            char *work_dir = work->work_dir[0] ? work->work_dir : 0;
+            char *stdout_path = work->stdout_path[0] ? work->stdout_path : 0;
+            char *stderr_path = work->stderr_path[0] ? work->stderr_path : 0;
+            work->exit_code = linux_exec_process(context, next_to_work, work->command, work_dir, stdout_path, stderr_path);
+        }
+    }
+    return 0;
+}
+
+static void
+linux_wait_for_completion(int thread_count, int work_count, Work *works, 
+                          WorkOnProgressCallback *on_progress, WorkOnDoneCallback *on_done)
+{
+    pthread_mutex_t callback_lock;
+    if(pthread_mutex_init(&callback_lock, 0) == 0)
+    {
+        volatile int next_to_work = 0;
+        int *thread_is_valid = (int *)allocate_memory(thread_count * sizeof(*thread_is_valid));
+        pthread_t *thread_handles = (pthread_t *)allocate_memory(thread_count * sizeof(*thread_handles));
+        ThreadContext *contexts = (ThreadContext *)allocate_memory(thread_count * sizeof(*contexts));
+        for(int i = 0; i < thread_count; ++i)
+        {
+            contexts[i].work_count = work_count;
+            contexts[i].works = works;
+            contexts[i].next_to_work = &next_to_work;
+            contexts[i].on_progress = on_progress;
+            contexts[i].on_done = on_done;
+            contexts[i].callback_lock = &callback_lock;
+            thread_is_valid[i] = (pthread_create(&thread_handles[i], 0, linux_thread_proc, &contexts[i]) == 0);
+        }
+        
+        for(int i = 0; i < thread_count; ++i)
+        {
+            if(!thread_is_valid[i]) continue;
+            pthread_join(thread_handles[i], 0);
+        }
+        free_memory(contexts);
+        free_memory(thread_handles);
+        free_memory(thread_is_valid);
+    }
 }
 
 static int
@@ -299,6 +425,7 @@ linux_init_git(void)
     git2.git_diff_free = git_diff_free;
     git2.git_reference_free = git_reference_free;
     git2.git_remote_free = git_remote_free;
+    git2.git_repository_free = git_repository_free;
     git2.git_revwalk_free = git_revwalk_free;
     git2.git_treebuilder_free = git_treebuilder_free;
     git2.git_tree_free = git_tree_free;
@@ -310,7 +437,8 @@ linux_init_git(void)
     static char root_dir[MAX_PATH_LEN];
     static char certificate_path[MAX_PATH_LEN];
     if(linux_get_root_dir(root_dir, MAX_PATH_LEN) &&
-       format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir))
+       format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir) &&
+       format_string(global_temporary_clone_dir, sizeof(global_temporary_clone_dir), "%s/cache/tmp", root_dir))
     {
         if(git2.git_libgit2_init() > 0)
         {
@@ -346,13 +474,15 @@ linux_cleanup_git(void)
 static void
 linux_init_platform(Platform *linux_code)
 {
+    linux_code->wait_for_completion = linux_wait_for_completion;
     linux_code->calender_time_to_time = linux_calender_time_to_time;
     linux_code->copy_directory = linux_copy_directory;
     linux_code->create_directory = linux_create_directory;
-    linux_code->create_process = linux_create_process;
     linux_code->delete_directory = linux_delete_directory;
+    linux_code->copy_file = linux_copy_file;
     linux_code->delete_file = linux_delete_file;
     linux_code->directory_exists = linux_directory_exists;
+    linux_code->rename_directory = linux_rename_directory;
     linux_code->get_root_dir = linux_get_root_dir;
 }
 

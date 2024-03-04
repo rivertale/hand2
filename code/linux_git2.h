@@ -41,6 +41,7 @@ extern GitRemoteFree git_remote_free;
 extern GitRemoteLookup git_remote_lookup;
 extern GitRemotePrune git_remote_prune;
 extern GitRemotePush git_remote_push;
+extern GitRepositoryFree git_repository_free;
 extern GitRepositoryOpen git_repository_open;
 extern GitReset git_reset;
 extern GitRevwalkFree git_revwalk_free;

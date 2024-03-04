@@ -46,11 +46,30 @@ write_growable_buffer(GrowableBuffer *buffer, void *data, size_t size)
 static void
 null_terminate(GrowableBuffer *buffer)
 {
-    if(buffer->used > 0 && buffer->memory[buffer->used - 1] != '\0')
+    if(buffer->used == 0 || buffer->memory[buffer->used - 1] != '\0')
     {
         char null_terminator = '\0';
         write_growable_buffer(buffer, &null_terminator, sizeof(null_terminator));
     }
+}
+
+static GrowableBuffer
+read_entire_file_and_null_terminate(char *path)
+{
+    GrowableBuffer buffer = allocate_growable_buffer();
+    FILE *file = fopen(path, "rb");
+    if(file)
+    {
+        fseek(file, 0, SEEK_END);
+        size_t file_size = (size_t)ftell(file);
+        fseek(file, 0, SEEK_SET);
+        reserve_growable_buffer(&buffer, file_size);
+        fread(buffer.memory + buffer.used, file_size, 1, file);
+        buffer.used += file_size;
+        fclose(file);
+    }
+    null_terminate(&buffer);
+    return buffer;
 }
 
 static void
@@ -141,6 +160,21 @@ escape_string_array(StringArray *array)
     StringArray result = split_null_terminated_strings(&buffer);
     assert(result.count == array->count);
     return result;
+}
+
+static int
+find_index_case_insensitive(StringArray *array, char *keyword)
+{
+    int index = -1;
+    for(int i = 0; i < array->count; ++i)
+    {
+        if(compare_case_insensitive(array->elem[i], keyword))
+        {
+            index = i;
+            break;
+        }
+    }
+    return index;
 }
 
 static GrowableBuffer

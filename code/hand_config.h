@@ -2,17 +2,20 @@
 
 enum
 {
-    Config_email            = 0,
-    Config_github_token     = 1,
-    Config_google_token     = 2,
-    Config_organization     = 3,
-    Config_ta_team          = 4,
-    Config_student_team     = 5,
-    Config_grade_command    = 6,
-    Config_feedback_repo    = 7,
-    Config_spreadsheet      = 8,
-    Config_key_username     = 9,
-    Config_penalty_per_day  = 10,
+    Config_email                = 0,
+    Config_github_token         = 1,
+    Config_google_token         = 2,
+    Config_organization         = 3,
+    Config_ta_team              = 4,
+    Config_student_team         = 5,
+    Config_grade_command        = 6,
+    Config_feedback_repo        = 7,
+    Config_spreadsheet          = 8,
+    Config_key_username         = 9,
+    Config_key_student_id       = 10,
+    Config_grade_thread_count   = 11,
+    Config_penalty_per_day      = 12,
+    Config_score_relative_path  = 13,
     Config_one_past_last,
 };
 
@@ -28,7 +31,10 @@ static char *global_config_key_name[] =
     "feedback_repository",
     "spreadsheet",
     "sheet_key_username",
+    "sheet_key_student_id",
+    "grade_thread_count",
     "penalty_per_day",
+    "score_relative_path",
 };
 
 enum

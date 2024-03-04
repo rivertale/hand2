@@ -111,36 +111,6 @@ current_calendar_time(void)
     return calendar_time(now);
 }
 
-static time_t
-parse_time(char *string, int time_zone)
-{
-    // NOTE: only accept YYYY-MM-DD or YYYY-MM-DD-hh-mm-ss
-    time_t result = 0;
-    size_t len = string_len(string);
-    if(len == 10)
-    {
-        // NOTE: YYYY-MM-DD
-        tm t = {0};
-        t.tm_mday = (string[8] - '0') * 10 + (string[9] - '0');
-        t.tm_mon  = (string[5] - '0') * 10 + (string[6] - '0') - 1;
-        t.tm_year = (string[0] - '0') * 1000 + (string[1] - '0') * 100 + (string[2] - '0') * 10 + (string[3] - '0') - 1900;
-        result = platform.calender_time_to_time(&t, time_zone);
-    }
-    else if(len == 19 || len == 20)
-    {
-        // NOTE: YYYY-MM-DD-hh-mm-ss or YYYY-MM-DDThh:mm:ssZ
-        tm t = {0};
-        t.tm_sec  = (string[17] - '0') * 10 + (string[18] - '0');
-        t.tm_min  = (string[14] - '0') * 10 + (string[15] - '0');
-        t.tm_hour = (string[11] - '0') * 10 + (string[12] - '0');
-        t.tm_mday = (string[8] - '0') * 10 + (string[9] - '0');
-        t.tm_mon  = (string[5] - '0') * 10 + (string[6] - '0') - 1;
-        t.tm_year = (string[0] - '0') * 1000 + (string[1] - '0') * 100 + (string[2] - '0') * 10 + (string[3] - '0') - 1900;
-        result = platform.calender_time_to_time(&t, time_zone);
-    }
-    return result;
-}
-
 static void
 write_log_with_args(char *format, va_list arg_list)
 {

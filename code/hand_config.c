@@ -59,14 +59,14 @@ lex_token(ConfigParser *parser)
         eat_char(parser);
         token.type = Token_equal;
     }
-    else if(c0 == '"')
+    else if(c0 == '"' || c0 == '\'')
     {
         eat_char(parser);
         token.type = Token_string;
         token.identifier = parser->content + parser->at;
         for(char c = peek_char(parser); c; c = eat_and_peek_char(parser))
         {
-            if(c == '"') break;
+            if(c == c0) break;
             ++token.len;
         }
 
@@ -297,8 +297,17 @@ ensure_config_exists(char *path)
                 "# sheet_key_username"                                              "\n"
                 "sheet_key_username = \"key-for-username-in-sheet\""                "\n"
                                                                                     "\n"
+                "# sheet_key_student_id"                                            "\n"
+                "sheet_key_student_id = \"key-for-student-id-in-sheet\""            "\n"
+                                                                                    "\n"
                 "# penalty per day"                                                 "\n"
-                "penalty_per_day = \"15\""                                          "\n";
+                "penalty_per_day = \"15\""                                          "\n"
+                                                                                    "\n"
+                "# relative path for 'score.txt'"                                   "\n"
+                "score_relative_path = \"./test/result/score.txt\""                 "\n"
+                                                                                    "\n"
+                "# thread count for grading"                                        "\n"
+                "grade_thread_count = \"1\""                                        "\n";
             size_t default_config_size = sizeof(default_config_content) - 1;
             fwrite(default_config_content, default_config_size, 1, default_config_handle);
             fclose(default_config_handle);

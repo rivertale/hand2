@@ -49,6 +49,34 @@ win32_directory_exists(char *path)
 }
 
 static int
+win32_rename_directory(char *target_path, char *source_path)
+{
+    int result = 0;
+    static wchar_t wide_source_path[MAX_PATH_LEN];
+    static wchar_t wide_target_path[MAX_PATH_LEN];
+    if(MultiByteToWideChar(CP_UTF8, 0, source_path, -1, wide_source_path, MAX_PATH_LEN) &&
+       MultiByteToWideChar(CP_UTF8, 0, target_path, -1, wide_target_path, MAX_PATH_LEN))
+    {
+        result = MoveFileW(wide_source_path, wide_target_path);
+    }
+    return result;
+}
+
+static int
+win32_copy_file(char *target_path, char *source_path)
+{
+    int result = 0;
+    static wchar_t wide_source_path[MAX_PATH_LEN];
+    static wchar_t wide_target_path[MAX_PATH_LEN];
+    if(MultiByteToWideChar(CP_UTF8, 0, source_path, -1, wide_source_path, MAX_PATH_LEN) &&
+       MultiByteToWideChar(CP_UTF8, 0, target_path, -1, wide_target_path, MAX_PATH_LEN))
+    {
+        result = CopyFileW(wide_source_path, wide_target_path, 0);
+    }
+    return result;
+}
+
+static int
 win32_delete_file(char *path)
 {
     int result = 0;
@@ -158,7 +186,7 @@ win32_copy_directory_by_wide_path(wchar_t *target_dir, wchar_t *source_dir)
             }
             else
             {
-                if(!CopyFileW(source_child, target_child, 1)) { result = 0; }
+                if(!CopyFileW(source_child, target_child, 0)) { result = 0; }
             }
             free_memory(source_child);
             free_memory(target_child);
@@ -222,24 +250,133 @@ win32_get_root_dir(char *out_buffer, size_t size)
 }
 
 static int
-win32_create_process(char *command, char *workdir)
+win32_exec_process(ThreadContext *context, int index, char *command, char *work_dir, char *stdout_path, char *stderr_path)
 {
-    int result = 0;
-    int utf16_command_len1 = MultiByteToWideChar(CP_UTF8, 0, command, -1, 0, 0);
-    int utf16_workdir_len1 = MultiByteToWideChar(CP_UTF8, 0, workdir, -1, 0, 0);
-    wchar_t *utf16_command = (wchar_t *)allocate_memory(utf16_command_len1 * sizeof(wchar_t));
-    wchar_t *utf16_workdir = (wchar_t *)allocate_memory(utf16_workdir_len1 * sizeof(wchar_t));
-    if(MultiByteToWideChar(CP_UTF8, 0, command, -1, utf16_command, utf16_command_len1) &&
-       MultiByteToWideChar(CP_UTF8, 0, workdir, -1, utf16_workdir, utf16_workdir_len1))
+    int exit_code = -1;
+    HANDLE callback_lock = (HANDLE)context->callback_lock;
+    if(context->on_progress)
     {
-        STARTUPINFOW startup_info = {sizeof(startup_info)};
-        PROCESS_INFORMATION process_info;
-        if(CreateProcessW(0, utf16_command, 0, 0, 0, 0, 0, utf16_workdir, &startup_info, &process_info))
+        WaitForSingleObject(callback_lock, INFINITE);
+        context->on_progress(index, context->work_count, work_dir);
+        ReleaseMutex(callback_lock);
+    }
+    
+    int utf16_command_len = MultiByteToWideChar(CP_UTF8, 0, command, -1, 0, 0);
+    int utf16_work_dir_len = MultiByteToWideChar(CP_UTF8, 0, work_dir, -1, 0, 0);
+    wchar_t *utf16_command = (wchar_t *)allocate_memory(utf16_command_len * sizeof(wchar_t));
+    wchar_t *utf16_work_dir = (wchar_t *)allocate_memory(utf16_work_dir_len * sizeof(wchar_t));
+    if(MultiByteToWideChar(CP_UTF8, 0, command, -1, utf16_command, utf16_command_len) &&
+       MultiByteToWideChar(CP_UTF8, 0, work_dir, -1, utf16_work_dir, utf16_work_dir_len))
+    {
+        HANDLE stdout_handle = INVALID_HANDLE_VALUE;
+        HANDLE stderr_handle = INVALID_HANDLE_VALUE;
+        if(global_log_file && stdout_path)
         {
-            result = 1;
+            int utf16_stdout_len = MultiByteToWideChar(CP_UTF8, 0, stdout_path, -1, 0, 0);
+            wchar_t *utf16_stdout = (wchar_t *)allocate_memory(utf16_stdout_len * sizeof(wchar_t));
+            if(MultiByteToWideChar(CP_UTF8, 0, stdout_path, -1, utf16_stdout, utf16_stdout_len))
+            {
+                stdout_handle = CreateFileW(utf16_stdout, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+                free_memory(utf16_stdout);
+            }
+        }
+        if(global_log_file && stderr_path)
+        {
+            int utf16_stderr_len = MultiByteToWideChar(CP_UTF8, 0, stderr_path, -1, 0, 0);
+            wchar_t *utf16_stderr = (wchar_t *)allocate_memory(utf16_stderr_len * sizeof(wchar_t));
+            if(MultiByteToWideChar(CP_UTF8, 0, stderr_path, -1, utf16_stderr, utf16_stderr_len))
+            {
+                stderr_handle = CreateFileW(utf16_stderr, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+                free_memory(utf16_stderr);
+            }
+        }
+        
+        STARTUPINFOW startup_info = {0};
+        startup_info.cb = sizeof(startup_info);
+        startup_info.dwFlags |= STARTF_USESTDHANDLES;
+        startup_info.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+        startup_info.hStdOutput = (stdout_handle != INVALID_HANDLE_VALUE) ? stdout_handle : GetStdHandle(STD_OUTPUT_HANDLE);
+        startup_info.hStdError = (stderr_handle != INVALID_HANDLE_VALUE) ? stderr_handle : GetStdHandle(STD_ERROR_HANDLE);
+        PROCESS_INFORMATION process_info;
+        if(CreateProcessW(0, utf16_command, 0, 0, 1, 0, 0, utf16_work_dir, &startup_info, &process_info))
+        {
+            if(stdout_handle != INVALID_HANDLE_VALUE) { CloseHandle(stdout_handle); }
+            if(stderr_handle != INVALID_HANDLE_VALUE) { CloseHandle(stderr_handle); }
+            
+            DWORD exit_dword;
+            if(WaitForSingleObject(process_info.hProcess, INFINITE) == WAIT_OBJECT_0 &&
+               GetExitCodeProcess(process_info.hProcess, &exit_dword))
+            {
+                exit_code = exit_dword;
+            }
+            CloseHandle(process_info.hProcess);
+            CloseHandle(process_info.hThread);
         }
     }
-    return result;
+    
+    if(context->on_done)
+    {
+        WaitForSingleObject(callback_lock, INFINITE);
+        context->on_done(index, context->work_count, exit_code, work_dir, stderr_path);
+        ReleaseMutex(callback_lock);
+    }
+    return exit_code;
+}
+
+DWORD WINAPI
+win32_thread_proc(LPVOID param)
+{
+    ThreadContext *context = (ThreadContext *)param;
+    for(int next_to_work = *context->next_to_work;
+        next_to_work != context->work_count;
+        next_to_work = *context->next_to_work)
+    {
+        if(InterlockedCompareExchange((volatile LONG *)context->next_to_work, next_to_work + 1, next_to_work) == next_to_work)
+        {
+            Work *work = context->works + next_to_work;
+            char *work_dir = work->work_dir[0] ? work->work_dir : 0;
+            char *stdout_path = work->stdout_path[0] ? work->stdout_path : 0;
+            char *stderr_path = work->stderr_path[0] ? work->stderr_path : 0;
+            work->exit_code = win32_exec_process(context, next_to_work, work->command, work_dir, stdout_path, stderr_path);
+        }
+    }
+    return 0;
+}
+
+static void
+win32_wait_for_completion(int thread_count, int work_count, Work *works, 
+                          WorkOnProgressCallback *on_progress, WorkOnDoneCallback *on_done)
+{
+    HANDLE callback_lock = CreateMutexA(0, 0, 0);
+    if(callback_lock)
+    {
+        volatile int next_to_work = 0;
+        HANDLE *thread_handles = (HANDLE *)allocate_memory(thread_count * sizeof(*thread_handles));
+        ThreadContext *contexts = (ThreadContext *)allocate_memory(thread_count * sizeof(*contexts));
+        for(int i = 0; i < thread_count; ++i)
+        {
+            contexts[i].work_count = work_count;
+            contexts[i].works = works;
+            contexts[i].next_to_work = &next_to_work;
+            contexts[i].on_progress = on_progress;
+            contexts[i].on_done = on_done;
+            contexts[i].callback_lock = (void *)callback_lock;
+            thread_handles[i] = CreateThread(0, 1024 * 1024, win32_thread_proc, &contexts[i], 0, 0);
+        }
+        
+        for(int i = 0; i < thread_count; ++i)
+        {
+            if(!thread_handles[i]) continue;
+            WaitForSingleObject(thread_handles[i], INFINITE);
+            CloseHandle(thread_handles[i]);
+        }
+        free_memory(contexts);
+        free_memory(thread_handles);
+    }
+    else
+    {
+        // TODO: error
+    }
 }
 
 static int
@@ -356,6 +493,7 @@ win32_init_git(void)
         git2.git_diff_free = (GitDiffFree *)GetProcAddress(module, "git_diff_free");
         git2.git_reference_free = (GitReferenceFree *)GetProcAddress(module, "git_reference_free");
         git2.git_remote_free = (GitRemoteFree *)GetProcAddress(module, "git_remote_free");
+        git2.git_repository_free = (GitRepositoryFree *)GetProcAddress(module, "git_repository_free");
         git2.git_revwalk_free = (GitRevwalkFree *)GetProcAddress(module, "git_revwalk_free");
         git2.git_treebuilder_free = (GitTreebuilderFree *)GetProcAddress(module, "git_treebuilder_free");
         git2.git_tree_free = (GitTreeFree *)GetProcAddress(module, "git_tree_free");
@@ -367,7 +505,8 @@ win32_init_git(void)
         static char root_dir[MAX_PATH_LEN];
         static char certificate_path[MAX_PATH_LEN];
         if(win32_get_root_dir(root_dir, MAX_PATH_LEN) &&
-           format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir))
+           format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir) &&
+           format_string(global_temporary_clone_dir, sizeof(global_temporary_clone_dir), "%s/cache/tmp", root_dir))
         {
             if(git2.git_libgit2_init() > 0)
             {
@@ -408,13 +547,15 @@ win32_cleanup_git(void)
 static void
 win32_init_platform(Platform *win32_code)
 {
+    win32_code->wait_for_completion = win32_wait_for_completion;
     win32_code->calender_time_to_time = win32_calender_time_to_time;
     win32_code->copy_directory = win32_copy_directory;
     win32_code->create_directory = win32_create_directory;
-    win32_code->create_process = win32_create_process;
     win32_code->delete_directory = win32_delete_directory;
+    win32_code->copy_file = win32_copy_file;
     win32_code->delete_file = win32_delete_file;
     win32_code->directory_exists = win32_directory_exists;
+    win32_code->rename_directory = win32_rename_directory;
     win32_code->get_root_dir = win32_get_root_dir;
 }
 

@@ -575,6 +575,7 @@ typedef void GitCommitFree(git_commit *commit);
 typedef void GitDiffFree(git_diff *diff);
 typedef void GitReferenceFree(git_reference *ref);
 typedef void GitRemoteFree(git_remote *remote);
+typedef void GitRepositoryFree(git_repository *repo);
 typedef void GitRevwalkFree(git_revwalk *walk);
 typedef void GitSignatureFree(git_signature *sig);
 typedef void GitTreeFree(git_tree *tree);
@@ -625,6 +626,7 @@ typedef struct Git2Code
     GitRemoteLookup *git_remote_lookup;
     GitRemotePrune *git_remote_prune;
     GitRemotePush *git_remote_push;
+    GitRepositoryFree *git_repository_free;
     GitRepositoryOpen *git_repository_open;
     GitReset *git_reset;
     GitRevwalkFree *git_revwalk_free;
@@ -647,3 +649,4 @@ typedef struct Git2Code
 } Git2Code;
 
 static Git2Code git2 = {0};
+static char global_temporary_clone_dir[MAX_PATH_LEN];
