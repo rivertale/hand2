@@ -1,22 +1,22 @@
---2024-02-26 18:19:50--  https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.17.tar.gz
+--2024-03-07 09:17:16--  https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.17.tar.gz
 Resolving github.com (github.com)... 20.27.177.113
 Connecting to github.com (github.com)|20.27.177.113|:443... connected.
 HTTP request sent, awaiting response... 302 Found
 Location: https://codeload.github.com/DaveGamble/cJSON/tar.gz/refs/tags/v1.7.17 [following]
---2024-02-26 18:19:51--  https://codeload.github.com/DaveGamble/cJSON/tar.gz/refs/tags/v1.7.17
+--2024-03-07 09:17:16--  https://codeload.github.com/DaveGamble/cJSON/tar.gz/refs/tags/v1.7.17
 Resolving codeload.github.com (codeload.github.com)... 20.27.177.114
 Connecting to codeload.github.com (codeload.github.com)|20.27.177.114|:443... connected.
 HTTP request sent, awaiting response... 200 OK
-Length: 353748 (345K) [application/x-gzip]
+Length: unspecified [application/x-gzip]
 Saving to: 'v1.7.17.tar.gz'
 
-     0K .......... .......... .......... .......... .......... 14%  732K 0s
-    50K .......... .......... .......... .......... .......... 28% 1.41M 0s
-   100K .......... .......... .......... .......... .......... 43% 38.3M 0s
-   150K .......... .......... .......... .......... .......... 57% 31.2M 0s
-   200K .......... .......... .......... .......... .......... 72% 1.47M 0s
-   250K .......... .......... .......... .......... .......... 86% 33.1M 0s
-   300K .......... .......... .......... .......... .....     100% 40.1M=0.1s
+     0K .......... .......... .......... .......... ..........  578K
+    50K .......... .......... .......... .......... .......... 1.62M
+   100K .......... .......... .......... .......... .......... 1.77M
+   150K .......... .......... .......... .......... .......... 1.29M
+   200K .......... .......... .......... .......... .......... 5.44M
+   250K .......... .......... .......... .......... .......... 2.66M
+   300K .......... .......... .......... .......... .....      1.00M=0.3s
 
-2024-02-26 18:19:51 (2.38 MB/s) - 'v1.7.17.tar.gz' saved [353748/353748]
+2024-03-07 09:17:17 (1.33 MB/s) - 'v1.7.17.tar.gz' saved [353748]
 
