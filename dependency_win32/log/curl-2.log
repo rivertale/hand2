@@ -1,7 +1,0 @@
-
-Microsoft (R) Program Maintenance Utility Version 14.16.27051.0
-Copyright (C) Microsoft Corporation.  All rights reserved.
-
-configuration name: libcurl-vc-x64-release-dll-ipv6-sspi-schannel
-	"D:\Program Files\Microsoft Visual Studio\2017\BuildTools\VC\Tools\MSVC\14.16.27023\bin\HostX64\x64\nmake.exe" /NOLOGO /F MakefileBuild.vc clean
-§R°£ªºÀÉ®× - D:\dev\hand2\dependency_win32\deps\curl-8.5.0\winbuild\vc140.idb

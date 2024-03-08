@@ -1,0 +1,215 @@
+
+Microsoft (R) Program Maintenance Utility Version 14.16.27051.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+configuration name: libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi
+	rc.exe /dDEBUGBUILD=0 /Fo ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\libcurl.res ..\lib\libcurl.rc
+Microsoft (R) Windows (R) Resource Compiler Version 10.0.10011.16384
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+	cl /O2 /DNDEBUG /MT /I. /I ../lib /I../include /nologo /W4 /EHsc /DWIN32 /FD /c /DBUILDING_LIBCURL /DUSE_OPENSSL /I"D:\dev\hand2\dependency_win32\deps\ssl\include"  /DUSE_WIN32_IDN  /DUSE_IPV6  /DUSE_WINDOWS_SSPI /Fo"..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\\"  ..\lib\altsvc.c ..\lib\amigaos.c ..\lib\asyn-ares.c ..\lib\asyn-thread.c ..\lib\base64.c ..\lib\bufq.c ..\lib\bufref.c ..\lib\c-hyper.c ..\lib\cf-h1-proxy.c ..\lib\cf-h2-proxy.c ..\lib\cf-haproxy.c ..\lib\cf-https-connect.c ..\lib\cf-socket.c ..\lib\cfilters.c ..\lib\conncache.c ..\lib\connect.c ..\lib\content_encoding.c ..\lib\cookie.c ..\lib\curl_addrinfo.c ..\lib\curl_des.c ..\lib\curl_endian.c ..\lib\curl_fnmatch.c ..\lib\curl_get_line.c ..\lib\curl_gethostname.c ..\lib\curl_gssapi.c ..\lib\curl_memrchr.c ..\lib\curl_multibyte.c ..\lib\curl_ntlm_core.c ..\lib\curl_ntlm_wb.c ..\lib\curl_path.c ..\lib\curl_range.c ..\lib\curl_rtmp.c ..\lib\curl_sasl.c ..\lib\curl_sspi.c ..\lib\curl_threads.c ..\lib\curl_trc.c ..\lib\dict.c ..\lib\doh.c ..\lib\dynbuf.c ..\lib\dynhds.c ..\lib\easy.c ..\lib\easygetopt.c ..\lib\easyoptions.c ..\lib\escape.c ..\lib\file.c ..\lib\fileinfo.c ..\lib\fopen.c ..\lib\formdata.c ..\lib\ftp.c ..\lib\ftplistparser.c ..\lib\getenv.c ..\lib\getinfo.c ..\lib\gopher.c ..\lib\hash.c ..\lib\headers.c ..\lib\hmac.c ..\lib\hostasyn.c ..\lib\hostip.c ..\lib\hostip4.c ..\lib\hostip6.c ..\lib\hostsyn.c ..\lib\hsts.c ..\lib\http.c ..\lib\http1.c ..\lib\http2.c ..\lib\http_aws_sigv4.c ..\lib\http_chunks.c ..\lib\http_digest.c ..\lib\http_negotiate.c ..\lib\http_ntlm.c ..\lib\http_proxy.c ..\lib\idn.c ..\lib\if2ip.c ..\lib\imap.c ..\lib\inet_ntop.c ..\lib\inet_pton.c ..\lib\krb5.c ..\lib\ldap.c ..\lib\llist.c ..\lib\macos.c ..\lib\md4.c ..\lib\md5.c ..\lib\memdebug.c ..\lib\mime.c ..\lib\mprintf.c ..\lib\mqtt.c ..\lib\multi.c ..\lib\netrc.c ..\lib\nonblock.c ..\lib\noproxy.c ..\lib\openldap.c ..\lib\parsedate.c ..\lib\pingpong.c ..\lib\pop3.c ..\lib\progress.c ..\lib\psl.c ..\lib\rand.c ..\lib\rename.c ..\lib\rtsp.c ..\lib\select.c ..\lib\sendf.c ..\lib\setopt.c ..\lib\sha256.c ..\lib\share.c ..\lib\slist.c ..\lib\smb.c ..\lib\smtp.c ..\lib\socketpair.c ..\lib\socks.c ..\lib\socks_gssapi.c ..\lib\socks_sspi.c ..\lib\speedcheck.c ..\lib\splay.c ..\lib\strcase.c ..\lib\strdup.c ..\lib\strerror.c ..\lib\strtok.c ..\lib\strtoofft.c ..\lib\system_win32.c ..\lib\telnet.c ..\lib\tftp.c ..\lib\timediff.c ..\lib\timeval.c ..\lib\transfer.c ..\lib\url.c ..\lib\urlapi.c ..\lib\version.c ..\lib\version_win32.c ..\lib\warnless.c ..\lib\ws.c 
+altsvc.c
+amigaos.c
+asyn-ares.c
+asyn-thread.c
+base64.c
+bufq.c
+bufref.c
+c-hyper.c
+cf-h1-proxy.c
+cf-h2-proxy.c
+cf-haproxy.c
+cf-https-connect.c
+cf-socket.c
+cfilters.c
+conncache.c
+connect.c
+content_encoding.c
+cookie.c
+curl_addrinfo.c
+curl_des.c
+Generating Code...
+Compiling...
+curl_endian.c
+curl_fnmatch.c
+curl_get_line.c
+curl_gethostname.c
+curl_gssapi.c
+curl_memrchr.c
+curl_multibyte.c
+curl_ntlm_core.c
+curl_ntlm_wb.c
+curl_path.c
+curl_range.c
+curl_rtmp.c
+curl_sasl.c
+curl_sspi.c
+curl_threads.c
+curl_trc.c
+dict.c
+doh.c
+dynbuf.c
+dynhds.c
+Generating Code...
+Compiling...
+easy.c
+easygetopt.c
+easyoptions.c
+escape.c
+file.c
+fileinfo.c
+fopen.c
+formdata.c
+ftp.c
+ftplistparser.c
+getenv.c
+getinfo.c
+gopher.c
+hash.c
+headers.c
+hmac.c
+hostasyn.c
+hostip.c
+hostip4.c
+hostip6.c
+Generating Code...
+Compiling...
+hostsyn.c
+hsts.c
+http.c
+http1.c
+http2.c
+http_aws_sigv4.c
+http_chunks.c
+http_digest.c
+http_negotiate.c
+http_ntlm.c
+http_proxy.c
+idn.c
+if2ip.c
+imap.c
+inet_ntop.c
+inet_pton.c
+krb5.c
+ldap.c
+llist.c
+macos.c
+Generating Code...
+Compiling...
+md4.c
+md5.c
+memdebug.c
+mime.c
+mprintf.c
+mqtt.c
+multi.c
+netrc.c
+nonblock.c
+noproxy.c
+openldap.c
+parsedate.c
+pingpong.c
+pop3.c
+progress.c
+psl.c
+rand.c
+rename.c
+rtsp.c
+select.c
+Generating Code...
+Compiling...
+sendf.c
+setopt.c
+sha256.c
+share.c
+slist.c
+smb.c
+smtp.c
+socketpair.c
+socks.c
+socks_gssapi.c
+socks_sspi.c
+speedcheck.c
+splay.c
+strcase.c
+strdup.c
+strerror.c
+strtok.c
+strtoofft.c
+system_win32.c
+telnet.c
+Generating Code...
+Compiling...
+tftp.c
+timediff.c
+timeval.c
+transfer.c
+url.c
+urlapi.c
+version.c
+version_win32.c
+warnless.c
+ws.c
+Generating Code...
+	cl /O2 /DNDEBUG /MT /I. /I ../lib /I../include /nologo /W4 /EHsc /DWIN32 /FD /c /DBUILDING_LIBCURL /DUSE_OPENSSL /I"D:\dev\hand2\dependency_win32\deps\ssl\include"  /DUSE_WIN32_IDN  /DUSE_IPV6  /DUSE_WINDOWS_SSPI /Fo"..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\vauth\\"  ..\lib\vauth\cleartext.c ..\lib\vauth\cram.c ..\lib\vauth\digest.c ..\lib\vauth\digest_sspi.c ..\lib\vauth\gsasl.c ..\lib\vauth\krb5_gssapi.c ..\lib\vauth\krb5_sspi.c ..\lib\vauth\ntlm.c ..\lib\vauth\ntlm_sspi.c ..\lib\vauth\oauth2.c ..\lib\vauth\spnego_gssapi.c ..\lib\vauth\spnego_sspi.c ..\lib\vauth\vauth.c 
+cleartext.c
+cram.c
+digest.c
+digest_sspi.c
+gsasl.c
+krb5_gssapi.c
+krb5_sspi.c
+ntlm.c
+ntlm_sspi.c
+oauth2.c
+spnego_gssapi.c
+spnego_sspi.c
+vauth.c
+Generating Code...
+	cl /O2 /DNDEBUG /MT /I. /I ../lib /I../include /nologo /W4 /EHsc /DWIN32 /FD /c /DBUILDING_LIBCURL /DUSE_OPENSSL /I"D:\dev\hand2\dependency_win32\deps\ssl\include"  /DUSE_WIN32_IDN  /DUSE_IPV6  /DUSE_WINDOWS_SSPI /Fo"..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\vtls\\"  ..\lib\vtls\bearssl.c ..\lib\vtls\gtls.c ..\lib\vtls\hostcheck.c ..\lib\vtls\keylog.c ..\lib\vtls\mbedtls.c ..\lib\vtls\mbedtls_threadlock.c ..\lib\vtls\openssl.c ..\lib\vtls\rustls.c ..\lib\vtls\schannel.c ..\lib\vtls\schannel_verify.c ..\lib\vtls\sectransp.c ..\lib\vtls\vtls.c ..\lib\vtls\wolfssl.c ..\lib\vtls\x509asn1.c 
+bearssl.c
+gtls.c
+hostcheck.c
+keylog.c
+mbedtls.c
+mbedtls_threadlock.c
+openssl.c
+rustls.c
+schannel.c
+schannel_verify.c
+sectransp.c
+vtls.c
+wolfssl.c
+x509asn1.c
+Generating Code...
+	cl /O2 /DNDEBUG /MT /I. /I ../lib /I../include /nologo /W4 /EHsc /DWIN32 /FD /c /DBUILDING_LIBCURL /DUSE_OPENSSL /I"D:\dev\hand2\dependency_win32\deps\ssl\include"  /DUSE_WIN32_IDN  /DUSE_IPV6  /DUSE_WINDOWS_SSPI /Fo"..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\vquic\\"  ..\lib\vquic\curl_msh3.c ..\lib\vquic\curl_ngtcp2.c ..\lib\vquic\curl_quiche.c ..\lib\vquic\vquic.c 
+curl_msh3.c
+curl_ngtcp2.c
+curl_quiche.c
+vquic.c
+Generating Code...
+	cl /O2 /DNDEBUG /MT /I. /I ../lib /I../include /nologo /W4 /EHsc /DWIN32 /FD /c /DBUILDING_LIBCURL /DUSE_OPENSSL /I"D:\dev\hand2\dependency_win32\deps\ssl\include"  /DUSE_WIN32_IDN  /DUSE_IPV6  /DUSE_WINDOWS_SSPI /Fo"..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\vssh\\"  ..\lib\vssh\libssh.c ..\lib\vssh\libssh2.c ..\lib\vssh\wolfssh.c 
+libssh.c
+libssh2.c
+wolfssh.c
+Generating Code...
+Using SSL: true
+Using NGHTTP2: false
+Using MSH3: false
+Using c-ares:
+Using SSH2:
+Using SSH:
+Using ZLIB:
+Using IDN: true
+Using IPv6: true
+Using SSPI: true
+Using Schannel: false
+CFLAGS: /I. /I ../lib /I../include /nologo /W4 /EHsc /DWIN32 /FD /c /DBUILDING_LIBCURL /DUSE_OPENSSL /I"D:\dev\hand2\dependency_win32\deps\ssl\include" /DUSE_WIN32_IDN /DUSE_IPV6 /DUSE_WINDOWS_SSPI
+LFLAGS: /nologo /machine:x64 "/LIBPATH:D:\dev\hand2\dependency_win32\deps\ssl\lib" libssl.lib libcrypto.lib
+GenPDB: no
+Debug: no
+Machine: x64
+	link.exe /DLL /nologo /machine:x64  "/LIBPATH:D:\dev\hand2\dependency_win32\deps\ssl\lib" libssl.lib libcrypto.lib ws2_32.lib wldap32.lib advapi32.lib crypt32.lib gdi32.lib user32.lib crypt32.lib Normaliz.lib /out:..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\libcurl.dll  /IMPLIB:..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\libcurl.lib ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/altsvc.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/amigaos.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/asyn-ares.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/asyn-thread.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/base64.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/bufq.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/bufref.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/c-hyper.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/cf-h1-proxy.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/cf-h2-proxy.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/cf-haproxy.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/cf-https-connect.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/cf-socket.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/cfilters.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/conncache.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/connect.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/content_encoding.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/cookie.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_addrinfo.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_des.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_endian.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_fnmatch.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_get_line.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_gethostname.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_gssapi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_memrchr.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_multibyte.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_ntlm_core.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_ntlm_wb.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_path.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_range.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_rtmp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_sasl.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_sspi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_threads.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/curl_trc.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/dict.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/doh.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/dynbuf.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/dynhds.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/easy.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/easygetopt.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/easyoptions.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/escape.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/file.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/fileinfo.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/fopen.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/formdata.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/ftp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/ftplistparser.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/getenv.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/getinfo.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/gopher.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/hash.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/headers.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/hmac.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/hostasyn.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/hostip.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/hostip4.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/hostip6.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/hostsyn.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/hsts.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http1.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http2.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http_aws_sigv4.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http_chunks.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http_digest.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http_negotiate.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http_ntlm.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/http_proxy.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/idn.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/if2ip.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/imap.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/inet_ntop.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/inet_pton.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/krb5.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/ldap.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/llist.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/macos.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/md4.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/md5.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/memdebug.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/mime.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/mprintf.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/mqtt.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/multi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/netrc.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/nonblock.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/noproxy.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/openldap.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/parsedate.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/pingpong.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/pop3.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/progress.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/psl.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/rand.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/rename.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/rtsp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/select.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/sendf.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/setopt.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/sha256.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/share.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/slist.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/smb.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/smtp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/socketpair.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/socks.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/socks_gssapi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/socks_sspi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/speedcheck.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/splay.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/strcase.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/strdup.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/strerror.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/strtok.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/strtoofft.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/system_win32.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/telnet.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/tftp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/timediff.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/timeval.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/transfer.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/url.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/urlapi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/version.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/version_win32.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/warnless.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/ws.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/cleartext.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/cram.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/digest.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/digest_sspi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/gsasl.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/krb5_gssapi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/krb5_sspi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/ntlm.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/ntlm_sspi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/oauth2.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/spnego_gssapi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/spnego_sspi.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vauth/vauth.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/bearssl.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/gtls.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/hostcheck.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/keylog.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/mbedtls.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/mbedtls_threadlock.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/openssl.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/rustls.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/schannel.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/schannel_verify.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/sectransp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/vtls.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/wolfssl.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vtls/x509asn1.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vquic/curl_msh3.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vquic/curl_ngtcp2.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vquic/curl_quiche.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vquic/vquic.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vssh/libssh.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vssh/libssh2.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib/vssh/wolfssh.obj   ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\libcurl.res
+   Creating library ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\libcurl.lib and object ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-lib\libcurl.exp
+Copying libs...
+	link.exe /incremental:no /libpath:"D:\dev\hand2\dependency_win32\deps\curl\lib" /out:D:\dev\hand2\dependency_win32\deps\curl\bin\curl.exe /subsystem:console /nologo /machine:x64  "/LIBPATH:D:\dev\hand2\dependency_win32\deps\ssl\lib" libssl.lib libcrypto.lib libcurl.lib ws2_32.lib wldap32.lib advapi32.lib crypt32.lib gdi32.lib user32.lib crypt32.lib Normaliz.lib ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\tool_hugehelp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\nonblock.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\strtoofft.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\warnless.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\curl_multibyte.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\version_win32.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\dynbuf.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\base64.obj ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/slist_wc.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_binmode.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_bname.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_cb_dbg.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_cb_hdr.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_cb_prg.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_cb_rea.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_cb_see.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_cb_wrt.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_cfgable.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_dirhie.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_doswin.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_easysrc.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_filetime.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_findfile.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_formparse.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_getparam.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_getpass.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_help.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_helpers.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_ipfs.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_libinfo.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_listhelp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_main.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_msgs.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_operate.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_operhlp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_paramhlp.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_parsecfg.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_progress.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_setopt.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_sleep.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_stderr.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_strdup.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_urlglob.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_util.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_vms.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_writeout.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_writeout_json.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/tool_xattr.obj  ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl/var.obj   ..\builds\libcurl-vc-x64-release-dll-ssl-static-ipv6-sspi-obj-curl\curl.res

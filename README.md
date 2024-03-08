@@ -21,29 +21,30 @@ x64 prebuilt binaries can be downloaded from [release](https://github.com/Compil
 4. You can find the built program under `build\`
 
 #### Linux
-> [!note]
-> A docker enviroment is provided under `dependency_linux/`, see how to use it under [Build Dependencies - Linux](#Linux-1)
-
-1. Run `build.sh` under `code/` to build the program on Linux, In default, it tries to build with GCC and clang.
+1. Run `./build.sh` under `code/` to build the program on Linux, In default, it tries to build with GCC and clang.
 2. To build with GCC or clang, you must add GCC or clang to `PATH` enviroment variable.
 3. You can find the built program under `build/`
+
+#### Linux Docker
+1. Run `docker/build.sh` to build the program inside docker, the program is built with GCC and clang.
+2. You can find the built program under `build/`
+3. Run `docker/run.sh [args] ...` to execute the program under the docker.
+4. To debug hand2 with GDB inside the docker image, run `docker/debug.sh [args] ...`.
+5. Any calls to `build.sh`, `run.sh` or `debug.sh` will automatically build the docker image.
 
 ## Build Dependencies
 
 #### Windows
-1. Run `dependency_win32\lib_build.bat` to automatically build and install the required dependencies on Windows, you must run under MSVC x64 native tools command prompt.
-2. To automatically download and extract the dependencies, `curl` and `tar` are required in your `PATH`. However, you can also download the dependencies manually, the url and the required directory structure will be provided by `lib_build.bat`.
+1. Run `win32_external\build.bat` to automatically build and install the required dependencies on Windows, you must run under MSVC x64 native tools command prompt.
+2. To automatically download and extract the dependencies, `curl` and `tar` are required in your `PATH`. However, you can also download the dependencies manually, the url and the required directory structure will be provided by `build.bat`.
 3. The include files and the libraries are output to `code\include_win32` and `code\lib_win32` respectively.
-4. The folder `dependency_win32\deps` is used to store the source files and build files for the dependencies. It's quite large, you can safely delete it after the build.
-5. The folder `dependency_win32\log` is used to store the log during build. To see how the logs are generated, look into `dependency_win32\lib_build.bat`.
+4. The folder `win32_external\deps` is used to store the source files and build files for the dependencies. It's quite large, you can safely delete it after the build.
+5. The folder `win32_external\log` is used to store the log during build. To see how the logs are generated, look into `win32_external\build.bat`.
 
 #### Linux
-1. The linux dependencies are built with Docker, run `dependency_linux/docker_build.sh` to build and store the dependencies in a docker image.
-2. Run `dependency_linux/docker_output_library.sh` to copy the include files and the libraries from docker image to `code/include_linux` and `code/lib_linux` respectively.
-3. The folder `dependency_linux/log` is used to store the log during build. To see how the logs are generated, look into `dependency_linux/Dockerfile`.
-4. To build hand2 inside the docker image, run `dependency_linux/hand_build.sh`.
-5. To debug hand2 with GDB inside the docker image, run `dependency_linux/hand_debug.sh`.
-6. If you do not intend to use the docker image to build or debug the program, you can safely delete the docker image `hand2_linux_image` after the build.
+1. The linux dependencies are built with Docker, run `linux_external/build.sh` to build the docker image, and copy the include files and the libraries to `code/include_linux` and `code/lib_linux`, respectively.
+2. The docker image will be automatically removed after the build.
+3. The folder `linux_external/log` is used to store the log during build. To see how the logs are generated, look into `linux_external/Dockerfile`.
 
 ## Getting Started
 
