@@ -329,6 +329,7 @@ typedef struct git_time
 	git_time_t time;
 	int offset;
 	char sign;
+    char padding_[3];
 } git_time;
 
 typedef struct git_buf
@@ -374,6 +375,7 @@ typedef struct git_strarray
 typedef struct git_diff_file
 {
 	git_oid id;
+    int padding_;
 	const char *path;
 	git_object_size_t size;
 	uint32_t flags;
@@ -387,6 +389,7 @@ typedef struct git_diff_delta
 	uint32_t flags;
 	uint16_t similarity;
 	uint16_t nfiles;
+    int padding_;
 	git_diff_file old_file;
 	git_diff_file new_file;
 } git_diff_delta;
@@ -405,6 +408,7 @@ typedef struct git_indexer_progress
 typedef struct git_remote_callbacks
 {
 	unsigned int version;
+    int padding_;
 	git_transport_message_cb sideband_progress;
 	int (*completion)(git_remote_completion_t type, void *data);
 	git_credential_acquire_cb credentials;
@@ -440,6 +444,7 @@ typedef struct git_checkout_options
 	unsigned int file_mode;
 	int file_open_flags;
 	unsigned int notify_flags;
+    int padding_;
 	git_checkout_notify_cb notify_cb;
 	void *notify_payload;
 	git_checkout_progress_cb progress_cb;
@@ -458,10 +463,12 @@ typedef struct git_checkout_options
 typedef struct git_fetch_options
 {
 	int version;
+    int padding0_;
 	git_remote_callbacks callbacks;
 	git_fetch_prune_t prune;
 	unsigned int update_flags;
 	git_remote_autotag_option_t download_tags;
+    int padding1_;
 	git_proxy_options proxy_opts;
 	int depth;
 	git_remote_redirect_t follow_redirects;
@@ -471,6 +478,7 @@ typedef struct git_fetch_options
 typedef struct git_clone_options
 {
     unsigned int version;
+    int padding_;
     git_checkout_options checkout_opts;
     git_fetch_options fetch_opts;
     int bare;
@@ -487,6 +495,7 @@ typedef struct git_diff_options
 	unsigned int version;
 	uint32_t flags;
 	git_submodule_ignore_t ignore_submodules;
+    int padding0_;
 	git_strarray pathspec;
 	git_diff_notify_cb notify_cb;
 	git_diff_progress_cb progress_cb;
@@ -495,6 +504,7 @@ typedef struct git_diff_options
 	uint32_t interhunk_lines;
 	git_oid_t oid_type;
 	uint16_t id_abbrev;
+    short padding1_;
 	git_off_t max_size;
 	const char *old_prefix;
 	const char *new_prefix;
@@ -507,6 +517,7 @@ typedef struct git_push_options
 	git_remote_callbacks callbacks;
 	git_proxy_options proxy_opts;
 	git_remote_redirect_t follow_redirects;
+    int padding_;
 	git_strarray custom_headers;
 } git_push_options;
 
@@ -514,7 +525,7 @@ typedef struct git_error
 {
 	char *message;
 	int klass;
-    int padding;
+    int padding_;
 } git_error;
 
 typedef char *GitOidToStr(char *out, size_t n, const git_oid *id);

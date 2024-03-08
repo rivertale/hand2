@@ -260,7 +260,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
         context->on_progress(index, context->work_count, work_dir);
         ReleaseMutex(callback_lock);
     }
-    
+
     int utf16_command_len = MultiByteToWideChar(CP_UTF8, 0, command, -1, 0, 0);
     int utf16_work_dir_len = MultiByteToWideChar(CP_UTF8, 0, work_dir, -1, 0, 0);
     wchar_t *utf16_command = (wchar_t *)allocate_memory(utf16_command_len * sizeof(wchar_t));
@@ -290,7 +290,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
                 free_memory(utf16_stderr);
             }
         }
-        
+
         STARTUPINFOW startup_info = {0};
         startup_info.cb = sizeof(startup_info);
         startup_info.dwFlags |= STARTF_USESTDHANDLES;
@@ -302,7 +302,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
         {
             if(stdout_handle != INVALID_HANDLE_VALUE) { CloseHandle(stdout_handle); }
             if(stderr_handle != INVALID_HANDLE_VALUE) { CloseHandle(stderr_handle); }
-            
+
             DWORD exit_dword;
             if(WaitForSingleObject(process_info.hProcess, INFINITE) == WAIT_OBJECT_0 &&
                GetExitCodeProcess(process_info.hProcess, &exit_dword))
@@ -313,7 +313,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
             CloseHandle(process_info.hThread);
         }
     }
-    
+
     if(context->on_done)
     {
         WaitForSingleObject(callback_lock, INFINITE);
@@ -344,7 +344,7 @@ win32_thread_proc(LPVOID param)
 }
 
 static void
-win32_wait_for_completion(int thread_count, int work_count, Work *works, 
+win32_wait_for_completion(int thread_count, int work_count, Work *works,
                           WorkOnProgressCallback *on_progress, WorkOnDoneCallback *on_done)
 {
     HANDLE callback_lock = CreateMutexA(0, 0, 0);
@@ -355,6 +355,7 @@ win32_wait_for_completion(int thread_count, int work_count, Work *works,
         ThreadContext *contexts = (ThreadContext *)allocate_memory(thread_count * sizeof(*contexts));
         for(int i = 0; i < thread_count; ++i)
         {
+            contexts[i].thread_index = i;
             contexts[i].work_count = work_count;
             contexts[i].works = works;
             contexts[i].next_to_work = &next_to_work;
@@ -363,7 +364,7 @@ win32_wait_for_completion(int thread_count, int work_count, Work *works,
             contexts[i].callback_lock = (void *)callback_lock;
             thread_handles[i] = CreateThread(0, 1024 * 1024, win32_thread_proc, &contexts[i], 0, 0);
         }
-        
+
         for(int i = 0; i < thread_count; ++i)
         {
             if(!thread_handles[i]) continue;

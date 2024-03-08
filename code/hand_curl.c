@@ -19,7 +19,7 @@ begin_curl_group(int worker_count)
     {
         result.workers[i].response = allocate_growable_buffer();
     }
-    
+
     if(!result.handle)
     {
         write_error("curl_multi_init failed");
@@ -32,7 +32,7 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
 {
     assert(index < group->worker_count);
     if(!group->handle) return;
-    
+
     int is_post_like = (post_type != 0);
     CURL *handle = curl.curl_easy_init();
     if(handle)
@@ -89,11 +89,11 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
     }
 }
 
-static void 
+static void
 complete_all_works(CurlGroup *group)
 {
     if(!group->handle) return;
-    
+
     int still_running;
     for(;;)
     {
@@ -101,14 +101,14 @@ complete_all_works(CurlGroup *group)
         if(still_running == 0) break;
         if(curl.curl_multi_poll(group->handle, 0, 0, 5000, 0) != 0) break;
     }
-    
+
     for(int i = 0; i < group->worker_count; ++i)
     {
         null_terminate(&group->workers[i].response);
     }
 }
 
-static int 
+static int
 end_curl_group(CurlGroup *group)
 {
     int no_error = 1;
@@ -119,14 +119,14 @@ end_curl_group(CurlGroup *group)
             int message_in_queue;
             CURLMsg *message = curl.curl_multi_info_read(group->handle, &message_in_queue);
             if(!message) break;
-            
+
             if(message->msg != CURLMSG_DONE || message->data.result != 0)
             {
                 no_error = 0;
                 break;
             }
         }
-        
+
         for(int i = 0; i < group->worker_count; ++i)
         {
             CurlWorker *worker = group->workers + i;
@@ -139,7 +139,7 @@ end_curl_group(CurlGroup *group)
             {
                 no_error = 0;
             }
-            
+
             if(worker->header_list)
             {
                 curl.curl_slist_free_all(worker->header_list);
@@ -147,7 +147,7 @@ end_curl_group(CurlGroup *group)
         }
         curl.curl_multi_cleanup(group->handle);
     }
-    
+
     for(int i = 0; i < group->worker_count; ++i)
     {
         free_growable_buffer(&group->workers[i].response);
@@ -160,16 +160,16 @@ end_curl_group(CurlGroup *group)
 static int
 format_github_header(char *buffer, size_t max_len, char *github_token)
 {
-    int result = format_string(buffer, max_len, 
+    int result = format_string(buffer, max_len,
                                "Accept: application/vnd.github+json"   "\r\n"
                                "Authorization: Bearer %s"              "\r\n"
                                "X-GitHub-Api-Version: 2022-11-28"      "\r\n"
-                               "User-Agent: hand", 
+                               "User-Agent: hand",
                                github_token);
     return result;
 }
 
-static void 
+static void
 assign_github_get(CurlGroup *group, int index, char *url, char *github_token)
 {
     static char header[MAX_REST_HEADER_LEN];
@@ -180,7 +180,7 @@ assign_github_get(CurlGroup *group, int index, char *url, char *github_token)
 }
 
 static void
-assign_github_post_like(CurlGroup *group, int index, char *url, char *github_token, 
+assign_github_post_like(CurlGroup *group, int index, char *url, char *github_token,
                         char *post_type, char *post_data)
 {
     assert(post_type);
@@ -239,7 +239,7 @@ get_response(CurlGroup *group, int index)
     return group->workers[index].response.memory;
 }
 
-static int 
+static int
 github_user_exists(char *github_token, char *username)
 {
     int result = 0;
@@ -254,12 +254,12 @@ github_user_exists(char *github_token, char *username)
     return result;
 }
 
-static int 
+static int
 retrieve_username(char *out_username, size_t max_username_len, char *github_token)
 {
     if(max_username_len > 0 && !out_username) return 0;
     if(max_username_len > 0) { *out_username = 0; }
-    
+
     int result = 0;
     static char url[MAX_URL_LEN];
     if(format_string(url, MAX_URL_LEN, "https://api.github.com/user"))
@@ -267,7 +267,7 @@ retrieve_username(char *out_username, size_t max_username_len, char *github_toke
         CurlGroup group = begin_curl_group(1);
         assign_github_get(&group, 0, url, github_token);
         complete_all_works(&group);
-        
+
         cJSON *json = cJSON_Parse(get_response(&group, 0));
         cJSON *username = cJSON_GetObjectItemCaseSensitive(json, "login");
         if(cJSON_IsString(username))
@@ -302,14 +302,14 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
                 if(worker_done[i]) continue;
                 static char url[MAX_URL_LEN];
                 // TODO: aren't prev_pages always the same for all workers?
-                if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues/?state=all&per_page=100&page=%d", 
+                if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues/?state=all&per_page=100&page=%d",
                                  organization, repos->elem[at + i], ++prev_pages[i]))
                 {
                     assign_github_get(&group, i, url, github_token);
                 }
             }
             complete_all_works(&group);
-            
+
             for(int i = 0; i < worker_count; ++i)
             {
                 if(worker_done[i]) continue;
@@ -320,7 +320,7 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
                 {
                     cJSON *id_json = cJSON_GetObjectItemCaseSensitive(issue_json, "number");
                     cJSON *title_json = cJSON_GetObjectItemCaseSensitive(issue_json, "title");
-                    if(cJSON_IsNumber(id_json) && cJSON_IsString(title_json) && 
+                    if(cJSON_IsNumber(id_json) && cJSON_IsString(title_json) &&
                        compare_string(title_json->valuestring, title))
                     {
                         worker_done[i] = 1;
@@ -356,7 +356,7 @@ retrieve_creation_times(time_t *out_times, StringArray *repos, char *github_toke
             }
         }
         complete_all_works(&group);
-        
+
         for(int i = 0; i < worker_count; ++i)
         {
             cJSON *json = cJSON_Parse(get_response(&group, i));
@@ -389,7 +389,7 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
             }
         }
         complete_all_works(&group);
-        
+
         for(int i = 0; i < worker_count; ++i)
         {
             cJSON *json = cJSON_Parse(get_response(&group, i));
@@ -400,8 +400,8 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
                 write_growable_buffer(&buffer, default_branch->valuestring, len);
             }
             cJSON_Delete(json);
-            
-            // NOTE: must align to the number of repository, so we write a empty string even when we can't find the 
+
+            // NOTE: must align to the number of repository, so we write a empty string even when we can't find the
             // default branch name
             write_growable_buffer(&buffer, "\0", 1);
         }
@@ -425,14 +425,14 @@ retrieve_latest_commits(GitCommitHash *out_hash, StringArray *repos, StringArray
         for(int i = 0; i < worker_count; ++i)
         {
             static char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/branches/%s", 
+            if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/branches/%s",
                              organization, repos->elem[at + i], branches->elem[at + i]))
             {
                 assign_github_get(&group, i, url, github_token);
             }
         }
         complete_all_works(&group);
-        
+
         for(int i = 0; i < worker_count; ++i)
         {
             cJSON *json = cJSON_Parse(get_response(&group, i));
@@ -502,7 +502,7 @@ retrieve_users_in_team(char *github_token, char *organization, char *team)
         for(int index = 0; index < worker_count; ++index)
         {
             char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/members?page=%d&per_page=100", 
+            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/members?page=%d&per_page=100",
                              organization, team, page))
             {
                 assign_github_get(&group, index, url, github_token);
@@ -510,7 +510,7 @@ retrieve_users_in_team(char *github_token, char *organization, char *team)
             ++page;
         }
         complete_all_works(&group);
-        
+
         int count_in_page = 0;
         for(int index = 0; index < worker_count; ++index)
         {
@@ -549,7 +549,7 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
         for(int index = 0; index < worker_count; ++index)
         {
             char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/invitations?page=%d&per_page=100", 
+            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/invitations?page=%d&per_page=100",
                              organization, team, page))
             {
                 assign_github_get(&group, index, url, github_token);
@@ -557,7 +557,7 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
             ++page;
         }
         complete_all_works(&group);
-        
+
         int count_in_page = 0;
         for(int index = 0; index < worker_count; ++index)
         {
@@ -596,7 +596,7 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
         for(int index = 0; index < worker_count; ++index)
         {
             char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/repos?page=%d&per_page=100", 
+            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/repos?page=%d&per_page=100",
                              organization, page))
             {
                 assign_github_get(&group, index, url, github_token);
@@ -604,7 +604,7 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
             ++page;
         }
         complete_all_works(&group);
-        
+
         int count_in_page = 0;
         for(int index = 0; index < worker_count; ++index)
         {
@@ -644,7 +644,7 @@ retrieve_issue_body(char *github_token, char *organization, char *revise_repo, c
 		for(int i = 0; i < worker_count; ++i)
 		{
 			static char url[MAX_URL_LEN];
-			if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues?page=%d&per_page=100", 
+			if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues?page=%d&per_page=100",
 						     organization, revise_repo, page))
 			{
 				assign_github_get(&group, i, url, github_token);
@@ -656,7 +656,7 @@ retrieve_issue_body(char *github_token, char *organization, char *revise_repo, c
             ++page;
 		}
 		complete_all_works(&group);
-		
+
 		int issue_count_in_page = 0;
 		for(int i = 0; i < worker_count; ++i)
 		{
@@ -677,7 +677,7 @@ retrieve_issue_body(char *github_token, char *organization, char *revise_repo, c
 				}
 			}
             cJSON_Delete(json);
-			
+
 			if(found || issue_count_in_page == 0) break;
 		}
 		end_curl_group(&group);
@@ -686,16 +686,16 @@ retrieve_issue_body(char *github_token, char *organization, char *revise_repo, c
 	return result;
 }
 
-// NOTE: 
-// - we don't believe commit time since it can be modifed by students. 
-// - we return creation time of the repository and the latest commit as the last resort, this will 
-//   happen when there aren't any push events before the cutoff (the creation of the repo is not a 
+// NOTE:
+// - we don't believe commit time since it can be modifed by students.
+// - we return creation time of the repository and the latest commit as the last resort, this will
+//   happen when there aren't any push events before the cutoff (the creation of the repo is not a
 //   push event). if the students never push, the latest commit is the commit they accept the homework.
 
 // NOTE: push events only retain for 90 days, if the student only push 90 days before you collect and
 // grade it, it will assume the student pushes the latest commit in Day 1 (when accepting homework).
 static void
-retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, StringArray *repos, StringArray *requested_branches, 
+retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, StringArray *repos, StringArray *requested_branches,
                               char *github_token, char *organization, time_t cutoff)
 {
     clear_memory(out_hash, repos->count * sizeof(*out_hash));
@@ -704,7 +704,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
     GitCommitHash *last_resort_hashes = (GitCommitHash *)allocate_memory(repos->count * sizeof(*last_resort_hashes));
     retrieve_creation_times(last_resort_push_times, repos, github_token, organization);
     retrieve_latest_commits(last_resort_hashes, repos, requested_branches, github_token, organization);
-    
+
 #define MAX_WORKER 64
 	for(int at = 0; at < repos->count; at += MAX_WORKER)
     {
@@ -725,11 +725,11 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                 }
             }
             complete_all_works(&group);
-            
+
             for(int i = 0; i < worker_count; ++i)
             {
                 if(worker_done[i]) continue;
-                
+
                 int event_count_in_page = 0;
                 static char requested_ref[256];
                 if(format_string(requested_ref, sizeof(requested_ref), "refs/heads/%s", requested_branches->elem[at + i]))
@@ -762,7 +762,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                         else if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "CreateEvent") &&
                                 cJSON_IsString(created_at) &&
                                 cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "branch") &&
-                                // NOTE: weird github api, create event's ref is 'branch', 
+                                // NOTE: weird github api, create event's ref is 'branch',
                                 // while push event's ref is 'refs/heads/branch'
                                 cJSON_IsString(ref) && compare_string(ref->valuestring, requested_branches->elem[at + i]))
                         {
@@ -778,7 +778,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                         else if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "CreateEvent") &&
                                 cJSON_IsString(created_at) &&
                                 cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "repository") &&
-                                cJSON_IsString(default_branch) && 
+                                cJSON_IsString(default_branch) &&
                                 compare_string(default_branch->valuestring, requested_branches->elem[at + i]))
                         {
                             time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
@@ -792,13 +792,13 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                         }
                     }
                 }
-                
+
                 if(!out_push_time[at + i])
                 {
                     out_push_time[at + i] = last_resort_push_times[at + i];
                     out_hash[at + i] = last_resort_hashes[at + i];
                 }
-                
+
                 if(event_count_in_page == 0) { worker_done[i] = 1; }
             }
             end_curl_group(&group);
@@ -813,7 +813,7 @@ invite_user_to_team(char *github_token, char *username, char *organization, char
 {
     int result = 0;
     char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/memberships/%s", 
+    if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/memberships/%s",
                      organization, team, username))
     {
         CurlGroup group = begin_curl_group(1);
@@ -825,7 +825,7 @@ invite_user_to_team(char *github_token, char *username, char *organization, char
 }
 
 static int
-create_pull_request(char *github_token, char *organization, char *repo, 
+create_pull_request(char *github_token, char *organization, char *repo,
                     char *branch, char *branch_to_merge, char *title, GrowableBuffer *body)
 {
     int result = 0;
@@ -843,7 +843,7 @@ create_pull_request(char *github_token, char *organization, char *repo,
         write_constant_string(&post_data, "\",\"base\":\"");
         write_growable_buffer(&post_data, branch_to_merge, string_len(branch_to_merge));
         write_constant_string(&post_data, "\"}\0");
-        
+
         CurlGroup group = begin_curl_group(1);
         assign_github_post_like(&group, 0, url, github_token, "POST", post_data.memory);
         complete_all_works(&group);
@@ -873,7 +873,7 @@ create_issue(char *github_token, char *organization, char *repo, char *title, ch
         write_growable_buffer(&post_data, body, string_len(body));
         write_constant_string(&post_data, "\",\"state\":\"open\"}");
         null_terminate(&post_data);
-        
+
         CurlGroup group = begin_curl_group(1);
         assign_github_post_like(&group, 0, url, github_token, "POST", post_data.memory);
         complete_all_works(&group);
@@ -903,7 +903,7 @@ edit_issue(char *github_token, char *organization, char *repo, char *title, char
         write_growable_buffer(&post_data, body, string_len(body));
         write_constant_string(&post_data, "\",\"state\":\"open\"}");
         null_terminate(&post_data);
-        
+
         CurlGroup group = begin_curl_group(1);
         assign_github_post_like(&group, 0, url, github_token, "PATCH", post_data.memory);
         complete_all_works(&group);
@@ -929,7 +929,7 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *sheet)
         CurlGroup group = begin_curl_group(1);
         assign_sheet_get(&group, 0, url, google_token);
         complete_all_works(&group);
-        
+
         cJSON *json = cJSON_Parse(get_response(&group, 0));
         cJSON *rows = cJSON_GetObjectItemCaseSensitive(json, "values");
         cJSON *first_row = cJSON_GetArrayItem(rows, 0);
@@ -953,14 +953,14 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *sheet)
                     write_constant_string(&result.content, "\0");
                 }
             }
-            
+
             char *at = result.content.memory;
             for(int i = 0; i < width; ++i)
             {
                 result.keys[i] = at;
                 at += string_len(at) + 1;
             }
-            
+
             for(int i = 0; i < width * height; ++i)
             {
                 result.values[i] = at;

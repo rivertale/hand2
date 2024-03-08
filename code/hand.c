@@ -95,7 +95,7 @@ invite_students(char *path, char *github_token, char *organization, char *team)
 }
 
 static void
-collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, int penalty_per_day, int is_weekends_one_day, 
+collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, int penalty_per_day, int is_weekends_one_day,
                  char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key)
 {
     tm t0 = calendar_time(deadline);
@@ -105,14 +105,14 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
               title, organization,
               t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
               t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
-    
+
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
     {
         write_error("unable to create '%s'", out_path);
         return;
     }
-    
+
     write_output("Retrieving repos with prefix '%s'...", title);
     StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
 
@@ -135,11 +135,11 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
     //    (2) submit at 12:00:00 (Sun.) is counted as 1-day, hour 24-48 are treated as Sunday.
     //    (3) submit at 12:00:00 (Mon.) is counted as 2-day, hour 48-72 are treated as Monday.
     write_output("[Late submission]");
-    write_output("%3s  %12s  %-19s  %-24s  %-40s", 
+    write_output("%3s  %12s  %-19s  %-24s  %-40s",
                  "#", "delay (days)", "push_time", "repository", "hash");
     int late_submission_count = 0;
     int start_weekday = (t0.tm_hour < 12) ? t0.tm_wday : (t0.tm_wday + 1) % 7;
-    
+
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
     int student_x = find_key_index(&sheet, student_key);
     for(int y = 0; y < sheet.height; ++y)
@@ -151,7 +151,7 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
         {
             index = find_index_case_insensitive(&repos, requested_repo);
         }
-        
+
         int delay = 0;
         if(index != -1 && push_time[index] > deadline)
         {
@@ -165,10 +165,10 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
                 int weekend_day_count = weekend_before_cutoff - weekend_before_deadline;
                 delay -= (weekend_day_count / 2);
             }
-            
+
             tm t = calendar_time(push_time[index]);
-            write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s", 
-                         late_submission_count, delay, 
+            write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s",
+                         late_submission_count, delay,
                          t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
                          repos.elem[index], hash[index]);
         }
@@ -179,12 +179,12 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
     write_output("    Total student: %d", sheet.height);
     write_output("    Total submission: %d", repos.count);
     write_output("    Late submission: %d", late_submission_count);
-    write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d", 
+    write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
-    write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d", 
+    write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
                  t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
     fclose(out_file);
-    
+
     free_memory(push_time);
     free_memory(hash);
     free_string_array(&branches);
@@ -195,7 +195,7 @@ static int
 format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *template, char *dir)
 {
     *out = allocate_growable_buffer();
-    
+
     int success = 1;
     int depth = 0;
     char *identifier = 0;
@@ -272,14 +272,14 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
 {
     (void)deadline;
     tm t1 = calendar_time(cutoff);
-    
+
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
     {
         write_error("unable to create '%s'", out_path);
         return;
     }
-    
+
     StringArray repos;
     if(should_match_title)
     {
@@ -296,7 +296,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
     write_output("Retrieving default branches...");
     StringArray branches = retrieve_default_branches(&repos, github_token, organization);
     assert(branches.count == repos.count);
-    
+
     write_output("Retrieving pushes before deadline...");
     GitCommitHash *hash = (GitCommitHash *)allocate_memory(repos.count * sizeof(*hash));
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
@@ -333,7 +333,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         platform.create_directory(feedback_homework_dir);
         platform.create_directory(feedback_report_dir);
         GrowableBuffer report_template = read_entire_file_and_null_terminate(report_template_path);
-        
+
         write_output("Retrieving student repositories...");
         int work_count = 0;
         Work *works = (Work *)allocate_memory(repos.count * sizeof(*works));
@@ -344,16 +344,16 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
             static char work_dir[MAX_PATH_LEN];
             static char test_dir[MAX_PATH_LEN];
             static char docker_dir[MAX_PATH_LEN];
-            if(format_string(url, MAX_URL_LEN, 
+            if(format_string(url, MAX_URL_LEN,
                              "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, repos.elem[i]) &&
                format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s_%s", global_root_dir, repos.elem[i], hash[i].trim) &&
                format_string(test_dir, MAX_PATH_LEN, "%s/test", work_dir) &&
                format_string(docker_dir, MAX_PATH_LEN, "%s/docker", work_dir) &&
                format_string(work->command, sizeof(work->command), "%s", command) &&
                format_string(work->work_dir, sizeof(work->work_dir), "%s", work_dir) &&
-               format_string(work->stdout_path, sizeof(work->stdout_path), 
+               format_string(work->stdout_path, sizeof(work->stdout_path),
                              "%s/logs/%s_%s_stdout.log", global_root_dir, repos.elem[i], hash[i].trim) &&
-               format_string(work->stderr_path, sizeof(work->stderr_path), 
+               format_string(work->stderr_path, sizeof(work->stderr_path),
                              "%s/logs/%s_%s_stderr.log", global_root_dir, repos.elem[i], hash[i].trim))
             {
                 ++work_count;
@@ -372,15 +372,15 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                 // TODO: error
             }
         }
-        
+
         write_output("Start grading...");
         platform.wait_for_completion(thread_count, work_count, works, grade_homework_on_progress, grade_homework_on_done);
-        
+
         for(int i = 0; i < work_count; ++i)
         {
             if(works[i].exit_code != 0) { ++failure_count; }
         }
-        
+
         write_output("Generating report...");
         Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
         int student_x = find_key_index(&sheet, student_key);
@@ -395,7 +395,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
             {
                 index = find_index_case_insensitive(&repos, requested_name);
             }
-            
+
             int score = 0;
             static char work_dir[MAX_PATH_LEN];
             static char report_path[MAX_PATH_LEN];
@@ -415,7 +415,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                     }
                 }
                 free_growable_buffer(&score_content);
-                
+
                 GrowableBuffer report;
                 if(format_report_by_file_replacement(&report, &report_template, work_dir))
                 {
@@ -431,7 +431,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                     // TODO: error
                 }
             }
-            
+
             fprintf(out_file, "%d\n", score);
         }
         write_output("");
@@ -439,7 +439,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         write_output("    Total student: %d", sheet.height);
         write_output("    Total submission: %d", repos.count);
         write_output("    Failed submission: %d", failure_count);
-        write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d", 
+        write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
                      t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
         write_output("NOTE: reports generated at '%s', remember to push reports", feedback_report_dir);
         fclose(out_file);
@@ -878,7 +878,7 @@ eval(ArgParser *parser, Config *config)
         int penalty_per_day = atoi(config->value[Config_penalty_per_day]);
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
-        collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day, 
+        collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day,
                          github_token, organization, google_token, spreadsheet_id, student_key);
     }
     else if(compare_string(command, "grade-homework"))

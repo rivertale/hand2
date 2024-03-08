@@ -266,7 +266,7 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
         context->on_progress(index, context->work_count, work_dir);
         pthread_mutex_unlock(callback_lock);
     }
-    
+
     pid_t process_id = fork();
     if(process_id == 0) // NOTE: child
     {
@@ -303,7 +303,7 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
             exit_code = WEXITSTATUS(status);
         }
     }
-    
+
     if(context->on_done)
     {
         pthread_mutex_lock(callback_lock);
@@ -334,7 +334,7 @@ linux_thread_proc(void *param)
 }
 
 static void
-linux_wait_for_completion(int thread_count, int work_count, Work *works, 
+linux_wait_for_completion(int thread_count, int work_count, Work *works,
                           WorkOnProgressCallback *on_progress, WorkOnDoneCallback *on_done)
 {
     pthread_mutex_t callback_lock;
@@ -346,6 +346,7 @@ linux_wait_for_completion(int thread_count, int work_count, Work *works,
         ThreadContext *contexts = (ThreadContext *)allocate_memory(thread_count * sizeof(*contexts));
         for(int i = 0; i < thread_count; ++i)
         {
+            contexts[i].thread_index = i;
             contexts[i].work_count = work_count;
             contexts[i].works = works;
             contexts[i].next_to_work = &next_to_work;
@@ -354,7 +355,7 @@ linux_wait_for_completion(int thread_count, int work_count, Work *works,
             contexts[i].callback_lock = &callback_lock;
             thread_is_valid[i] = (pthread_create(&thread_handles[i], 0, linux_thread_proc, &contexts[i]) == 0);
         }
-        
+
         for(int i = 0; i < thread_count; ++i)
         {
             if(!thread_is_valid[i]) continue;

@@ -5,7 +5,7 @@
 #define CURL_GLOBAL_SSL (1<<0) /* no purpose since 7.57.0 */
 #define CURL_GLOBAL_WIN32 (1<<1)
 
-typedef enum 
+typedef enum
 {
     CURLE_OK                          = 0,
     CURLE_UNSUPPORTED_PROTOCOL        = 1,
@@ -107,7 +107,7 @@ typedef enum
     CURLE_PROXY                       = 97,
     CURLE_SSL_CLIENTCERT              = 98,
     CURLE_UNRECOVERABLE_POLL          = 99,
-    CURL_LAST                         = 100, 
+    CURL_LAST                         = 100,
 } CURLcode;
 
 typedef enum
@@ -460,11 +460,13 @@ typedef struct curl_waitfd
     curl_socket_t fd;
     short events;
     short revents;
+    int padding_;
 } curl_waitfd;
 
 typedef struct CURLMsg
 {
     CURLMSG msg;
+    int padding_;
     CURL *easy_handle;
     union
     {
@@ -499,7 +501,7 @@ typedef struct CurlWorker
 typedef struct CurlGroup
 {
     int worker_count;
-    int padding;
+    int padding_;
     CURLM *handle;
     CurlWorker *workers;
 } CurlGroup;

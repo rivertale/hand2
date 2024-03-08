@@ -64,7 +64,7 @@ typedef struct ConfigParser
     Token lookaheads[CONFIG_LOOKAHEAD_MASK + 1];
 
     int has_error;
-    int padding;
+    int padding_;
     char *content;
 } ConfigParser;
 
