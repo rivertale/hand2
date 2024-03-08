@@ -372,7 +372,7 @@ retrieve_creation_times(time_t *out_times, StringArray *repos, char *github_toke
 }
 
 static StringArray
-retrieve_default_branchs(StringArray *repos, char *github_token, char *organization)
+retrieve_default_branches(StringArray *repos, char *github_token, char *organization)
 {
     GrowableBuffer buffer = allocate_growable_buffer();
 #define MAX_WORKER 64
@@ -412,10 +412,10 @@ retrieve_default_branchs(StringArray *repos, char *github_token, char *organizat
 }
 
 static void
-retrieve_latest_commits(GitCommitHash *out_hash, StringArray *repos, StringArray *branchs, char *github_token, char *organization)
+retrieve_latest_commits(GitCommitHash *out_hash, StringArray *repos, StringArray *branches, char *github_token, char *organization)
 {
     int count = repos->count;
-    assert(repos->count == branchs->count);
+    assert(repos->count == branches->count);
     clear_memory(out_hash, count * sizeof(*out_hash));
 #define MAX_WORKER 64
     for(int at = 0; at < count; at += MAX_WORKER)
@@ -426,7 +426,7 @@ retrieve_latest_commits(GitCommitHash *out_hash, StringArray *repos, StringArray
         {
             static char url[MAX_URL_LEN];
             if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/branches/%s", 
-                             organization, repos->elem[at + i], branchs->elem[at + i]))
+                             organization, repos->elem[at + i], branches->elem[at + i]))
             {
                 assign_github_get(&group, i, url, github_token);
             }
@@ -456,13 +456,13 @@ retrieve_default_branch(char *github_token, char *organization, char *repo)
     StringArray repos = {0};
     repos.count = 1;
     repos.elem = &repo;
-    StringArray default_branchs = retrieve_default_branchs(&repos, github_token, organization);
-    if(default_branchs.count > 0)
+    StringArray branches = retrieve_default_branches(&repos, github_token, organization);
+    if(branches.count > 0)
     {
-        size_t len = string_len(default_branchs.elem[0]);
-        write_growable_buffer(&result, default_branchs.elem[0], len);
+        size_t len = string_len(branches.elem[0]);
+        write_growable_buffer(&result, branches.elem[0], len);
     }
-    free_string_array(&default_branchs);
+    free_string_array(&branches);
     return result;
 }
 
@@ -475,17 +475,17 @@ retrieve_latest_commit(char *github_token, char *organization, char *repo, char 
     repos.elem = &repo;
     if(branch)
     {
-        StringArray branchs = {0};
-        branchs.count = 1;
-        branchs.elem = &branch;
-        retrieve_latest_commits(&result, &repos, &branchs, github_token, organization);
+        StringArray branches = {0};
+        branches.count = 1;
+        branches.elem = &branch;
+        retrieve_latest_commits(&result, &repos, &branches, github_token, organization);
     }
     else
     {
-        StringArray branchs = retrieve_default_branchs(&repos, github_token, organization);
-        assert(branchs.count == 1);
-        retrieve_latest_commits(&result, &repos, &branchs, github_token, organization);
-        free_string_array(&branchs);
+        StringArray branches = retrieve_default_branches(&repos, github_token, organization);
+        assert(branches.count == 1);
+        retrieve_latest_commits(&result, &repos, &branches, github_token, organization);
+        free_string_array(&branches);
     }
     return result;
 }
@@ -695,7 +695,7 @@ retrieve_issue_body(char *github_token, char *organization, char *revise_repo, c
 // NOTE: push events only retain for 90 days, if the student only push 90 days before you collect and
 // grade it, it will assume the student pushes the latest commit in Day 1 (when accepting homework).
 static void
-retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, StringArray *repos, StringArray *requested_branchs, 
+retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, StringArray *repos, StringArray *requested_branches, 
                               char *github_token, char *organization, time_t cutoff)
 {
     clear_memory(out_hash, repos->count * sizeof(*out_hash));
@@ -703,7 +703,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
     time_t *last_resort_push_times = (time_t *)allocate_memory(repos->count * sizeof(*last_resort_push_times));
     GitCommitHash *last_resort_hashes = (GitCommitHash *)allocate_memory(repos->count * sizeof(*last_resort_hashes));
     retrieve_creation_times(last_resort_push_times, repos, github_token, organization);
-    retrieve_latest_commits(last_resort_hashes, repos, requested_branchs, github_token, organization);
+    retrieve_latest_commits(last_resort_hashes, repos, requested_branches, github_token, organization);
     
 #define MAX_WORKER 64
 	for(int at = 0; at < repos->count; at += MAX_WORKER)
@@ -732,7 +732,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                 
                 int event_count_in_page = 0;
                 static char requested_ref[256];
-                if(format_string(requested_ref, sizeof(requested_ref), "refs/heads/%s", requested_branchs->elem[at + i]))
+                if(format_string(requested_ref, sizeof(requested_ref), "refs/heads/%s", requested_branches->elem[at + i]))
                 {
                     cJSON *json = cJSON_Parse(get_response(&group, i));
                     cJSON *event = 0;
@@ -764,7 +764,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                                 cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "branch") &&
                                 // NOTE: weird github api, create event's ref is 'branch', 
                                 // while push event's ref is 'refs/heads/branch'
-                                cJSON_IsString(ref) && compare_string(ref->valuestring, requested_branchs->elem[at + i]))
+                                cJSON_IsString(ref) && compare_string(ref->valuestring, requested_branches->elem[at + i]))
                         {
                             time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
                             if(push_time < cutoff)
@@ -779,7 +779,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                                 cJSON_IsString(created_at) &&
                                 cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "repository") &&
                                 cJSON_IsString(default_branch) && 
-                                compare_string(default_branch->valuestring, requested_branchs->elem[at + i]))
+                                compare_string(default_branch->valuestring, requested_branches->elem[at + i]))
                         {
                             time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
                             if(push_time < cutoff)

@@ -5,49 +5,49 @@
 #include "hand_git2.c"
 
 static void
-invite_students(char *input_path, char *github_token, char *organization, char *team)
+invite_students(char *path, char *github_token, char *organization, char *team)
 {
-    write_log("[invite students] path='%s', org='%s', team='%s'", input_path, organization, team);
+    write_log("[invite students] path='%s', org='%s', team='%s'", path, organization, team);
 
-    StringArray users_to_invite = read_string_array_file(input_path);
-    if(users_to_invite.count > 0)
+    StringArray students = read_string_array_file(path);
+    if(students.count > 0)
     {
         write_output("Retrieving existing members...");
-        StringArray existing_users = retrieve_users_in_team(github_token, organization, team);
+        StringArray existing_students = retrieve_users_in_team(github_token, organization, team);
         write_output("Retrieving existing invitations...");
         StringArray existing_invitations = retrieve_existing_invitations(github_token, organization, team);
 
-        write_log("existing member count: %d", existing_users.count);
+        write_log("existing member count: %d", existing_students.count);
         write_log("existing invitation count: %d", existing_invitations.count);
 
         int invalid_count = 0;
-        for(int i = 0; i < users_to_invite.count; ++i)
+        for(int i = 0; i < students.count; ++i)
         {
-            for(int j = 0; j < existing_users.count; ++j)
+            for(int j = 0; j < existing_students.count; ++j)
             {
-                if(compare_case_insensitive(users_to_invite.elem[i], existing_users.elem[j]))
+                if(compare_case_insensitive(students.elem[i], existing_students.elem[j]))
                 {
-                    users_to_invite.elem[i] = 0;
+                    students.elem[i] = 0;
                     break;
                 }
             }
 
-            if(!users_to_invite.elem[i]) continue;
+            if(!students.elem[i]) continue;
             for(int j = 0; j < existing_invitations.count; ++j)
             {
-                if(compare_case_insensitive(users_to_invite.elem[i], existing_invitations.elem[j]))
+                if(compare_case_insensitive(students.elem[i], existing_invitations.elem[j]))
                 {
-                    users_to_invite.elem[i] = 0;
+                    students.elem[i] = 0;
                     break;
                 }
             }
 
-            if(!users_to_invite.elem[i]) continue;
-            if(!github_user_exists(github_token, users_to_invite.elem[i]))
+            if(!students.elem[i]) continue;
+            if(!github_user_exists(github_token, students.elem[i]))
             {
-                write_error("github user '%s' does not exist", users_to_invite.elem[i]);
+                write_error("github user '%s' does not exist", students.elem[i]);
                 ++invalid_count;
-                users_to_invite.elem[i] = 0;
+                students.elem[i] = 0;
                 break;
             }
         }
@@ -57,27 +57,27 @@ invite_students(char *input_path, char *github_token, char *organization, char *
             int failure_count = 0;
             int success_count = 0;
             write_output("Inviting new members...");
-            for(int i = 0; i < users_to_invite.count; ++i)
+            for(int i = 0; i < students.count; ++i)
             {
-                if(!users_to_invite.elem[i]) continue;
-                if(invite_user_to_team(github_token, users_to_invite.elem[i], organization, team))
+                if(!students.elem[i]) continue;
+                if(invite_user_to_team(github_token, students.elem[i], organization, team))
                 {
                     ++success_count;
-                    write_output("Invite '%s' to '%s/%s'", users_to_invite.elem[i], organization, team);
+                    write_output("Invite '%s' to '%s/%s'", students.elem[i], organization, team);
                 }
                 else
                 {
                     ++failure_count;
-                    write_error("Can't invite '%s' to '%s/%s'", users_to_invite.elem[i], organization, team);
+                    write_error("Can't invite '%s' to '%s/%s'", students.elem[i], organization, team);
                 }
             }
 
             write_output("");
             write_output("[Summary]");
-            write_output("    Total students: %d", users_to_invite.count);
+            write_output("    Total students: %d", students.count);
             write_output("    New invitation (success): %d", success_count);
             write_output("    New invitation (failure): %d", failure_count);
-            write_output("    Existing members: %d", existing_users.count);
+            write_output("    Existing members: %d", existing_students.count);
             write_output("    Existing invitations: %d", existing_invitations.count);
         }
         else
@@ -85,20 +85,27 @@ invite_students(char *input_path, char *github_token, char *organization, char *
             write_output("ABORT: some usernames are invalid");
         }
         free_string_array(&existing_invitations);
-        free_string_array(&existing_users);
+        free_string_array(&existing_students);
     }
     else
     {
-        write_error("input file '%s' is empty", input_path);
+        write_error("input file '%s' is empty", path);
     }
-    free_string_array(&users_to_invite);
+    free_string_array(&students);
 }
 
 static void
-collect_homework(char *title, char *out_path, time_t late_submission_start, time_t late_submission_end, 
-                 int penalty_per_day, int is_weekends_one_day, 
-                 char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *user_key)
+collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, int penalty_per_day, int is_weekends_one_day, 
+                 char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key)
 {
+    tm t0 = calendar_time(deadline);
+    tm t1 = calendar_time(cutoff);
+    write_log("[collect homework] title='%s', organization='%s', "
+              "deadline='%d-%02d-%02d_%02d:%02d:%02d', cutoff='%d-%02d-%02d_%02d:%02d:%02d'",
+              title, organization,
+              t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
+              t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
+    
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
     {
@@ -106,25 +113,17 @@ collect_homework(char *title, char *out_path, time_t late_submission_start, time
         return;
     }
     
-    tm t0 = calendar_time(late_submission_start);
-    tm t1 = calendar_time(late_submission_end);
-    write_log("[collect homework] title='%s', organization='%s', "
-              "late_submission_start='%d-%02d-%02d_%02d:%02d:%02d', late_submission_end='%d-%02d-%02d_%02d:%02d:%02d'",
-              title, organization,
-              t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
-              t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
-    
     write_output("Retrieving repos with prefix '%s'...", title);
     StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
 
     write_output("Retrieving default branches...");
-    StringArray default_branchs = retrieve_default_branchs(&repos, github_token, organization);
-    assert(default_branchs.count == repos.count);
+    StringArray branches = retrieve_default_branches(&repos, github_token, organization);
+    assert(branches.count == repos.count);
 
     write_output("Retrieving pushes before deadline...");
     GitCommitHash *hash = (GitCommitHash *)allocate_memory(repos.count * sizeof(*hash));
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
-    retrieve_pushes_before_cutoff(hash, push_time, &repos, &default_branchs, github_token, organization, late_submission_end);
+    retrieve_pushes_before_cutoff(hash, push_time, &repos, &branches, github_token, organization, cutoff);
 
     // NOTE: for the weekends-count-as-1-day policy, the examples use the time format 0:00:00 ~ 23:59:59.
     // 1. if the late submission starts at 11:59:59 (Fri.):
@@ -142,28 +141,28 @@ collect_homework(char *title, char *out_path, time_t late_submission_start, time
     int start_weekday = (t0.tm_hour < 12) ? t0.tm_wday : (t0.tm_wday + 1) % 7;
     
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-    int user_x = find_key_index(&sheet, user_key);
+    int student_x = find_key_index(&sheet, student_key);
     for(int y = 0; y < sheet.height; ++y)
     {
         int index = -1;
-        static char requested_name[256];
-        char *student_username = get_value(&sheet, user_x, y);
-        if(format_string(requested_name, sizeof(requested_name), "%s-%s", title, student_username))
+        static char requested_repo[256];
+        char *student = get_value(&sheet, student_x, y);
+        if(format_string(requested_repo, sizeof(requested_repo), "%s-%s", title, student))
         {
-            index = find_index_case_insensitive(&repos, requested_name);
+            index = find_index_case_insensitive(&repos, requested_repo);
         }
         
         int delay = 0;
-        if(index != -1 && push_time[index] > late_submission_start)
+        if(index != -1 && push_time[index] > deadline)
         {
             ++late_submission_count;
-            delay = (int)((push_time[index] - late_submission_start + 86399) / 86400);
+            delay = (int)((push_time[index] - deadline + 86399) / 86400);
             assert(delay > 0);
             if(is_weekends_one_day)
             {
-                int weekend_before_late_submission_start = (start_weekday + 6) / 7 + start_weekday / 7;
-                int weekend_before_late_submission_end = (start_weekday + delay + 6) / 7 + (start_weekday + delay) / 7;
-                int weekend_day_count = weekend_before_late_submission_end - weekend_before_late_submission_start;
+                int weekend_before_deadline = (start_weekday + 6) / 7 + start_weekday / 7;
+                int weekend_before_cutoff = (start_weekday + delay + 6) / 7 + (start_weekday + delay) / 7;
+                int weekend_day_count = weekend_before_cutoff - weekend_before_deadline;
                 delay -= (weekend_day_count / 2);
             }
             
@@ -188,12 +187,12 @@ collect_homework(char *title, char *out_path, time_t late_submission_start, time
     
     free_memory(push_time);
     free_memory(hash);
-    free_string_array(&default_branchs);
+    free_string_array(&branches);
     free_string_array(&repos);
 }
 
 static int
-format_report_with_dir(GrowableBuffer *out, GrowableBuffer *template, char *dir)
+format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *template, char *dir)
 {
     *out = allocate_growable_buffer();
     
@@ -224,9 +223,9 @@ format_report_with_dir(GrowableBuffer *out, GrowableBuffer *template, char *dir)
                     static char path[MAX_PATH_LEN];
                     if(format_string(path, MAX_PATH_LEN, "%s/%s", dir, identifier))
                     {
-                        GrowableBuffer substitution = read_entire_file_and_null_terminate(path);
-                        write_growable_buffer(out, substitution.memory, string_len(substitution.memory));
-                        free_growable_buffer(&substitution);
+                        GrowableBuffer replacement = read_entire_file_and_null_terminate(path);
+                        write_growable_buffer(out, replacement.memory, string_len(replacement.memory));
+                        free_growable_buffer(&replacement);
                     }
                     else
                     {
@@ -267,14 +266,13 @@ grade_homework_on_done(int index, int count, int exit_code, char *work_dir, char
 }
 
 static void
-grade_homework(char *title, char *out_path, time_t late_submission_start, time_t late_submission_end,
-               char *template_repo_name, char *feedback_repo_name, char *command, char *score_relative_path,
-               char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *user_key, char *id_key,
-               int grade_thread_count, int should_match_title)
+grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char *template_repo, char *feedback_repo,
+               char *command, char *score_relative_path, int thread_count, int should_match_title,
+               char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
 {
-    tm t1 = calendar_time(late_submission_end);
+    (void)deadline;
+    tm t1 = calendar_time(cutoff);
     
-    (void)late_submission_start;
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
     {
@@ -285,9 +283,9 @@ grade_homework(char *title, char *out_path, time_t late_submission_start, time_t
     StringArray repos;
     if(should_match_title)
     {
-        GrowableBuffer single_repo = allocate_growable_buffer();
-        write_growable_buffer(&single_repo, title, string_len(title));
-        repos = split_null_terminated_strings(&single_repo);
+        GrowableBuffer repo = allocate_growable_buffer();
+        write_growable_buffer(&repo, title, string_len(title));
+        repos = split_null_terminated_strings(&repo);
     }
     else
     {
@@ -296,42 +294,45 @@ grade_homework(char *title, char *out_path, time_t late_submission_start, time_t
     }
 
     write_output("Retrieving default branches...");
-    StringArray default_branchs = retrieve_default_branchs(&repos, github_token, organization);
-    assert(default_branchs.count == repos.count);
+    StringArray branches = retrieve_default_branches(&repos, github_token, organization);
+    assert(branches.count == repos.count);
     
     write_output("Retrieving pushes before deadline...");
     GitCommitHash *hash = (GitCommitHash *)allocate_memory(repos.count * sizeof(*hash));
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
-    retrieve_pushes_before_cutoff(hash, push_time, &repos, &default_branchs, github_token, organization, late_submission_end);
+    retrieve_pushes_before_cutoff(hash, push_time, &repos, &branches, github_token, organization, cutoff);
 
-    int failed_count = 0;
+    int failure_count = 0;
     static char username[MAX_URL_LEN];
-    static char source_url[MAX_URL_LEN];
-    static char source_repo_dir[MAX_PATH_LEN];
-    static char source_test_dir[MAX_PATH_LEN];
-    static char source_docker_dir[MAX_PATH_LEN];
+    static char template_url[MAX_URL_LEN];
     static char feedback_url[MAX_URL_LEN];
-    static char feedback_repo_dir[MAX_PATH_LEN];
-    static char feedback_hw_dir[MAX_PATH_LEN];
-    static char feedback_template_path[MAX_PATH_LEN];
+    static char template_dir[MAX_PATH_LEN];
+    static char feedback_dir[MAX_PATH_LEN];
+    static char template_test_dir[MAX_PATH_LEN];
+    static char template_docker_dir[MAX_PATH_LEN];
+    static char feedback_homework_dir[MAX_PATH_LEN];
+    static char feedback_report_dir[MAX_PATH_LEN];
+    static char report_template_path[MAX_PATH_LEN];
     if(retrieve_username(username, MAX_URL_LEN, github_token) &&
-       format_string(source_url, MAX_URL_LEN,
-                     "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, template_repo_name) &&
+       format_string(template_url, MAX_URL_LEN,
+                     "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, template_repo) &&
        format_string(feedback_url, MAX_URL_LEN,
-                     "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, feedback_repo_name) &&
-       format_string(source_repo_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, template_repo_name) &&
-       format_string(source_test_dir, MAX_PATH_LEN, "%s/test", source_repo_dir) &&
-       format_string(source_docker_dir, MAX_PATH_LEN, "%s/docker", source_repo_dir) &&
-       format_string(feedback_repo_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, feedback_repo_name) &&
-       format_string(feedback_hw_dir, MAX_PATH_LEN, "%s/%s", feedback_repo_dir, title) &&
-       format_string(feedback_template_path, MAX_PATH_LEN, "%s/report_template.md", feedback_repo_dir))
+                     "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, feedback_repo) &&
+       format_string(template_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, template_repo) &&
+       format_string(feedback_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, feedback_repo) &&
+       format_string(template_test_dir, MAX_PATH_LEN, "%s/test", template_dir) &&
+       format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir) &&
+       format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s", feedback_dir, title) &&
+       format_string(feedback_report_dir, MAX_PATH_LEN, "%s/reports", feedback_homework_dir) &&
+       format_string(report_template_path, MAX_PATH_LEN, "%s/report_template.md", feedback_dir))
     {
         write_output("Retrieving homework template...");
-        sync_repository(source_repo_dir, source_url, 0);
+        sync_repository(template_dir, template_url, 0);
         write_output("Retrieving feedback repository...");
-        sync_repository(feedback_repo_dir, feedback_url, 0);
-        platform.create_directory(feedback_hw_dir);
-        GrowableBuffer report_template = read_entire_file_and_null_terminate(feedback_template_path);
+        sync_repository(feedback_dir, feedback_url, 0);
+        platform.create_directory(feedback_homework_dir);
+        platform.create_directory(feedback_report_dir);
+        GrowableBuffer report_template = read_entire_file_and_null_terminate(report_template_path);
         
         write_output("Retrieving student repositories...");
         int work_count = 0;
@@ -363,8 +364,8 @@ grade_homework(char *title, char *out_path, time_t late_submission_start, time_t
                 }
                 platform.delete_directory(test_dir);
                 platform.delete_directory(docker_dir);
-                platform.copy_directory(test_dir, source_test_dir);
-                platform.copy_directory(docker_dir, source_docker_dir);
+                platform.copy_directory(test_dir, template_test_dir);
+                platform.copy_directory(docker_dir, template_docker_dir);
             }
             else
             {
@@ -373,25 +374,24 @@ grade_homework(char *title, char *out_path, time_t late_submission_start, time_t
         }
         
         write_output("Start grading...");
-        platform.wait_for_completion(grade_thread_count, work_count, works, 
-                                     grade_homework_on_progress, grade_homework_on_done);
+        platform.wait_for_completion(thread_count, work_count, works, grade_homework_on_progress, grade_homework_on_done);
         
         for(int i = 0; i < work_count; ++i)
         {
-            if(works[i].exit_code != 0) { ++failed_count; }
+            if(works[i].exit_code != 0) { ++failure_count; }
         }
         
         write_output("Generating report...");
         Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-        int user_x = find_key_index(&sheet, user_key);
+        int student_x = find_key_index(&sheet, student_key);
         int id_x = find_key_index(&sheet, id_key);
         for(int y = 0; y < sheet.height; ++y)
         {
             int index = -1;
             static char requested_name[256];
-            char *student_username = get_value(&sheet, user_x, y);
+            char *student = get_value(&sheet, student_x, y);
             char *student_id = get_value(&sheet, id_x, y);
-            if(format_string(requested_name, sizeof(requested_name), "%s-%s", title, student_username))
+            if(format_string(requested_name, sizeof(requested_name), "%s-%s", title, student))
             {
                 index = find_index_case_insensitive(&repos, requested_name);
             }
@@ -402,9 +402,8 @@ grade_homework(char *title, char *out_path, time_t late_submission_start, time_t
             static char score_path[MAX_PATH_LEN];
             if(index != -1 &&
                format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s_%s", global_root_dir, repos.elem[index], hash[index].trim) &&
-               format_string(report_path, MAX_PATH_LEN, "%s/%s/reports/%s.md", feedback_repo_dir, title, student_id) &&
-               format_string(score_path, MAX_PATH_LEN, 
-                             "%s/cache/%s_%s/%s", global_root_dir, repos.elem[index], hash[index].trim, score_relative_path))
+               format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
+               format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
             {
                 GrowableBuffer score_content = read_entire_file_and_null_terminate(score_path);
                 for(char *c = score_content.memory; *c; ++c)
@@ -418,7 +417,7 @@ grade_homework(char *title, char *out_path, time_t late_submission_start, time_t
                 free_growable_buffer(&score_content);
                 
                 GrowableBuffer report;
-                if(format_report_with_dir(&report, &report_template, work_dir))
+                if(format_report_by_file_replacement(&report, &report_template, work_dir))
                 {
                     FILE *report_file = fopen(report_path, "wb");
                     if(report_file)
@@ -439,10 +438,10 @@ grade_homework(char *title, char *out_path, time_t late_submission_start, time_t
         write_output("[Summary]");
         write_output("    Total student: %d", sheet.height);
         write_output("    Total submission: %d", repos.count);
-        write_output("    Failed submission: %d", failed_count);
+        write_output("    Failed submission: %d", failure_count);
         write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d", 
                      t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
-        write_output("NOTE: reports generated at '%s', remember to push reports", feedback_repo_dir);
+        write_output("NOTE: reports generated at '%s', remember to push reports", feedback_report_dir);
         fclose(out_file);
     }
     else
@@ -542,40 +541,40 @@ format_feedback_issues(StringArray *out, char *template, Sheet *sheet, StringArr
 
 static void
 announce_grade(char *title, char *feedback_repo,
-               char *google_token, char *spreadsheet_id, char *user_key, char *github_token, char *organization)
+               char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key)
 {
-    write_log("[announce grade] title='%s', feedback_repo='%s', spreadsheet_id='%s', user_key='%s', organization='%s'",
-              title, feedback_repo, spreadsheet_id, user_key, organization);
+    write_log("[announce grade] title='%s', feedback_repo='%s', spreadsheet_id='%s', student_key='%s', organization='%s'",
+              title, feedback_repo, spreadsheet_id, student_key, organization);
 
-    Sheet grade_sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-    if(grade_sheet.width == 0 || grade_sheet.height == 0)
+    Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
+    if(sheet.width == 0 || sheet.height == 0)
     {
-        int user_x = find_key_index(&grade_sheet, user_key);
-        if(user_x >= 0)
+        int student_x = find_key_index(&sheet, student_key);
+        if(student_x >= 0)
         {
-            int student_count = grade_sheet.height;
+            int student_count = sheet.height;
             static char issue_title[256];
             static char username[MAX_URL_LEN];
-            static char feedback_repo_url[MAX_URL_LEN];
-            static char feedback_repo_dir[MAX_PATH_LEN];
+            static char feedback_url[MAX_URL_LEN];
             static char feedback_dir[MAX_PATH_LEN];
-            static char template_path[MAX_PATH_LEN];
+            static char feedback_report_dir[MAX_PATH_LEN];
+            static char report_template_path[MAX_PATH_LEN];
             if(retrieve_username(username, MAX_URL_LEN, github_token) &&
                format_string(issue_title, sizeof(issue_title), "Grade for %", title) &&
-               format_string(feedback_repo_url, MAX_URL_LEN,
+               format_string(feedback_url, MAX_URL_LEN,
                              "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, feedback_repo) &&
-               format_string(feedback_repo_dir, MAX_PATH_LEN, "%s/cache/feedback", global_root_dir) &&
-               format_string(feedback_dir, MAX_PATH_LEN, "%s/%s", feedback_repo_dir, title) &&
-               format_string(template_path, MAX_PATH_LEN, "%s/template.md", feedback_repo_dir))
+               format_string(feedback_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, feedback_repo) &&
+               format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports", feedback_dir, title) &&
+               format_string(report_template_path, MAX_PATH_LEN, "%s/report_template.md", feedback_dir))
             {
                 // NOTE: repos_buffer will be free by repos
                 GrowableBuffer repos_buffer = allocate_growable_buffer();
                 for(int y = 0; y < student_count; ++y)
                 {
-                    char *student_username = get_value(&grade_sheet, user_x, y);
+                    char *student = get_value(&sheet, student_x, y);
                     write_growable_buffer(&repos_buffer, title, string_len(title));
                     write_constant_string(&repos_buffer, "-");
-                    write_growable_buffer(&repos_buffer, student_username, string_len(student_username));
+                    write_growable_buffer(&repos_buffer, student, string_len(student));
                     write_constant_string(&repos_buffer, "\0");
                 }
                 StringArray repos = split_null_terminated_strings(&repos_buffer);
@@ -584,13 +583,13 @@ announce_grade(char *title, char *feedback_repo,
 
                 // TODO: how to assure all feedbacks in feedback_repo are used (make sure no typo).
                 // TODO: clone and open the files.
-                git_repository *repo_handle = sync_repository(feedback_repo_dir, feedback_repo_url, 0);
+                git_repository *repo_handle = sync_repository(feedback_dir, feedback_url, 0);
                 if(repo_handle)
                 {
-                    StringArray feedbacks = list_files_with_extension(feedback_dir, "md");
+                    StringArray feedbacks = list_files_with_extension(feedback_report_dir, "md");
                     StringArray issue_bodies;
-                    GrowableBuffer template = read_entire_file_and_null_terminate(template_path);
-                    if(format_feedback_issues(&issue_bodies, template.memory, &grade_sheet, &feedbacks))
+                    GrowableBuffer template = read_entire_file_and_null_terminate(report_template_path);
+                    if(format_feedback_issues(&issue_bodies, template.memory, &sheet, &feedbacks))
                     {
                         StringArray escaped_issue_body = escape_string_array(&issue_bodies);
                         for(int i = 0; i < repos.count; ++i)
@@ -618,20 +617,20 @@ announce_grade(char *title, char *feedback_repo,
         }
         else
         {
-            write_error("Key '%s' not found", user_key);
+            write_error("Key '%s' not found", student_key);
         }
     }
     else
     {
         write_error("Sheet '%s' is empty under spreadsheet id '%s'", title, spreadsheet_id);
     }
-    free_sheet(&grade_sheet);
+    free_sheet(&sheet);
 }
 
 static void
 do_patch(char *root_dir, char *username, char *github_token, char *organization,
          char *target_repo, char *default_branch, char *patch_branch,
-         git_repository *source_repo_handle, GitCommitHash source_end_hash, GrowableBuffer *pull_request_body)
+         git_repository *source_repository, GitCommitHash source_end_hash, GrowableBuffer *pull_request_body)
 {
     static char target_dir[MAX_PATH_LEN];
     static char target_url[MAX_URL_LEN];
@@ -639,17 +638,17 @@ do_patch(char *root_dir, char *username, char *github_token, char *organization,
        format_string(target_url, MAX_PATH_LEN,
                      "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, target_repo))
     {
-        git_repository *target_repo_handle = sync_repository(target_dir, target_url, 0);
-        if(target_repo_handle)
+        git_repository *target_repository = sync_repository(target_dir, target_url, 0);
+        if(target_repository)
         {
-            GitCommitHash target_begin_hash = get_root_commit(target_repo_handle);
-            GitCommitHash source_begin_hash = find_latest_identical_commit(source_repo_handle, source_end_hash,
-                                                                           target_repo_handle, target_begin_hash);
+            GitCommitHash target_begin_hash = get_root_commit(target_repository);
+            GitCommitHash source_begin_hash = find_latest_identical_commit(source_repository, source_end_hash,
+                                                                           target_repository, target_begin_hash);
             // TODO: handle the deletion of source begin hash
             if(hash_is_valid(&target_begin_hash) && hash_is_valid(&source_begin_hash))
             {
-                if(apply_commit_chain(target_repo_handle, patch_branch, target_begin_hash,
-                                      source_repo_handle, source_begin_hash, source_end_hash))
+                if(apply_commit_chain(target_repository, patch_branch, target_begin_hash,
+                                      source_repository, source_begin_hash, source_end_hash))
                 {
                     if(create_pull_request(github_token, organization, target_repo,
                                            patch_branch, default_branch, patch_branch, pull_request_body))
@@ -702,7 +701,7 @@ patch_homework(char *title, int match_whole_title, char *github_token, char *org
                format_string(source_dir, MAX_PATH_LEN, "%s/source_%s", root_dir, source_repo) &&
                format_string(source_url, MAX_URL_LEN, "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, source_repo))
             {
-                git_repository *source_repo_handle = sync_repository(source_dir, source_url, 0);
+                git_repository *source_repository = sync_repository(source_dir, source_url, 0);
                 if(match_whole_title)
                 {
                     char *target_repo = title;
@@ -710,20 +709,20 @@ patch_homework(char *title, int match_whole_title, char *github_token, char *org
                     if(default_branch.used > 0)
                     {
                         do_patch(root_dir, username, github_token, organization, target_repo, default_branch.memory, branch,
-                                 source_repo_handle, source_end_hash, &escaped_issue_body);
+                                 source_repository, source_end_hash, &escaped_issue_body);
                     }
                     free_growable_buffer(&default_branch);
                 }
                 else
                 {
                     StringArray target_repos = retrieve_repos_by_prefix(github_token, organization, title);
-                    StringArray default_branchs = retrieve_default_branchs(&target_repos, github_token, organization);
+                    StringArray default_branches = retrieve_default_branches(&target_repos, github_token, organization);
                     for(int i = 0; i < target_repos.count; ++i)
                     {
-                        do_patch(root_dir, username, github_token, organization, target_repos.elem[i], default_branchs.elem[i], branch,
-                                 source_repo_handle, source_end_hash, &escaped_issue_body);
+                        do_patch(root_dir, username, github_token, organization, target_repos.elem[i], default_branches.elem[i], branch,
+                                 source_repository, source_end_hash, &escaped_issue_body);
                     }
-                    free_string_array(&default_branchs);
+                    free_string_array(&default_branches);
                     free_string_array(&target_repos);
                 }
             }
@@ -833,8 +832,8 @@ eval(ArgParser *parser, Config *config)
         }
         char *github_token = config->value[Config_github_token];
         char *organization = config->value[Config_organization];
-        char *student_team = config->value[Config_student_team];
-        invite_students(input_path, github_token, organization, student_team);
+        char *team = config->value[Config_student_team];
+        invite_students(input_path, github_token, organization, team);
     }
     else if(compare_string(command, "collect-homework"))
     {
@@ -852,10 +851,10 @@ eval(ArgParser *parser, Config *config)
         }
 
         char *title = next_arg(parser);
-        char *deadline = next_arg(parser);
+        char *in_time = next_arg(parser);
         char *cutoff_time = next_arg(parser);
         char *out_path = next_arg(parser);
-        if(!title || !deadline || !cutoff_time || show_command_usage)
+        if(!title || !in_time || !cutoff_time || show_command_usage)
         {
             char *usage =
                 "usage: hand2 collect-homework [--command-option] ... title deadline cutoff_time out_path"  "\n"
@@ -875,12 +874,12 @@ eval(ArgParser *parser, Config *config)
         char *organization = config->value[Config_organization];
         char *google_token = config->value[Config_google_token];
         char *spreadsheet_id = config->value[Config_spreadsheet];
-        char *user_key = config->value[Config_key_username];
+        char *student_key = config->value[Config_key_username];
         int penalty_per_day = atoi(config->value[Config_penalty_per_day]);
-        time_t late_submission_start = parse_time(deadline, TIME_ZONE_UTC8);
-        time_t late_submission_end = late_submission_start + atoi(cutoff_time) * 86400;
-        collect_homework(title, out_path, late_submission_start, late_submission_end, penalty_per_day, is_weekends_one_day, 
-                         github_token, organization, google_token, spreadsheet_id, user_key);
+        time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
+        time_t cutoff = deadline + atoi(cutoff_time) * 86400;
+        collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day, 
+                         github_token, organization, google_token, spreadsheet_id, student_key);
     }
     else if(compare_string(command, "grade-homework"))
     {
@@ -899,10 +898,10 @@ eval(ArgParser *parser, Config *config)
 
         char *title = next_arg(parser);
         char *template_repo = next_arg(parser);
-        char *deadline = next_arg(parser);
+        char *in_time = next_arg(parser);
         char *cutoff_time = next_arg(parser);
         char *out_path = next_arg(parser);
-        if(!title || !template_repo || !deadline || !cutoff_time || !out_path || show_command_usage)
+        if(!title || !template_repo || !in_time || !cutoff_time || !out_path || show_command_usage)
         {
             char *usage =
                 "usage: hand2 grade-homework [--command-option] ... title template_repo deadline cutoff_time out_path"  "\n"
@@ -924,18 +923,17 @@ eval(ArgParser *parser, Config *config)
         char *organization = config->value[Config_organization];
         char *google_token = config->value[Config_google_token];
         char *spreadsheet_id = config->value[Config_spreadsheet];
-        char *user_key = config->value[Config_key_username];
+        char *student_key = config->value[Config_key_username];
         char *id_key = config->value[Config_key_student_id];
         char *grade_command = config->value[Config_grade_command];
         char *feedback_repo = config->value[Config_feedback_repo];
         char *score_relative_path = config->value[Config_score_relative_path];
-        int grade_thread_count = atoi(config->value[Config_grade_thread_count]);
-        time_t late_submission_start = parse_time(deadline, TIME_ZONE_UTC8);
-        time_t late_submission_end = late_submission_start + atoi(cutoff_time) * 86400;
-        grade_homework(title, out_path, late_submission_start, late_submission_end,
-                       template_repo, feedback_repo, grade_command, score_relative_path,
-                       github_token, organization, google_token, spreadsheet_id, user_key, id_key,
-                       grade_thread_count, should_match_title);
+        int thread_count = atoi(config->value[Config_grade_thread_count]);
+        time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
+        time_t cutoff = deadline + atoi(cutoff_time) * 86400;
+        grade_homework(title, out_path, deadline, cutoff, template_repo, feedback_repo,
+                       grade_command, score_relative_path, thread_count, should_match_title,
+                       github_token, organization, google_token, spreadsheet_id, student_key, id_key);
     }
     else if(compare_string(command, "announce-grade"))
     {
@@ -962,12 +960,12 @@ eval(ArgParser *parser, Config *config)
             return;
         }
         char *feedback_repo = config->value[Config_feedback_repo];
-        char *spreadsheet = config->value[Config_spreadsheet];
-        char *username_key = config->value[Config_key_username];
+        char *spreadsheet_id = config->value[Config_spreadsheet];
+        char *student_key = config->value[Config_key_username];
         char *google_token = config->value[Config_google_token];
         char *github_token = config->value[Config_github_token];
         char *organization = config->value[Config_organization];
-        announce_grade(title, feedback_repo, google_token, spreadsheet, username_key, github_token, organization);
+        announce_grade(title, feedback_repo, github_token, organization, google_token, spreadsheet_id, student_key);
     }
     else if(compare_string(command, "patch-homework"))
     {
