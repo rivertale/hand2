@@ -1,34 +1,22 @@
 #define write_constant_string(buffer, array) write_growable_buffer(buffer, array, sizeof(array) - 1)
 
-static GrowableBuffer
-allocate_growable_buffer(void)
-{
-    size_t initial_size = 4096;
-    GrowableBuffer result = {0};
-    result.max = initial_size;
-    result.memory = allocate_memory(initial_size);
-    return result;
-}
-
 static void
 free_growable_buffer(GrowableBuffer *buffer)
 {
-    if(buffer->memory)
-    {
-        free(buffer->memory);
-    }
+    free_memory(buffer->memory);
     clear_memory(buffer, sizeof(*buffer));
 }
 
 static void
 reserve_growable_buffer(GrowableBuffer *buffer, size_t size)
 {
-    if(buffer->used + size > buffer->max)
+    size_t total_size = buffer->used + size + 1;
+    if(total_size > buffer->max)
     {
-        size_t allocated_size = next_pow_of_two(buffer->used + size);
+        size_t allocated_size = next_pow_of_two(total_size);
         char *memory = allocate_memory(allocated_size);
-
         copy_memory(memory, buffer->memory, buffer->used);
+        memory[buffer->used] = 0;
         free_memory(buffer->memory);
         buffer->max = allocated_size;
         buffer->memory = memory;
@@ -41,20 +29,29 @@ write_growable_buffer(GrowableBuffer *buffer, void *data, size_t size)
     reserve_growable_buffer(buffer, size);
     copy_memory(buffer->memory + buffer->used, data, size);
     buffer->used += size;
+    buffer->memory[buffer->used] = 0;
 }
 
 static void
 null_terminate(GrowableBuffer *buffer)
 {
-    if(buffer->used == 0 || buffer->memory[buffer->used - 1] != '\0')
-    {
-        char null_terminator = '\0';
-        write_growable_buffer(buffer, &null_terminator, sizeof(null_terminator));
-    }
+    reserve_growable_buffer(buffer, 0);
+    buffer->memory[buffer->used] = 0;
 }
 
 static GrowableBuffer
-read_entire_file_and_null_terminate(char *path)
+allocate_growable_buffer(void)
+{
+    size_t initial_size = 4096;
+    GrowableBuffer result = {0};
+    result.max = initial_size;
+    result.memory = allocate_memory(initial_size);
+    null_terminate(&result);
+    return result;
+}
+
+static GrowableBuffer
+read_entire_file(char *path)
 {
     GrowableBuffer buffer = allocate_growable_buffer();
     FILE *file = fopen(path, "rb");
@@ -84,17 +81,19 @@ static StringArray
 split_null_terminated_strings(GrowableBuffer *buffer)
 {
     StringArray result = {0};
-    null_terminate(buffer);
+    char prev_char;
 
+    prev_char = 0;
     for(size_t i = 0; i < buffer->used; ++i)
     {
-        if(buffer->memory[i] == '\0') ++result.count;
+        if(!prev_char) { ++result.count; }
+        prev_char = buffer->memory[i];
     }
 
     result.buffer = *buffer;
     result.elem = (char **)allocate_memory(result.count * sizeof(char *));
-    char prev_char = 0;
     int index = 0;
+    prev_char = 0;
     for(size_t i = 0; i < buffer->used; ++i)
     {
         char *c = buffer->memory + i;
@@ -108,9 +107,9 @@ static StringArray
 split_by_whitespace(GrowableBuffer *buffer)
 {
     StringArray result = {0};
-    null_terminate(buffer);
+    char prev_char;
 
-    char prev_char = 0;
+    prev_char = 0;
     for(size_t i = 0; i < buffer->used; ++i)
     {
         char *c = buffer->memory + i;
@@ -122,8 +121,8 @@ split_by_whitespace(GrowableBuffer *buffer)
 
     result.buffer = *buffer;
     result.elem = (char **)allocate_memory(result.count * sizeof(char *));
-    prev_char = 0;
     int index = 0;
+    prev_char = 0;
     for(size_t i = 0; i < buffer->used; ++i)
     {
         char *c = buffer->memory + i;
@@ -187,14 +186,14 @@ escape_growable_buffer(GrowableBuffer *buffer)
 		switch(c)
 		{
 			// NOTE: json escape sequences are from https://www.json.org/json-en.html
-			case '\"': { write_growable_buffer(&result, "\\\"", 2); } break;
-			case '\\': { write_growable_buffer(&result, "\\", 2); } break;
-			case '/': { write_growable_buffer(&result, "\\/", 2); } break;
-			case '\b': { write_growable_buffer(&result, "\\b", 2); } break;
-			case '\f': { write_growable_buffer(&result, "\\f", 2); } break;
-			case '\n': { write_growable_buffer(&result, "\\n", 2); } break;
-			case '\r': { write_growable_buffer(&result, "\\r", 2); } break;
-			case '\t': { write_growable_buffer(&result, "\\t", 2); } break;
+			case '\"': { write_constant_string(&result, "\\\""); } break;
+			case '\\': { write_constant_string(&result, "\\\\"); } break;
+			case '/': { write_constant_string(&result, "\\/"); } break;
+			case '\b': { write_constant_string(&result, "\\b"); } break;
+			case '\f': { write_constant_string(&result, "\\f"); } break;
+			case '\n': { write_constant_string(&result, "\\n"); } break;
+			case '\r': { write_constant_string(&result, "\\r"); } break;
+			case '\t': { write_constant_string(&result, "\\t"); } break;
 			default: { write_growable_buffer(&result, &c, 1); } break;
 		}
 	}
@@ -224,6 +223,7 @@ read_string_array_file(char *path)
     {
         write_log("file '%s' not exist", path);
     }
+    null_terminate(&buffer);
     return split_by_whitespace(&buffer);
 }
 

@@ -170,7 +170,7 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
             write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s",
                          late_submission_count, delay,
                          t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
-                         repos.elem[index], hash[index]);
+                         repos.elem[index], hash[index].trim);
         }
         fprintf(out_file, "%d%%\n", max(100 - penalty_per_day * delay, 0));
     }
@@ -223,8 +223,8 @@ format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *template,
                     static char path[MAX_PATH_LEN];
                     if(format_string(path, MAX_PATH_LEN, "%s/%s", dir, identifier))
                     {
-                        GrowableBuffer replacement = read_entire_file_and_null_terminate(path);
-                        write_growable_buffer(out, replacement.memory, string_len(replacement.memory));
+                        GrowableBuffer replacement = read_entire_file(path);
+                        write_growable_buffer(out, replacement.memory, replacement.used);
                         free_growable_buffer(&replacement);
                     }
                     else
@@ -270,7 +270,6 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                char *command, char *score_relative_path, int thread_count, int should_match_title,
                char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
 {
-    (void)deadline;
     tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
     write_log("[grade homework] title='%s', out_path='%s', "
@@ -282,7 +281,6 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
               t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec,
               template_repo, feedback_repo, command, score_relative_path, thread_count, should_match_title,
               organization, spreadsheet_id, student_key, id_key);
-
 
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
@@ -343,7 +341,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         sync_repository(feedback_dir, feedback_url, 0);
         platform.create_directory(feedback_homework_dir);
         platform.create_directory(feedback_report_dir);
-        GrowableBuffer report_template = read_entire_file_and_null_terminate(report_template_path);
+        GrowableBuffer report_template = read_entire_file(report_template_path);
 
         write_output("Retrieving student repositories...");
         int work_count = 0;
@@ -423,7 +421,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
                format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
             {
-                GrowableBuffer score_content = read_entire_file_and_null_terminate(score_path);
+                GrowableBuffer score_content = read_entire_file(score_path);
                 for(char *c = score_content.memory; *c; ++c)
                 {
                     if('0' <= *c && *c <= '9')
@@ -440,7 +438,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                     FILE *report_file = fopen(report_path, "wb");
                     if(report_file)
                     {
-                        fwrite(report.memory, string_len(report.memory), 1, report_file);
+                        fwrite(report.memory, report.used, 1, report_file);
                         fclose(report_file);
                     }
                 }
@@ -457,6 +455,8 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         write_output("    Total student: %d", sheet.height);
         write_output("    Total submission: %d", repos.count);
         write_output("    Failed submission: %d", failure_count);
+        write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
+                     t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
         write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
                      t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
         write_output("NOTE: reports generated at '%s', remember to push the reports", feedback_report_dir);
@@ -584,9 +584,9 @@ announce_grade(char *title, char *feedback_repo,
                         char *student_id = get_value(&sheet, id_x, y);
                         if(format_string(template_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id))
                         {
-                            GrowableBuffer content = read_entire_file_and_null_terminate(template_path);
+                            GrowableBuffer content = read_entire_file(template_path);
                             // TODO: why uses string_len when we have content.used, consolidate GrowableBuffer
-                            write_growable_buffer(&template_buffer, content.memory, string_len(content.memory));
+                            write_growable_buffer(&template_buffer, content.memory, content.used);
                         }
                         write_constant_string(&template_buffer, "\0");
                     }

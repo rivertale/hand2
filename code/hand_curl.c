@@ -403,7 +403,7 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
 
             // NOTE: must align to the number of repository, so we write a empty string even when we can't find the
             // default branch name
-            write_growable_buffer(&buffer, "\0", 1);
+            write_constant_string(&buffer, "\0");
         }
         end_curl_group(&group);
     }
@@ -525,8 +525,8 @@ retrieve_users_in_team(char *github_token, char *organization, char *team)
                 {
                     size_t len = string_len(username->valuestring);
                     write_growable_buffer(&buffer, username->valuestring, len);
-                    null_terminate(&buffer);
                 }
+                write_constant_string(&buffer, "\0");
             }
             cJSON_Delete(json);
             if(count_in_page == 0) break;
@@ -572,8 +572,8 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
                 {
                     size_t len = string_len(username->valuestring);
                     write_growable_buffer(&buffer, username->valuestring, len);
-                    null_terminate(&buffer);
                 }
+                write_constant_string(&buffer, "\0");
             }
             cJSON_Delete(json);
             if(count_in_page == 0) break;
@@ -619,7 +619,7 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
                 {
                     size_t len = string_len(repo_name->valuestring);
                     write_growable_buffer(&buffer, repo_name->valuestring, len);
-                    null_terminate(&buffer);
+                    write_constant_string(&buffer, "\0");
                 }
             }
             cJSON_Delete(json);
@@ -842,7 +842,7 @@ create_pull_request(char *github_token, char *organization, char *repo,
         write_growable_buffer(&post_data, branch, string_len(branch));
         write_constant_string(&post_data, "\",\"base\":\"");
         write_growable_buffer(&post_data, branch_to_merge, string_len(branch_to_merge));
-        write_constant_string(&post_data, "\"}\0");
+        write_constant_string(&post_data, "\"}");
 
         CurlGroup group = begin_curl_group(1);
         assign_github_post_like(&group, 0, url, github_token, "POST", post_data.memory);
@@ -872,7 +872,6 @@ create_issue(char *github_token, char *organization, char *repo, char *title, ch
         write_constant_string(&post_data, "\",\"body\":\"");
         write_growable_buffer(&post_data, body, string_len(body));
         write_constant_string(&post_data, "\",\"state\":\"open\"}");
-        null_terminate(&post_data);
 
         CurlGroup group = begin_curl_group(1);
         assign_github_post_like(&group, 0, url, github_token, "POST", post_data.memory);
@@ -902,7 +901,6 @@ edit_issue(char *github_token, char *organization, char *repo, char *title, char
         write_constant_string(&post_data, "\",\"body\":\"");
         write_growable_buffer(&post_data, body, string_len(body));
         write_constant_string(&post_data, "\",\"state\":\"open\"}");
-        null_terminate(&post_data);
 
         CurlGroup group = begin_curl_group(1);
         assign_github_post_like(&group, 0, url, github_token, "PATCH", post_data.memory);

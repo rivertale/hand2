@@ -316,6 +316,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
                             char *stdout_ptr = stdout_content.memory + stdout_content.used;
                             more_stdout = ReadFile(stdout_read_handle, stdout_ptr, byte_available, &byte_read, 0);
                             if(more_stdout) { stdout_content.used += byte_read; }
+                            null_terminate(&stdout_content);
                         }
                         else
                         {
@@ -335,6 +336,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
                             char *stderr_ptr = stderr_content.memory + stderr_content.used;
                             more_stderr = ReadFile(stderr_read_handle, stderr_ptr, byte_available, &byte_read, 0);
                             if(more_stderr) { stderr_content.used += byte_read; }
+                            null_terminate(&stderr_content);
                         }
                         else
                         {
@@ -400,7 +402,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
         FILE *file = fopen(stdout_path, "wb");
         if(file)
         {
-            fwrite(stdout_content.memory, string_len(stdout_content.memory), 1, file);
+            fwrite(stdout_content.memory, stdout_content.used, 1, file);
             fclose(file);
         }
     }
@@ -409,7 +411,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
         FILE *file = fopen(stderr_path, "wb");
         if(file)
         {
-            fwrite(stderr_content.memory, string_len(stderr_content.memory), 1, file);
+            fwrite(stderr_content.memory, stderr_content.used, 1, file);
             fclose(file);
         }
     }
