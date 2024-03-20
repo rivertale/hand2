@@ -1,6 +1,8 @@
 #include <windows.h>
 typedef SOCKET curl_socket_t;
 #include "hand.c"
+static HANDLE global_work_dir_lock = 0;
+static wchar_t *global_work_dir = 0;
 
 static size_t
 win32_utf16_len(wchar_t *string)
@@ -261,6 +263,8 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
         ReleaseMutex(callback_lock);
     }
 
+    GrowableBuffer stdout_content = allocate_growable_buffer();
+    GrowableBuffer stderr_content = allocate_growable_buffer();
     int utf16_command_len = MultiByteToWideChar(CP_UTF8, 0, command, -1, 0, 0);
     int utf16_work_dir_len = MultiByteToWideChar(CP_UTF8, 0, work_dir, -1, 0, 0);
     wchar_t *utf16_command = (wchar_t *)allocate_memory(utf16_command_len * sizeof(wchar_t));
@@ -268,58 +272,156 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
     if(MultiByteToWideChar(CP_UTF8, 0, command, -1, utf16_command, utf16_command_len) &&
        MultiByteToWideChar(CP_UTF8, 0, work_dir, -1, utf16_work_dir, utf16_work_dir_len))
     {
-        HANDLE stdout_handle = INVALID_HANDLE_VALUE;
-        HANDLE stderr_handle = INVALID_HANDLE_VALUE;
-        if(global_log_file && stdout_path)
+        HANDLE stdout_read_handle, stdout_write_handle;
+        HANDLE stderr_read_handle, stderr_write_handle;
+        SECURITY_ATTRIBUTES attrib = {0};
+        attrib.nLength = sizeof(attrib);
+        attrib.bInheritHandle = 1;
+        BOOL stdout_created = CreatePipe(&stdout_read_handle, &stdout_write_handle, &attrib, 0);
+        BOOL stderr_created = CreatePipe(&stderr_read_handle, &stderr_write_handle, &attrib, 0);
+        if(stdout_created && stderr_created &&
+           SetHandleInformation(stdout_read_handle, HANDLE_FLAG_INHERIT, 0) &&
+           SetHandleInformation(stderr_read_handle, HANDLE_FLAG_INHERIT, 0))
         {
-            int utf16_stdout_len = MultiByteToWideChar(CP_UTF8, 0, stdout_path, -1, 0, 0);
-            wchar_t *utf16_stdout = (wchar_t *)allocate_memory(utf16_stdout_len * sizeof(wchar_t));
-            if(MultiByteToWideChar(CP_UTF8, 0, stdout_path, -1, utf16_stdout, utf16_stdout_len))
-            {
-                stdout_handle = CreateFileW(utf16_stdout, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
-                free_memory(utf16_stdout);
-            }
-        }
-        if(global_log_file && stderr_path)
-        {
-            int utf16_stderr_len = MultiByteToWideChar(CP_UTF8, 0, stderr_path, -1, 0, 0);
-            wchar_t *utf16_stderr = (wchar_t *)allocate_memory(utf16_stderr_len * sizeof(wchar_t));
-            if(MultiByteToWideChar(CP_UTF8, 0, stderr_path, -1, utf16_stderr, utf16_stderr_len))
-            {
-                stderr_handle = CreateFileW(utf16_stderr, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
-                free_memory(utf16_stderr);
-            }
-        }
+            STARTUPINFOW startup_info = {0};
+            startup_info.cb = sizeof(startup_info);
+            startup_info.dwFlags |= STARTF_USESTDHANDLES;
+            startup_info.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+            startup_info.hStdOutput = stdout_write_handle;
+            startup_info.hStdError = stderr_write_handle;
+            PROCESS_INFORMATION process_info;
 
-        STARTUPINFOW startup_info = {0};
-        startup_info.cb = sizeof(startup_info);
-        startup_info.dwFlags |= STARTF_USESTDHANDLES;
-        startup_info.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-        startup_info.hStdOutput = (stdout_handle != INVALID_HANDLE_VALUE) ? stdout_handle : GetStdHandle(STD_OUTPUT_HANDLE);
-        startup_info.hStdError = (stderr_handle != INVALID_HANDLE_VALUE) ? stderr_handle : GetStdHandle(STD_ERROR_HANDLE);
-        PROCESS_INFORMATION process_info;
-        if(CreateProcessW(0, utf16_command, 0, 0, 1, 0, 0, utf16_work_dir, &startup_info, &process_info))
-        {
-            if(stdout_handle != INVALID_HANDLE_VALUE) { CloseHandle(stdout_handle); }
-            if(stderr_handle != INVALID_HANDLE_VALUE) { CloseHandle(stderr_handle); }
+            WaitForSingleObject(global_work_dir_lock, INFINITE);
+            SetCurrentDirectoryW(utf16_work_dir);
+            BOOL process_created = CreateProcessW(0, utf16_command, 0, 0, 1, 0, 0, utf16_work_dir, &startup_info, &process_info);
+            SetCurrentDirectoryW(global_work_dir);
+            ReleaseMutex(global_work_dir_lock);
 
-            DWORD exit_dword;
-            if(WaitForSingleObject(process_info.hProcess, INFINITE) == WAIT_OBJECT_0 &&
-               GetExitCodeProcess(process_info.hProcess, &exit_dword))
+            CloseHandle(stdout_write_handle);
+            CloseHandle(stderr_write_handle);
+            if(process_created)
             {
-                exit_code = exit_dword;
+                int more_stdout = 1;
+                int more_stderr = 1;
+                while(more_stdout || more_stderr)
+                {
+                    DWORD timeout = 100;
+                    DWORD byte_read;
+                    DWORD byte_available;
+                    if(more_stdout && PeekNamedPipe(stdout_read_handle, 0, 0, 0, &byte_available, 0))
+                    {
+                        if(byte_available > 0)
+                        {
+                            reserve_growable_buffer(&stdout_content, byte_available);
+                            char *stdout_ptr = stdout_content.memory + stdout_content.used;
+                            more_stdout = ReadFile(stdout_read_handle, stdout_ptr, byte_available, &byte_read, 0);
+                            if(more_stdout) { stdout_content.used += byte_read; }
+                        }
+                        else
+                        {
+                            WaitForSingleObject(stdout_read_handle, timeout);
+                        }
+                    }
+                    else
+                    {
+                        more_stdout = 0;
+                    }
+
+                    if(more_stderr && PeekNamedPipe(stderr_read_handle, 0, 0, 0, &byte_available, 0))
+                    {
+                        if(byte_available > 0)
+                        {
+                            reserve_growable_buffer(&stderr_content, byte_available);
+                            char *stderr_ptr = stderr_content.memory + stderr_content.used;
+                            more_stderr = ReadFile(stderr_read_handle, stderr_ptr, byte_available, &byte_read, 0);
+                            if(more_stderr) { stderr_content.used += byte_read; }
+                        }
+                        else
+                        {
+                            WaitForSingleObject(stderr_read_handle, timeout);
+                        }
+                    }
+                    else
+                    {
+                        more_stderr = 0;
+                    }
+                }
+
+                DWORD win32_exit_code;
+                if(WaitForSingleObject(process_info.hProcess, INFINITE) == WAIT_OBJECT_0 &&
+                   GetExitCodeProcess(process_info.hProcess, &win32_exit_code))
+                {
+                    exit_code = win32_exit_code;
+                }
+                else
+                {
+                    write_constant_string(&stderr_content, "Unable to obtain exit code");
+                }
+            }
+            else
+            {
+                write_constant_string(&stderr_content, "Unable to create process");
             }
             CloseHandle(process_info.hProcess);
             CloseHandle(process_info.hThread);
+            CloseHandle(stdout_read_handle);
+            CloseHandle(stderr_read_handle);
+        }
+        else
+        {
+            write_constant_string(&stderr_content, "Unable to create pipe");
+            if(stdout_created)
+            {
+                CloseHandle(stdout_read_handle);
+                CloseHandle(stdout_write_handle);
+            }
+            if(stderr_created)
+            {
+                CloseHandle(stderr_read_handle);
+                CloseHandle(stderr_write_handle);
+            }
+        }
+    }
+    else
+    {
+        write_constant_string(&stderr_content, "MultiByteToWideChar failed\n");
+        write_growable_buffer(&stderr_content, command, string_len(command));
+        write_constant_string(&stderr_content, "\n");
+        write_growable_buffer(&stderr_content, work_dir, string_len(work_dir));
+        write_constant_string(&stderr_content, "\n");
+    }
+    free_memory(utf16_work_dir);
+    free_memory(utf16_command);
+    null_terminate(&stdout_content);
+    null_terminate(&stderr_content);
+
+    if(stdout_path)
+    {
+        FILE *file = fopen(stdout_path, "wb");
+        if(file)
+        {
+            fwrite(stdout_content.memory, string_len(stdout_content.memory), 1, file);
+            fclose(file);
+        }
+    }
+    if(stderr_path)
+    {
+        FILE *file = fopen(stderr_path, "wb");
+        if(file)
+        {
+            fwrite(stderr_content.memory, string_len(stderr_content.memory), 1, file);
+            fclose(file);
         }
     }
 
-    if(context->on_done)
+    if(context->on_complete)
     {
         WaitForSingleObject(callback_lock, INFINITE);
-        context->on_done(index, context->work_count, exit_code, work_dir, stderr_path);
+        context->on_complete(index, context->work_count, exit_code, work_dir, stdout_content.memory, stderr_content.memory);
         ReleaseMutex(callback_lock);
     }
+    free_growable_buffer(&stdout_content);
+    free_growable_buffer(&stderr_content);
     return exit_code;
 }
 
@@ -345,7 +447,7 @@ win32_thread_proc(LPVOID param)
 
 static void
 win32_wait_for_completion(int thread_count, int work_count, Work *works,
-                          WorkOnProgressCallback *on_progress, WorkOnDoneCallback *on_done)
+                          WorkOnProgressCallback *on_progress, WorkOnCompleteCallback *on_complete)
 {
     HANDLE callback_lock = CreateMutexA(0, 0, 0);
     if(callback_lock)
@@ -360,7 +462,7 @@ win32_wait_for_completion(int thread_count, int work_count, Work *works,
             contexts[i].works = works;
             contexts[i].next_to_work = &next_to_work;
             contexts[i].on_progress = on_progress;
-            contexts[i].on_done = on_done;
+            contexts[i].on_complete = on_complete;
             contexts[i].callback_lock = (void *)callback_lock;
             thread_handles[i] = CreateThread(0, 1024 * 1024, win32_thread_proc, &contexts[i], 0, 0);
         }
@@ -373,6 +475,7 @@ win32_wait_for_completion(int thread_count, int work_count, Work *works,
         }
         free_memory(contexts);
         free_memory(thread_handles);
+        CloseHandle(callback_lock);
     }
     else
     {
@@ -567,7 +670,25 @@ main(int arg_count, char **args)
     if(!win32_init_curl()) return 0;
     if(!win32_init_git()) return 0;
 
+    global_work_dir_lock = CreateMutexA(0, 0, 0);
+    if(!global_work_dir_lock)
+    {
+        write_error("CreateMutexA: %d", GetLastError());
+        return 0;
+    }
+
+    DWORD work_dir_len = GetCurrentDirectoryW(0, 0);
+    global_work_dir = (wchar_t *)allocate_memory(work_dir_len * sizeof(wchar_t));
+    if(!GetCurrentDirectoryW(work_dir_len, global_work_dir))
+    {
+        write_error("GetCurrentDirectory: %d", GetLastError());
+        return 0;
+    }
+
     run_hand(arg_count - 1, args + 1);
+
+    free_memory(global_work_dir);
+    CloseHandle(global_work_dir_lock);
     win32_cleanup_curl();
     win32_cleanup_git();
     return 0;

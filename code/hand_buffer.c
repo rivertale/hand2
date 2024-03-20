@@ -144,14 +144,14 @@ escape_string_array(StringArray *array)
             switch(*c)
             {
                 // NOTE: json escape sequences are from https://www.json.org/json-en.html
-                case '\"': { write_growable_buffer(&buffer, "\\\"", 2); } break;
-                case '\\': { write_growable_buffer(&buffer, "\\", 2); } break;
-                case '/': { write_growable_buffer(&buffer, "\\/", 2); } break;
-                case '\b': { write_growable_buffer(&buffer, "\\b", 2); } break;
-                case '\f': { write_growable_buffer(&buffer, "\\f", 2); } break;
-                case '\n': { write_growable_buffer(&buffer, "\\n", 2); } break;
-                case '\r': { write_growable_buffer(&buffer, "\\r", 2); } break;
-                case '\t': { write_growable_buffer(&buffer, "\\t", 2); } break;
+                case '\"': { write_constant_string(&buffer, "\\\""); } break;
+                case '\\': { write_constant_string(&buffer, "\\\\"); } break;
+                case '/': { write_constant_string(&buffer, "\\/"); } break;
+                case '\b': { write_constant_string(&buffer, "\\b"); } break;
+                case '\f': { write_constant_string(&buffer, "\\f"); } break;
+                case '\n': { write_constant_string(&buffer, "\\n"); } break;
+                case '\r': { write_constant_string(&buffer, "\\r"); } break;
+                case '\t': { write_constant_string(&buffer, "\\t"); } break;
                 default: { write_growable_buffer(&buffer, &c, 1); } break;
             }
         }

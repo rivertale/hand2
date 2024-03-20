@@ -11,10 +11,10 @@ install ./apps/openssl.cnf -> /deps/ssl/ssl/openssl.cnf
 install ./apps/ct_log_list.cnf -> /deps/ssl/ssl/ct_log_list.cnf.dist
 install ./apps/ct_log_list.cnf -> /deps/ssl/ssl/ct_log_list.cnf
 make[1]: Entering directory '/deps/openssl-3.2.0'
-make[1]: Entering directory '/deps/openssl-3.2.0'
+make[1]: Leaving directory '/deps/openssl-3.2.0'
 make[1]: Entering directory '/deps/openssl-3.2.0'
 make[1]: Leaving directory '/deps/openssl-3.2.0'
-make[1]: Leaving directory '/deps/openssl-3.2.0'
+make[1]: Entering directory '/deps/openssl-3.2.0'
 make[1]: Leaving directory '/deps/openssl-3.2.0'
 make[1]: Entering directory '/deps/openssl-3.2.0'
 make[1]: Nothing to be done for '_build_modules'.
@@ -29,13 +29,13 @@ created directory `/deps/ssl/lib64'
 *** Installing runtime libraries
 *** Installing development files
 created directory `/deps/ssl/lib64/engines-3'
+*** Installing engines
+created directory `/deps/ssl/lib64/ossl-modules'
 created directory `/deps/ssl/include'
 created directory `/deps/ssl/include/openssl'
 created directory `/deps/ssl/bin'
-*** Installing engines
-created directory `/deps/ssl/lib64/ossl-modules'
-*** Installing runtime programs
 *** Installing modules
+*** Installing runtime programs
 install ./include/openssl/aes.h -> /deps/ssl/include/openssl/aes.h
 install ./include/openssl/asn1.h -> /deps/ssl/include/openssl/asn1.h
 install ./include/openssl/asn1_mac.h -> /deps/ssl/include/openssl/asn1_mac.h

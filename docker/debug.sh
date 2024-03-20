@@ -1,7 +1,7 @@
 #!/bin/sh
 image_name="hand2_linux"
 
-# build docker
+# build docker if needed
 cd $(dirname "$0")
 docker inspect --type=image ${image_name} 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]
@@ -21,7 +21,13 @@ done
 # debug hand2
 cd $(dirname "$0")
 cd ..
-docker run -it --rm --security-opt seccomp=unconfined --user $(id -u):$(id -g) --volume $(pwd):/hand ${image_name} sh -c "
-    cd /hand/build
-    gdb --args hand_gcc ${args}
-"
+docker run --rm --interactive --tty --security-opt seccomp=unconfined \
+    --volume $(pwd):$(pwd) \
+    --volume /var/run/docker.sock:/var/run/docker.sock \
+    --workdir $(pwd)/build \
+    ${image_name} sh -c "
+        groupadd --gid $(id -g) ghand
+        useradd --uid $(id -u) --gid $(id -g) uhand
+        chmod 666 /var/run/docker.sock
+        sudo --user=uhand gdb --args hand_gcc ${args}
+    "

@@ -256,12 +256,12 @@ grade_homework_on_progress(int index, int count, char *work_dir)
 }
 
 static void
-grade_homework_on_done(int index, int count, int exit_code, char *work_dir, char *stderr_path)
+grade_homework_on_complete(int index, int count, int exit_code, char *work_dir, char *stdout_content, char *stderr_content)
 {
+    (void)stdout_content;
     if(exit_code != 0)
     {
-        GrowableBuffer error = read_entire_file_and_null_terminate(stderr_path);
-        write_output("[%d/%d] Fail '%s'\n%s", index + 1, count, work_dir, error.memory);
+        write_output("[%d/%d] Fail '%s'\n%s", index + 1, count, work_dir, stderr_content);
     }
 }
 
@@ -271,7 +271,18 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
 {
     (void)deadline;
+    tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
+    write_log("[grade homework] title='%s', out_path='%s', "
+              "deadline='%d-%02d-%02d_%02d:%02d:%02d', cutoff='%d-%02d-%02d_%02d:%02d:%02d', "
+              "template_repo='%s', feedback_repo='%s', command='%s', score_relative_path='%s', "
+              "thread_count='%d', should_match_title='%d', organization='%s', spreadsheet_id='%s', student_key='%s', id_key='%s'",
+              title, out_path,
+              t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
+              t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec,
+              template_repo, feedback_repo, command, score_relative_path, thread_count, should_match_title,
+              organization, spreadsheet_id, student_key, id_key);
+
 
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
@@ -357,15 +368,22 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                              "%s/logs/%s_%s_stderr.log", global_root_dir, repos.elem[i], hash[i].trim))
             {
                 ++work_count;
+                // IMPORTANT: After mounting a volume for the first time on wsl with "docker run -v", change the
+                // volume's content seems to mess up the ".." inode that navigates to /mnt
+                //
+                // For example, after deleting and copying the modified files into the volume, the inode
+                // "../../.." that navigate to /mnt become the same as "../../."
+                //
+                // I don't know why, I don't want to know why, I shouldn't wonder why, just don't use WSL
                 if(!platform.directory_exists(work->work_dir))
                 {
                     write_output("Retrieving homework from '%s'", repos.elem[i]);
                     sync_repository(work->work_dir, url, &hash[i]);
+                    platform.delete_directory(test_dir);
+                    platform.delete_directory(docker_dir);
+                    platform.copy_directory(test_dir, template_test_dir);
+                    platform.copy_directory(docker_dir, template_docker_dir);
                 }
-                platform.delete_directory(test_dir);
-                platform.delete_directory(docker_dir);
-                platform.copy_directory(test_dir, template_test_dir);
-                platform.copy_directory(docker_dir, template_docker_dir);
             }
             else
             {
@@ -374,7 +392,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         }
 
         write_output("Start grading...");
-        platform.wait_for_completion(thread_count, work_count, works, grade_homework_on_progress, grade_homework_on_done);
+        platform.wait_for_completion(thread_count, work_count, works, grade_homework_on_progress, grade_homework_on_complete);
 
         for(int i = 0; i < work_count; ++i)
         {
@@ -441,7 +459,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         write_output("    Failed submission: %d", failure_count);
         write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
                      t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
-        write_output("NOTE: reports generated at '%s', remember to push reports", feedback_report_dir);
+        write_output("NOTE: reports generated at '%s', remember to push the reports", feedback_report_dir);
         fclose(out_file);
     }
     else
@@ -450,40 +468,22 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
     }
 }
 
-static StringArray
-list_files_with_extension(char *dir, char *extension)
-{
-    GrowableBuffer buffer = allocate_growable_buffer();
-    static char path[MAX_PATH_LEN];
-
-    FileIter file_iter;
-    for(file_iter = platform.begin_iterate_file(path, MAX_PATH_LEN, dir, extension);
-        platform.file_iter_is_valid(&file_iter);
-        platform.file_iter_advance(&file_iter))
-    {
-        write_growable_buffer(&buffer, path, string_len(path));
-        write_constant_string(&buffer, "\0");
-    }
-    platform.end_iterate_file(&file_iter);
-    return split_null_terminated_strings(&buffer);
-}
-
 static int
-format_feedback_issues(StringArray *out, char *template, Sheet *sheet, StringArray *postfixes)
+format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
 {
     int success = 1;
-    assert(sheet->height == postfixes->count);
+    assert(format->count == sheet->height);
 
     GrowableBuffer buffer = allocate_growable_buffer();
     for(int y = 0; y < sheet->height; ++y)
     {
         int depth = 0;
         char *identifier = 0;
-        for(char *c = template; *c; ++c)
+        for(char *c = format->elem[y]; *c; ++c)
         {
-            if(c[0] == '\\' && (c[1] == '$' || c[1] == '{' || c[1] == '}'))
+            if(c[0] == '$' && c[1] == '$')
             {
-                write_growable_buffer(&buffer, &c[1], 1);
+                write_constant_string(&buffer, "$");
                 ++c;
             }
             else if(c[0] == '$' && c[1] == '{')
@@ -500,8 +500,8 @@ format_feedback_issues(StringArray *out, char *template, Sheet *sheet, StringArr
                     *c = '}';
                     if(x >= 0)
                     {
-                        char *substituded = get_value(sheet, x, y);
-                        write_growable_buffer(&buffer, substituded, string_len(substituded));
+                        char *replacement = get_value(sheet, x, y);
+                        write_growable_buffer(&buffer, replacement, string_len(replacement));
                     }
                     else
                     {
@@ -509,22 +509,15 @@ format_feedback_issues(StringArray *out, char *template, Sheet *sheet, StringArr
                         success = 0;
                     }
                 }
-
-                if(depth > 0) { --depth; }
-                else
-                {
-                    // TODO: error
-                }
+                depth = max(depth - 1, 0);
             }
-            else
+            else if(depth == 0)
             {
                 write_growable_buffer(&buffer, c, 1);
             }
         }
-        write_growable_buffer(&buffer, postfixes->elem[y], string_len(postfixes->elem[y]));
-        write_growable_buffer(&buffer, "\0", 1);
+        write_constant_string(&buffer, "\0");
     }
-
 
     if(success)
     {
@@ -541,35 +534,35 @@ format_feedback_issues(StringArray *out, char *template, Sheet *sheet, StringArr
 
 static void
 announce_grade(char *title, char *feedback_repo,
-               char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key)
+               char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
 {
     write_log("[announce grade] title='%s', feedback_repo='%s', spreadsheet_id='%s', student_key='%s', organization='%s'",
               title, feedback_repo, spreadsheet_id, student_key, organization);
 
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-    if(sheet.width == 0 || sheet.height == 0)
+    if(sheet.width && sheet.height)
     {
         int student_x = find_key_index(&sheet, student_key);
-        if(student_x >= 0)
+        int id_x = find_key_index(&sheet, id_key);
+        if(student_x >= 0 && id_x >= 0)
         {
-            int student_count = sheet.height;
             static char issue_title[256];
             static char username[MAX_URL_LEN];
             static char feedback_url[MAX_URL_LEN];
             static char feedback_dir[MAX_PATH_LEN];
+            static char feedback_homework_dir[MAX_PATH_LEN];
             static char feedback_report_dir[MAX_PATH_LEN];
-            static char report_template_path[MAX_PATH_LEN];
             if(retrieve_username(username, MAX_URL_LEN, github_token) &&
                format_string(issue_title, sizeof(issue_title), "Grade for %", title) &&
                format_string(feedback_url, MAX_URL_LEN,
                              "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, feedback_repo) &&
                format_string(feedback_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, feedback_repo) &&
-               format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports", feedback_dir, title) &&
-               format_string(report_template_path, MAX_PATH_LEN, "%s/report_template.md", feedback_dir))
+               format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s", feedback_dir, title) &&
+               format_string(feedback_report_dir, MAX_PATH_LEN, "%s/reports", feedback_homework_dir))
             {
                 // NOTE: repos_buffer will be free by repos
                 GrowableBuffer repos_buffer = allocate_growable_buffer();
-                for(int y = 0; y < student_count; ++y)
+                for(int y = 0; y < sheet.height; ++y)
                 {
                     char *student = get_value(&sheet, student_x, y);
                     write_growable_buffer(&repos_buffer, title, string_len(title));
@@ -578,29 +571,40 @@ announce_grade(char *title, char *feedback_repo,
                     write_constant_string(&repos_buffer, "\0");
                 }
                 StringArray repos = split_null_terminated_strings(&repos_buffer);
-                int *issue_numbers = (int *)allocate_memory(student_count * sizeof(*issue_numbers));
+                int *issue_numbers = (int *)allocate_memory(sheet.height * sizeof(*issue_numbers));
                 retrieve_issue_numbers_by_title(issue_numbers, &repos, github_token, organization, issue_title);
 
-                // TODO: how to assure all feedbacks in feedback_repo are used (make sure no typo).
-                // TODO: clone and open the files.
                 git_repository *repo_handle = sync_repository(feedback_dir, feedback_url, 0);
                 if(repo_handle)
                 {
-                    StringArray feedbacks = list_files_with_extension(feedback_report_dir, "md");
-                    StringArray issue_bodies;
-                    GrowableBuffer template = read_entire_file_and_null_terminate(report_template_path);
-                    if(format_feedback_issues(&issue_bodies, template.memory, &sheet, &feedbacks))
+                    GrowableBuffer template_buffer = allocate_growable_buffer();
+                    static char template_path[MAX_PATH_LEN];
+                    for(int y = 0; y < sheet.height; ++y)
                     {
-                        StringArray escaped_issue_body = escape_string_array(&issue_bodies);
+                        char *student_id = get_value(&sheet, id_x, y);
+                        if(format_string(template_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id))
+                        {
+                            GrowableBuffer content = read_entire_file_and_null_terminate(template_path);
+                            // TODO: why uses string_len when we have content.used, consolidate GrowableBuffer
+                            write_growable_buffer(&template_buffer, content.memory, string_len(content.memory));
+                        }
+                        write_constant_string(&template_buffer, "\0");
+                    }
+
+                    StringArray issue_bodies;
+                    StringArray templates = split_null_terminated_strings(&template_buffer);
+                    if(format_feedback_issues(&issue_bodies, &templates, &sheet))
+                    {
+                        StringArray escaped_issue_bodies = escape_string_array(&issue_bodies);
                         for(int i = 0; i < repos.count; ++i)
                         {
                             if(issue_numbers[i])
                             {
-                                edit_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_body.elem[i], issue_numbers[i]);
+                                edit_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_bodies.elem[i], issue_numbers[i]);
                             }
                             else
                             {
-                                create_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_body.elem[i]);
+                                create_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_bodies.elem[i]);
                             }
                         }
                     }
@@ -962,10 +966,11 @@ eval(ArgParser *parser, Config *config)
         char *feedback_repo = config->value[Config_feedback_repo];
         char *spreadsheet_id = config->value[Config_spreadsheet];
         char *student_key = config->value[Config_key_username];
+        char *id_key = config->value[Config_key_student_id];
         char *google_token = config->value[Config_google_token];
         char *github_token = config->value[Config_github_token];
         char *organization = config->value[Config_organization];
-        announce_grade(title, feedback_repo, github_token, organization, google_token, spreadsheet_id, student_key);
+        announce_grade(title, feedback_repo, github_token, organization, google_token, spreadsheet_id, student_key, id_key);
     }
     else if(compare_string(command, "patch-homework"))
     {

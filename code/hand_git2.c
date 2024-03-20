@@ -138,6 +138,7 @@ sync_repository(char *dir_path, char *url, GitCommitHash *hash)
             {
                 if(git2.git_remote_prune(remote, 0) == GIT_ERROR_NONE)
                 {
+                    // TODO: below should has the same effect as git_remote_prune, examine it further
                     git_branch_iterator *iter;
                     if(git2.git_branch_iterator_new(&iter, repo, GIT_BRANCH_LOCAL) == GIT_ERROR_NONE)
                     {
@@ -199,6 +200,7 @@ sync_repository(char *dir_path, char *url, GitCommitHash *hash)
 
     if(repo)
     {
+        // TODO: untracked files not deleted?
         git_oid commit_id;
         git_commit *commit;
         git_checkout_options reset_options = GIT_CHECKOUT_OPTIONS_INIT;

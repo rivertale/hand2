@@ -1,9 +1,11 @@
+#define _GNU_SOURCE 1
 #include <unistd.h>
 #include <dirent.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/file.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
@@ -267,49 +269,136 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
         pthread_mutex_unlock(callback_lock);
     }
 
-    pid_t process_id = fork();
-    if(process_id == 0) // NOTE: child
+    GrowableBuffer bootstrap = allocate_growable_buffer();
+    if(string_len(command) > 0)
     {
-        if(chdir(work_dir) == 0)
-        {
-            setpgid(getpid(), getpid());
-            if(global_log_file && stdout_path)
-            {
-                int stdout_handle = open(stdout_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                if(stdout_handle != -1)
-                {
-                    dup2(stdout_handle, 1);
-                    close(stdout_handle);
-                }
-            }
-            if(global_log_file && stderr_path)
-            {
-                int stderr_handle = open(stderr_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                if(stderr_handle != -1)
-                {
-                    dup2(stderr_handle, 2);
-                    close(stderr_handle);
-                }
-            }
-            execl("/bin/sh", "sh", "-c", command, (char *)0);
-        }
-        exit(-1);
+        write_growable_buffer(&bootstrap, command, string_len(command));
     }
-    else if(process_id != -1)
+    null_terminate(&bootstrap);
+
+    GrowableBuffer stdout_content = allocate_growable_buffer();
+    GrowableBuffer stderr_content = allocate_growable_buffer();
+    int stdout_handle[2];
+    int stderr_handle[2];
+    int stdout_created = (pipe(stdout_handle) == 0);
+    int stderr_created = (pipe(stderr_handle) == 0);
+    if(stdout_created && stderr_created)
     {
-        int status;
-        if(waitpid(process_id, &status, 0) != -1 && WIFEXITED(status))
+        pid_t process_id = fork();
+        if(process_id == 0) // NOTE: child
         {
-            exit_code = WEXITSTATUS(status);
+            close(stdout_handle[0]);
+            close(stderr_handle[0]);
+            setpgid(getpid(), getpid());
+            dup2(stdout_handle[1], 1);
+            dup2(stderr_handle[1], 2);
+            close(stdout_handle[1]);
+            close(stderr_handle[1]);
+            if(chdir(work_dir) == 0)
+            {
+                execl("/bin/sh", "sh", "-c", bootstrap.memory, (char *)0);
+            }
+            exit(-1);
+        }
+        else
+        {
+            close(stdout_handle[1]);
+            close(stderr_handle[1]);
+            if(process_id != -1)
+            {
+                int more_stdout = 1;
+                int more_stderr = 1;
+                while(more_stdout || more_stderr)
+                {
+                    fd_set read_set;
+                    FD_ZERO(&read_set);
+                    FD_SET(stdout_handle[0], &read_set);
+                    FD_SET(stderr_handle[0], &read_set);
+                    struct timeval timeout = {0};
+                    timeout.tv_usec = 100000;
+                    if(select(max(stdout_handle[0], stderr_handle[0]) + 1, &read_set, 0, 0, &timeout) == -1) break;
+
+                    int max_byte_read = 4096;
+                    if(more_stdout && FD_ISSET(stdout_handle[0], &read_set))
+                    {
+                        reserve_growable_buffer(&stdout_content, max_byte_read);
+                        char *stdout_ptr = stdout_content.memory + stdout_content.used;
+                        ssize_t byte_read = read(stdout_handle[0], stdout_ptr, max_byte_read);
+                        more_stdout = (byte_read > 0);
+                        if(more_stdout) { stdout_content.used += byte_read; }
+                    }
+                    if(more_stderr && FD_ISSET(stderr_handle[0], &read_set))
+                    {
+                        reserve_growable_buffer(&stderr_content, max_byte_read);
+                        char *stderr_ptr = stderr_content.memory + stderr_content.used;
+                        ssize_t byte_read = read(stderr_handle[0], stderr_ptr, max_byte_read);
+                        more_stderr = (byte_read > 0);
+                        if(more_stderr) { stderr_content.used += byte_read; }
+                    }
+                }
+
+                int status;
+                if(waitpid(process_id, &status, 0) != -1 && WIFEXITED(status))
+                {
+                    exit_code = WEXITSTATUS(status);
+                }
+                else
+                {
+                    write_constant_string(&stderr_content, "Unable to obtain exit code");
+                }
+            }
+            else
+            {
+                write_constant_string(&stderr_content, "Unable to fork");
+            }
+            close(stdout_handle[0]);
+            close(stderr_handle[0]);
+        }
+    }
+    else
+    {
+        write_constant_string(&stderr_content, "Unable to create pipe");
+        if(stdout_created)
+        {
+            close(stdout_handle[0]);
+            close(stdout_handle[1]);
+        }
+        if(stderr_created)
+        {
+            close(stderr_handle[0]);
+            close(stderr_handle[1]);
+        }
+    }
+    null_terminate(&stdout_content);
+    null_terminate(&stderr_content);
+
+    if(stdout_path)
+    {
+        FILE *file = fopen(stdout_path, "wb");
+        if(file)
+        {
+            fwrite(stdout_content.memory, string_len(stdout_content.memory), 1, file);
+            fclose(file);
+        }
+    }
+    if(stderr_path)
+    {
+        FILE *file = fopen(stderr_path, "wb");
+        if(file)
+        {
+            fwrite(stderr_content.memory, string_len(stderr_content.memory), 1, file);
+            fclose(file);
         }
     }
 
-    if(context->on_done)
+    if(context->on_complete)
     {
         pthread_mutex_lock(callback_lock);
-        context->on_done(index, context->work_count, exit_code, work_dir, stderr_path);
+        context->on_complete(index, context->work_count, exit_code, work_dir, stdout_content.memory, stderr_content.memory);
         pthread_mutex_unlock(callback_lock);
     }
+    free_growable_buffer(&stdout_content);
+    free_growable_buffer(&stderr_content);
     return exit_code;
 }
 
@@ -335,7 +424,7 @@ linux_thread_proc(void *param)
 
 static void
 linux_wait_for_completion(int thread_count, int work_count, Work *works,
-                          WorkOnProgressCallback *on_progress, WorkOnDoneCallback *on_done)
+                          WorkOnProgressCallback *on_progress, WorkOnCompleteCallback *on_complete)
 {
     pthread_mutex_t callback_lock;
     if(pthread_mutex_init(&callback_lock, 0) == 0)
@@ -351,7 +440,7 @@ linux_wait_for_completion(int thread_count, int work_count, Work *works,
             contexts[i].works = works;
             contexts[i].next_to_work = &next_to_work;
             contexts[i].on_progress = on_progress;
-            contexts[i].on_done = on_done;
+            contexts[i].on_complete = on_complete;
             contexts[i].callback_lock = &callback_lock;
             thread_is_valid[i] = (pthread_create(&thread_handles[i], 0, linux_thread_proc, &contexts[i]) == 0);
         }

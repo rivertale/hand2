@@ -1,5 +1,5 @@
 typedef void WorkOnProgressCallback(int index, int count, char *work_dir);
-typedef void WorkOnDoneCallback(int index, int count, int exit_code, char *work_dir, char *stderr_path);
+typedef void WorkOnCompleteCallback(int index, int count, int exit_code, char *work_dir, char *stdout_content, char *stderr_content);
 
 typedef struct Work
 {
@@ -18,14 +18,8 @@ typedef struct ThreadContext
     volatile int *next_to_work;
     void *callback_lock;
     WorkOnProgressCallback *on_progress;
-    WorkOnDoneCallback *on_done;
+    WorkOnCompleteCallback *on_complete;
 } ThreadContext;
-
-typedef struct FileIter
-{
-    char *out_path;
-    size_t max_size;
-} FileIter;
 
 typedef struct Platform
 {
@@ -36,7 +30,7 @@ typedef struct Platform
     // stop the grade process on timeout (in case we use other grading process in the future), and also
     // requires a way to convey the container name or id.
     void (*wait_for_completion)(int thread_count, int work_count, Work *works,
-                                WorkOnProgressCallback *on_progress, WorkOnDoneCallback *on_done);
+                                WorkOnProgressCallback *on_progress, WorkOnCompleteCallback *on_complete);
 
     int (*copy_directory)(char *target_path, char *source_path);
     int (*rename_directory)(char *target_path, char *source_path);
@@ -46,11 +40,6 @@ typedef struct Platform
     int (*delete_file)(char *path);
     int (*directory_exists)(char *path);
     int (*get_root_dir)(char *buffer, size_t size);
-
-    FileIter (*begin_iterate_file)(char *out_path, size_t max_size, char *dir, char *extension);
-    int (*file_iter_is_valid)(FileIter *iter);
-    void (*file_iter_advance)(FileIter *iter);
-    void (*end_iterate_file)(FileIter *iter);
 } Platform;
 
 static Platform platform = {0};
