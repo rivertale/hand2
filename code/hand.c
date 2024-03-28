@@ -646,117 +646,6 @@ announce_grade(char *title, char *feedback_repo,
     free_sheet(&sheet);
 }
 
-// TODO: patch will destroy the cache, also patch is deprecated, delete it
-static void
-do_patch(char *username, char *github_token, char *organization,
-         char *target_repo, char *default_branch, char *patch_branch,
-         git_repository *source_repository, GitCommitHash source_end_hash, GrowableBuffer *pull_request_body)
-{
-    static char target_dir[MAX_PATH_LEN];
-    if(!cache_repository(target_dir, MAX_PATH_LEN, username, github_token, organization, target_repo, 0))
-    {
-        return;
-    }
-
-    git_repository *target_repository;
-    if(git2.git_repository_open(&target_repository, target_dir) == 0)
-    {
-        GitCommitHash target_begin_hash = get_root_commit(target_repository);
-        GitCommitHash source_begin_hash = find_latest_identical_commit(source_repository, source_end_hash, target_repository, target_begin_hash);
-        // TODO: handle the deletion of source begin hash
-        if(hash_is_valid(&target_begin_hash) && hash_is_valid(&source_begin_hash))
-        {
-            if(apply_commit_chain(target_repository, patch_branch, target_begin_hash,
-                                  source_repository, source_begin_hash, source_end_hash))
-            {
-                if(create_pull_request(github_token, organization, target_repo,
-                                       patch_branch, default_branch, patch_branch, pull_request_body))
-                {
-                    // NOTE: success
-                }
-                else
-                {
-                    // TODO: log
-                }
-            }
-            else
-            {
-                // TODO: log
-            }
-        }
-        else
-        {
-            // TODO: log
-        }
-    }
-}
-
-static void
-patch_homework(char *title, int match_whole_title, char *github_token, char *organization, char *source_repo, char *branch)
-{
-    char *issue_title = branch;
-    GrowableBuffer issue_body = retrieve_issue_body(github_token, organization, source_repo, issue_title);
-    GrowableBuffer escaped_issue_body = escape_growable_buffer(&issue_body);
-    if(escaped_issue_body.used > 0)
-    {
-        GitCommitHash source_end_hash = retrieve_latest_commit(github_token, organization, source_repo, branch);
-        if(hash_is_valid(&source_end_hash))
-        {
-            static char username[MAX_URL_LEN];
-            static char source_dir[MAX_PATH_LEN];
-            if(retrieve_username(username, MAX_URL_LEN, github_token))
-            {
-                cache_repository(source_dir, MAX_PATH_LEN, username, github_token, organization, source_repo, 0);
-                git_repository *source_repository;
-                if(git2.git_repository_open(&source_repository, source_dir) == 0)
-                {
-                    if(match_whole_title)
-                    {
-                        char *target_repo = title;
-                        GrowableBuffer default_branch = retrieve_default_branch(github_token, organization, target_repo);
-                        if(default_branch.used > 0)
-                        {
-                            do_patch(username, github_token, organization, target_repo, default_branch.memory, branch,
-                                     source_repository, source_end_hash, &escaped_issue_body);
-                        }
-                        free_growable_buffer(&default_branch);
-                    }
-                    else
-                    {
-                        StringArray target_repos = retrieve_repos_by_prefix(github_token, organization, title);
-                        StringArray default_branches = retrieve_default_branches(&target_repos, github_token, organization);
-                        for(int i = 0; i < target_repos.count; ++i)
-                        {
-                            do_patch(username, github_token, organization, target_repos.elem[i], default_branches.elem[i], branch,
-                                     source_repository, source_end_hash, &escaped_issue_body);
-                        }
-                        free_string_array(&default_branches);
-                        free_string_array(&target_repos);
-                    }
-                }
-                else
-                {
-
-                }
-            }
-            else
-            {
-                // TODO: log
-            }
-        }
-        else
-        {
-            // TODO: error
-        }
-    }
-    else
-    {
-        // TODO: error
-    }
-    free_growable_buffer(&escaped_issue_body);
-    free_growable_buffer(&issue_body);
-}
-
 static void
 eval(ArgParser *parser, Config *config)
 {
@@ -811,7 +700,6 @@ eval(ArgParser *parser, Config *config)
             "    collect-homework   collect homework and retrieve late submission info" "\n"
             "    grade-homework     grade homework"                                     "\n"
             "    announce-grade     announce grade"                                     "\n"
-            "    patch-homework     patch homework"                                     "\n"
             "[common-command-options]"                                                  "\n"
             "    --help             show the help message regards to the command"       "\n";
         write_output(usage);
@@ -982,44 +870,6 @@ eval(ArgParser *parser, Config *config)
         char *github_token = config->value[Config_github_token];
         char *organization = config->value[Config_organization];
         announce_grade(title, feedback_repo, github_token, organization, google_token, spreadsheet_id, student_key, id_key);
-    }
-    else if(compare_string(command, "patch-homework"))
-    {
-        int show_command_usage = 0;
-        int match_whole_title = 0;
-        for(char *option = next_option(parser); option; option = next_option(parser))
-        {
-            if(compare_string(option, "--help")) { show_command_usage = 1; }
-            else if(compare_string(option, "--match-whole-title"))
-            {
-                match_whole_title = 1;
-            }
-            else
-            {
-                write_error("unknown option '%s'", option);
-            }
-        }
-
-        char *title = next_arg(parser);
-        char *source_repo = next_arg(parser);
-        char *branch = next_arg(parser);
-        if(!title || !source_repo || !branch || show_command_usage)
-        {
-            char *usage =
-                "usage: hand2 patch-homework [--command-option] ... title patch-repo branch"    "\n"
-                                                                                                "\n"
-                "[arguments]"                                                                   "\n"
-                "    title                  title of the homework"                              "\n"
-                "    patch-repo             the repository used for patch"                      "\n"
-                "    branch                 the branch in 'patch-repo' used for patch"          "\n"
-                "[command-options]"                                                             "\n"
-                "    --match-whole-title    only patch repository with name 'title'"            "\n";
-            write_output(usage);
-            return;
-        }
-        char *github_token = config->value[Config_github_token];
-        char *organization = config->value[Config_organization];
-        patch_homework(title, match_whole_title, github_token, organization, source_repo, branch);
     }
     else
     {

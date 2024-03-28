@@ -267,7 +267,7 @@ ensure_config_exists(char *path)
         FILE *default_config_handle = fopen(path, "wb");
         if(default_config_handle)
         {
-            char default_config_content[] =
+            static char default_config_content[] =
                 "# The course's GitHub organization name"                           "\n"
                 "organization = \"github-organization-name\""                       "\n"
                                                                                     "\n"
@@ -282,8 +282,6 @@ ensure_config_exists(char *path)
                                                                                     "\n"
                 "# The TA team name in the GitHub organization"                     "\n"
                 "ta_team = \"ta-team-name\""                                        "\n"
-                                                                                    "\n"
-                "email = \"your-email-to-commit-patch\""                            "\n"
                                                                                     "\n"
                 "# The command executed under homework directory for grading"       "\n"
                 "grade_command = \"executed command for grading\""                  "\n"
