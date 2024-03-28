@@ -282,6 +282,18 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
               template_repo, feedback_repo, command, score_relative_path, thread_count, should_match_title,
               organization, spreadsheet_id, student_key, id_key);
 
+    static char username[MAX_URL_LEN];
+    static char template_dir[MAX_PATH_LEN];
+    static char feedback_dir[MAX_PATH_LEN];
+    static char template_test_dir[MAX_PATH_LEN];
+    static char template_docker_dir[MAX_PATH_LEN];
+    // TODO: what is a good naming? what is a feedback and a report
+    static char feedback_report_dir[MAX_PATH_LEN];
+    static char feedback_homework_dir[MAX_PATH_LEN];
+    static char report_template_path[MAX_PATH_LEN];
+
+    GrowableBuffer report_template = {0};
+    StringArray repos = {0};
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
     {
@@ -289,7 +301,33 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         return;
     }
 
-    StringArray repos;
+    if(!retrieve_username(username, MAX_URL_LEN, github_token))
+    {
+        write_error("unable to retrieve username");
+        return;
+    }
+
+    // TODO: handle cache_repository error
+    write_output("Retrieving homework template...");
+    cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, 0);
+
+    write_output("Retrieving feedback repository...");
+    cache_repository(feedback_dir, MAX_PATH_LEN, username, github_token, organization, feedback_repo, 0);
+
+    if(!format_string(template_test_dir, MAX_PATH_LEN, "%s/test", template_dir) ||
+       !format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir) ||
+       !format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s",feedback_dir, title) ||
+       !format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports",feedback_dir, title) ||
+       !format_string(report_template_path, MAX_PATH_LEN, "%s/report_template.md", feedback_dir))
+    {
+        return;
+    }
+
+    platform.delete_directory(feedback_report_dir);
+    platform.create_directory(feedback_homework_dir);
+    platform.create_directory(feedback_report_dir);
+    report_template = read_entire_file(report_template_path);
+
     if(should_match_title)
     {
         GrowableBuffer repo = allocate_growable_buffer();
@@ -311,76 +349,104 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
     retrieve_pushes_before_cutoff(hash, push_time, &repos, &branches, github_token, organization, cutoff);
 
-    int failure_count = 0;
-    static char username[MAX_URL_LEN];
-    static char template_url[MAX_URL_LEN];
-    static char feedback_url[MAX_URL_LEN];
-    static char template_dir[MAX_PATH_LEN];
-    static char feedback_dir[MAX_PATH_LEN];
-    static char template_test_dir[MAX_PATH_LEN];
-    static char template_docker_dir[MAX_PATH_LEN];
-    static char feedback_homework_dir[MAX_PATH_LEN];
-    static char feedback_report_dir[MAX_PATH_LEN];
-    static char report_template_path[MAX_PATH_LEN];
-    if(retrieve_username(username, MAX_URL_LEN, github_token) &&
-       format_string(template_url, MAX_URL_LEN,
-                     "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, template_repo) &&
-       format_string(feedback_url, MAX_URL_LEN,
-                     "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, feedback_repo) &&
-       format_string(template_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, template_repo) &&
-       format_string(feedback_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, feedback_repo) &&
-       format_string(template_test_dir, MAX_PATH_LEN, "%s/test", template_dir) &&
-       format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir) &&
-       format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s", feedback_dir, title) &&
-       format_string(feedback_report_dir, MAX_PATH_LEN, "%s/reports", feedback_homework_dir) &&
-       format_string(report_template_path, MAX_PATH_LEN, "%s/report_template.md", feedback_dir))
+    write_output("Retrieving student repositories...");
+    int work_count = 0;
+    Work *works = (Work *)allocate_memory(repos.count * sizeof(*works));
+    for(int i = 0; i < repos.count; ++i)
     {
-        write_output("Retrieving homework template...");
-        sync_repository(template_dir, template_url, 0);
-        write_output("Retrieving feedback repository...");
-        sync_repository(feedback_dir, feedback_url, 0);
-        platform.create_directory(feedback_homework_dir);
-        platform.create_directory(feedback_report_dir);
-        GrowableBuffer report_template = read_entire_file(report_template_path);
-
-        write_output("Retrieving student repositories...");
-        int work_count = 0;
-        Work *works = (Work *)allocate_memory(repos.count * sizeof(*works));
-        for(int i = 0; i < repos.count; ++i)
+        Work *work = works + work_count;
+        static char test_dir[MAX_PATH_LEN];
+        static char docker_dir[MAX_PATH_LEN];
+        char *dir = begin_cache_repository(username, github_token, organization, repos.elem[i], &hash[i]);
+        if(dir &&
+           format_string(test_dir, MAX_PATH_LEN, "%s/test", dir) &&
+           format_string(docker_dir, MAX_PATH_LEN, "%s/docker", dir))
         {
-            Work *work = works + work_count;
-            static char url[MAX_URL_LEN];
-            static char work_dir[MAX_PATH_LEN];
-            static char test_dir[MAX_PATH_LEN];
-            static char docker_dir[MAX_PATH_LEN];
-            if(format_string(url, MAX_URL_LEN,
-                             "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, repos.elem[i]) &&
-               format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s_%s", global_root_dir, repos.elem[i], hash[i].trim) &&
-               format_string(test_dir, MAX_PATH_LEN, "%s/test", work_dir) &&
-               format_string(docker_dir, MAX_PATH_LEN, "%s/docker", work_dir) &&
-               format_string(work->command, sizeof(work->command), "%s", command) &&
-               format_string(work->work_dir, sizeof(work->work_dir), "%s", work_dir) &&
-               format_string(work->stdout_path, sizeof(work->stdout_path),
-                             "%s/logs/%s_%s_stdout.log", global_root_dir, repos.elem[i], hash[i].trim) &&
-               format_string(work->stderr_path, sizeof(work->stderr_path),
-                             "%s/logs/%s_%s_stderr.log", global_root_dir, repos.elem[i], hash[i].trim))
+            write_output("Retrieving homework from '%s'", repos.elem[i]);
+            // IMPORTANT: After mounting a volume for the first time on wsl with "docker run -v", change the
+            // volume's content seems to mess up the ".." inode that navigates to /mnt
+            //
+            // For example, after deleting and copying the modified files into the volume, the inode
+            // "../../.." that navigate to /mnt become the same as "../../."
+            //
+            // I don't know why, I don't want to know why, I shouldn't wonder why, just don't use WSL
+            platform.delete_directory(test_dir);
+            platform.delete_directory(docker_dir);
+            platform.copy_directory(test_dir, template_test_dir);
+            platform.copy_directory(docker_dir, template_docker_dir);
+        }
+
+        // TODO: create a global_log_dir variable
+        // NOTE: global_git_placement_dir is set by begin_sync_repository to be the output directory for syncing
+        if(format_string(work->command, sizeof(work->command), "%s", command) &&
+           format_string(work->work_dir, sizeof(work->work_dir), "%s", global_git_placement_dir) &&
+           format_string(work->stdout_path, sizeof(work->stdout_path),
+                         "%s/logs/%s_%s_stdout.log", global_root_dir, repos.elem[i], hash[i].trim) &&
+           format_string(work->stderr_path, sizeof(work->stderr_path),
+                         "%s/logs/%s_%s_stderr.log", global_root_dir, repos.elem[i], hash[i].trim))
+        {
+            ++work_count;
+        }
+        else
+        {
+            // TODO: error
+        }
+        end_cache_repository(dir);
+    }
+
+    // TODO: use new indent strategy for single line block
+    int failure_count = 0;
+    write_output("Start grading...");
+    platform.wait_for_completion(thread_count, work_count, works, grade_homework_on_progress, grade_homework_on_complete);
+    for(int i = 0; i < work_count; ++i)
+    {
+        if(works[i].exit_code != 0) { ++failure_count; }
+    }
+
+    write_output("Generating report...");
+    Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
+    int student_x = find_key_index(&sheet, student_key);
+    int id_x = find_key_index(&sheet, id_key);
+    for(int y = 0; y < sheet.height; ++y)
+    {
+        int index = -1;
+        static char requested_name[256];
+        char *student = get_value(&sheet, student_x, y);
+        char *student_id = get_value(&sheet, id_x, y);
+        if(format_string(requested_name, sizeof(requested_name), "%s-%s", title, student))
+        {
+            index = find_index_case_insensitive(&repos, requested_name);
+        }
+
+        int score = 0;
+        static char work_dir[MAX_PATH_LEN];
+        static char report_path[MAX_PATH_LEN];
+        static char score_path[MAX_PATH_LEN];
+        if(index != -1 &&
+           // TODO: propagate the work_dir when retrieving student repositories
+           format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s-%s", global_root_dir, repos.elem[index], hash[index].full) &&
+           format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
+           format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
+        {
+            GrowableBuffer score_content = read_entire_file(score_path);
+            for(char *c = score_content.memory; *c; ++c)
             {
-                ++work_count;
-                // IMPORTANT: After mounting a volume for the first time on wsl with "docker run -v", change the
-                // volume's content seems to mess up the ".." inode that navigates to /mnt
-                //
-                // For example, after deleting and copying the modified files into the volume, the inode
-                // "../../.." that navigate to /mnt become the same as "../../."
-                //
-                // I don't know why, I don't want to know why, I shouldn't wonder why, just don't use WSL
-                if(!platform.directory_exists(work->work_dir))
+                if('0' <= *c && *c <= '9')
                 {
-                    write_output("Retrieving homework from '%s'", repos.elem[i]);
-                    sync_repository(work->work_dir, url, &hash[i]);
-                    platform.delete_directory(test_dir);
-                    platform.delete_directory(docker_dir);
-                    platform.copy_directory(test_dir, template_test_dir);
-                    platform.copy_directory(docker_dir, template_docker_dir);
+                    score = atoi(c);
+                    break;
+                }
+            }
+            free_growable_buffer(&score_content);
+
+            GrowableBuffer report;
+            if(format_report_by_file_replacement(&report, &report_template, work_dir))
+            {
+                FILE *report_file = fopen(report_path, "wb");
+                if(report_file)
+                {
+                    fwrite(report.memory, report.used, 1, report_file);
+                    fclose(report_file);
                 }
             }
             else
@@ -389,83 +455,19 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
             }
         }
 
-        write_output("Start grading...");
-        platform.wait_for_completion(thread_count, work_count, works, grade_homework_on_progress, grade_homework_on_complete);
-
-        for(int i = 0; i < work_count; ++i)
-        {
-            if(works[i].exit_code != 0) { ++failure_count; }
-        }
-
-        write_output("Generating report...");
-        Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-        int student_x = find_key_index(&sheet, student_key);
-        int id_x = find_key_index(&sheet, id_key);
-        for(int y = 0; y < sheet.height; ++y)
-        {
-            int index = -1;
-            static char requested_name[256];
-            char *student = get_value(&sheet, student_x, y);
-            char *student_id = get_value(&sheet, id_x, y);
-            if(format_string(requested_name, sizeof(requested_name), "%s-%s", title, student))
-            {
-                index = find_index_case_insensitive(&repos, requested_name);
-            }
-
-            int score = 0;
-            static char work_dir[MAX_PATH_LEN];
-            static char report_path[MAX_PATH_LEN];
-            static char score_path[MAX_PATH_LEN];
-            if(index != -1 &&
-               format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s_%s", global_root_dir, repos.elem[index], hash[index].trim) &&
-               format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
-               format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
-            {
-                GrowableBuffer score_content = read_entire_file(score_path);
-                for(char *c = score_content.memory; *c; ++c)
-                {
-                    if('0' <= *c && *c <= '9')
-                    {
-                        score = atoi(c);
-                        break;
-                    }
-                }
-                free_growable_buffer(&score_content);
-
-                GrowableBuffer report;
-                if(format_report_by_file_replacement(&report, &report_template, work_dir))
-                {
-                    FILE *report_file = fopen(report_path, "wb");
-                    if(report_file)
-                    {
-                        fwrite(report.memory, report.used, 1, report_file);
-                        fclose(report_file);
-                    }
-                }
-                else
-                {
-                    // TODO: error
-                }
-            }
-
-            fprintf(out_file, "%d\n", score);
-        }
-        write_output("");
-        write_output("[Summary]");
-        write_output("    Total student: %d", sheet.height);
-        write_output("    Total submission: %d", repos.count);
-        write_output("    Failed submission: %d", failure_count);
-        write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
-                     t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
-        write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
-                     t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
-        write_output("NOTE: reports generated at '%s', remember to push the reports", feedback_report_dir);
-        fclose(out_file);
+        fprintf(out_file, "%d\n", score);
     }
-    else
-    {
-        // TODO: error
-    }
+    write_output("");
+    write_output("[Summary]");
+    write_output("    Total student: %d", sheet.height);
+    write_output("    Total submission: %d", repos.count);
+    write_output("    Failed submission: %d", failure_count);
+    write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
+                 t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
+    write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
+                 t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
+    write_output("NOTE: reports generated at '%s', remember to push the reports", feedback_report_dir);
+    fclose(out_file);
 }
 
 static int
@@ -539,6 +541,26 @@ announce_grade(char *title, char *feedback_repo,
     write_log("[announce grade] title='%s', feedback_repo='%s', spreadsheet_id='%s', student_key='%s', organization='%s'",
               title, feedback_repo, spreadsheet_id, student_key, organization);
 
+    static char issue_title[256];
+    static char username[MAX_URL_LEN];
+    static char feedback_dir[MAX_PATH_LEN];
+    static char feedback_report_dir[MAX_PATH_LEN];
+
+    if(!retrieve_username(username, MAX_URL_LEN, github_token))
+    {
+        write_error("unable to retrieve username");
+        return;
+    }
+
+    write_output("Retrieving feedback repository...");
+    cache_repository(feedback_dir, MAX_PATH_LEN, username, github_token, organization, feedback_repo, 0);
+
+    if(!format_string(issue_title, sizeof(issue_title), "Grade for %s", title) ||
+       !format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports", feedback_dir, title))
+    {
+        return;
+    }
+
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
     if(sheet.width && sheet.height)
     {
@@ -546,82 +568,60 @@ announce_grade(char *title, char *feedback_repo,
         int id_x = find_key_index(&sheet, id_key);
         if(student_x >= 0 && id_x >= 0)
         {
-            static char issue_title[256];
-            static char username[MAX_URL_LEN];
-            static char feedback_url[MAX_URL_LEN];
-            static char feedback_dir[MAX_PATH_LEN];
-            static char feedback_homework_dir[MAX_PATH_LEN];
-            static char feedback_report_dir[MAX_PATH_LEN];
-            if(retrieve_username(username, MAX_URL_LEN, github_token) &&
-               format_string(issue_title, sizeof(issue_title), "Grade for %", title) &&
-               format_string(feedback_url, MAX_URL_LEN,
-                             "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, feedback_repo) &&
-               format_string(feedback_dir, MAX_PATH_LEN, "%s/cache/%s", global_root_dir, feedback_repo) &&
-               format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s", feedback_dir, title) &&
-               format_string(feedback_report_dir, MAX_PATH_LEN, "%s/reports", feedback_homework_dir))
+            // NOTE: repos_list will be free by repos
+            GrowableBuffer repos_list = allocate_growable_buffer();
+            for(int y = 0; y < sheet.height; ++y)
             {
-                // NOTE: repos_buffer will be free by repos
-                GrowableBuffer repos_buffer = allocate_growable_buffer();
-                for(int y = 0; y < sheet.height; ++y)
+                char *student = get_value(&sheet, student_x, y);
+                write_growable_buffer(&repos_list, title, string_len(title));
+                write_constant_string(&repos_list, "-");
+                write_growable_buffer(&repos_list, student, string_len(student));
+                write_constant_string(&repos_list, "\0");
+            }
+            StringArray repos = split_null_terminated_strings(&repos_list);
+            int *issue_numbers = (int *)allocate_memory(sheet.height * sizeof(*issue_numbers));
+            retrieve_issue_numbers_by_title(issue_numbers, &repos, github_token, organization, issue_title);
+
+            // TODO: need better naming, template is used as homework template, report_template.md, and {student_id}.md
+            static char template_path[MAX_PATH_LEN];
+            GrowableBuffer template_list = allocate_growable_buffer();
+            for(int y = 0; y < sheet.height; ++y)
+            {
+                char *student_id = get_value(&sheet, id_x, y);
+                if(format_string(template_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id))
                 {
-                    char *student = get_value(&sheet, student_x, y);
-                    write_growable_buffer(&repos_buffer, title, string_len(title));
-                    write_constant_string(&repos_buffer, "-");
-                    write_growable_buffer(&repos_buffer, student, string_len(student));
-                    write_constant_string(&repos_buffer, "\0");
+                    GrowableBuffer content = read_entire_file(template_path);
+                    write_growable_buffer(&template_list, content.memory, content.used);
                 }
-                StringArray repos = split_null_terminated_strings(&repos_buffer);
-                int *issue_numbers = (int *)allocate_memory(sheet.height * sizeof(*issue_numbers));
-                retrieve_issue_numbers_by_title(issue_numbers, &repos, github_token, organization, issue_title);
+                write_constant_string(&template_list, "\0");
+            }
 
-                git_repository *repo_handle = sync_repository(feedback_dir, feedback_url, 0);
-                if(repo_handle)
+            StringArray issue_bodies;
+            StringArray templates = split_null_terminated_strings(&template_list);
+            if(format_feedback_issues(&issue_bodies, &templates, &sheet))
+            {
+                StringArray escaped_issue_bodies = escape_string_array(&issue_bodies);
+                for(int i = 0; i < repos.count; ++i)
                 {
-                    GrowableBuffer template_buffer = allocate_growable_buffer();
-                    static char template_path[MAX_PATH_LEN];
-                    for(int y = 0; y < sheet.height; ++y)
+                    if(issue_numbers[i])
                     {
-                        char *student_id = get_value(&sheet, id_x, y);
-                        if(format_string(template_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id))
-                        {
-                            GrowableBuffer content = read_entire_file(template_path);
-                            // TODO: why uses string_len when we have content.used, consolidate GrowableBuffer
-                            write_growable_buffer(&template_buffer, content.memory, content.used);
-                        }
-                        write_constant_string(&template_buffer, "\0");
-                    }
-
-                    StringArray issue_bodies;
-                    StringArray templates = split_null_terminated_strings(&template_buffer);
-                    if(format_feedback_issues(&issue_bodies, &templates, &sheet))
-                    {
-                        StringArray escaped_issue_bodies = escape_string_array(&issue_bodies);
-                        for(int i = 0; i < repos.count; ++i)
-                        {
-                            if(issue_numbers[i])
-                            {
-                                edit_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_bodies.elem[i], issue_numbers[i]);
-                            }
-                            else
-                            {
-                                create_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_bodies.elem[i]);
-                            }
-                        }
+                        edit_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_bodies.elem[i], issue_numbers[i]);
                     }
                     else
                     {
-                        // TODO: error
+                        create_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_bodies.elem[i]);
                     }
                 }
             }
             else
             {
-                // TODO: error
+
             }
         }
         else
         {
-            write_error("Key '%s' not found", student_key);
+            if(student_x < 0) write_error("Key '%s' not found", student_key);
+            if(id_x < 0) write_error("Key '%s' not found", id_key);
         }
     }
     else
@@ -631,38 +631,33 @@ announce_grade(char *title, char *feedback_repo,
     free_sheet(&sheet);
 }
 
+// TODO: patch will destroy the cache, also patch is deprecated, delete it
 static void
-do_patch(char *root_dir, char *username, char *github_token, char *organization,
+do_patch(char *username, char *github_token, char *organization,
          char *target_repo, char *default_branch, char *patch_branch,
          git_repository *source_repository, GitCommitHash source_end_hash, GrowableBuffer *pull_request_body)
 {
     static char target_dir[MAX_PATH_LEN];
-    static char target_url[MAX_URL_LEN];
-    if(format_string(target_dir, MAX_PATH_LEN, "%s/target_%s", root_dir, target_repo) &&
-       format_string(target_url, MAX_PATH_LEN,
-                     "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, target_repo))
+    if(!cache_repository(target_dir, MAX_PATH_LEN, username, github_token, organization, target_repo, 0))
     {
-        git_repository *target_repository = sync_repository(target_dir, target_url, 0);
-        if(target_repository)
+        return;
+    }
+
+    git_repository *target_repository;
+    if(git2.git_repository_open(&target_repository, target_dir) == 0)
+    {
+        GitCommitHash target_begin_hash = get_root_commit(target_repository);
+        GitCommitHash source_begin_hash = find_latest_identical_commit(source_repository, source_end_hash, target_repository, target_begin_hash);
+        // TODO: handle the deletion of source begin hash
+        if(hash_is_valid(&target_begin_hash) && hash_is_valid(&source_begin_hash))
         {
-            GitCommitHash target_begin_hash = get_root_commit(target_repository);
-            GitCommitHash source_begin_hash = find_latest_identical_commit(source_repository, source_end_hash,
-                                                                           target_repository, target_begin_hash);
-            // TODO: handle the deletion of source begin hash
-            if(hash_is_valid(&target_begin_hash) && hash_is_valid(&source_begin_hash))
+            if(apply_commit_chain(target_repository, patch_branch, target_begin_hash,
+                                  source_repository, source_begin_hash, source_end_hash))
             {
-                if(apply_commit_chain(target_repository, patch_branch, target_begin_hash,
-                                      source_repository, source_begin_hash, source_end_hash))
+                if(create_pull_request(github_token, organization, target_repo,
+                                       patch_branch, default_branch, patch_branch, pull_request_body))
                 {
-                    if(create_pull_request(github_token, organization, target_repo,
-                                           patch_branch, default_branch, patch_branch, pull_request_body))
-                    {
-                        // NOTE: success
-                    }
-                    else
-                    {
-                        // TODO: log
-                    }
+                    // NOTE: success
                 }
                 else
                 {
@@ -679,10 +674,6 @@ do_patch(char *root_dir, char *username, char *github_token, char *organization,
             // TODO: log
         }
     }
-    else
-    {
-        // TODO: log
-    }
 }
 
 static void
@@ -697,37 +688,40 @@ patch_homework(char *title, int match_whole_title, char *github_token, char *org
         if(hash_is_valid(&source_end_hash))
         {
             static char username[MAX_URL_LEN];
-            static char root_dir[MAX_PATH_LEN];
             static char source_dir[MAX_PATH_LEN];
-            static char source_url[MAX_URL_LEN];
-            if(retrieve_username(username, MAX_URL_LEN, github_token) &&
-               format_string(root_dir, MAX_PATH_LEN, "%s/cache/patch_%s_%s", global_root_dir, source_repo, branch) &&
-               format_string(source_dir, MAX_PATH_LEN, "%s/source_%s", root_dir, source_repo) &&
-               format_string(source_url, MAX_URL_LEN, "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, source_repo))
+            if(retrieve_username(username, MAX_URL_LEN, github_token))
             {
-                git_repository *source_repository = sync_repository(source_dir, source_url, 0);
-                if(match_whole_title)
+                cache_repository(source_dir, MAX_PATH_LEN, username, github_token, organization, source_repo, 0);
+                git_repository *source_repository;
+                if(git2.git_repository_open(&source_repository, source_dir) == 0)
                 {
-                    char *target_repo = title;
-                    GrowableBuffer default_branch = retrieve_default_branch(github_token, organization, target_repo);
-                    if(default_branch.used > 0)
+                    if(match_whole_title)
                     {
-                        do_patch(root_dir, username, github_token, organization, target_repo, default_branch.memory, branch,
-                                 source_repository, source_end_hash, &escaped_issue_body);
+                        char *target_repo = title;
+                        GrowableBuffer default_branch = retrieve_default_branch(github_token, organization, target_repo);
+                        if(default_branch.used > 0)
+                        {
+                            do_patch(username, github_token, organization, target_repo, default_branch.memory, branch,
+                                     source_repository, source_end_hash, &escaped_issue_body);
+                        }
+                        free_growable_buffer(&default_branch);
                     }
-                    free_growable_buffer(&default_branch);
+                    else
+                    {
+                        StringArray target_repos = retrieve_repos_by_prefix(github_token, organization, title);
+                        StringArray default_branches = retrieve_default_branches(&target_repos, github_token, organization);
+                        for(int i = 0; i < target_repos.count; ++i)
+                        {
+                            do_patch(username, github_token, organization, target_repos.elem[i], default_branches.elem[i], branch,
+                                     source_repository, source_end_hash, &escaped_issue_body);
+                        }
+                        free_string_array(&default_branches);
+                        free_string_array(&target_repos);
+                    }
                 }
                 else
                 {
-                    StringArray target_repos = retrieve_repos_by_prefix(github_token, organization, title);
-                    StringArray default_branches = retrieve_default_branches(&target_repos, github_token, organization);
-                    for(int i = 0; i < target_repos.count; ++i)
-                    {
-                        do_patch(root_dir, username, github_token, organization, target_repos.elem[i], default_branches.elem[i], branch,
-                                 source_repository, source_end_hash, &escaped_issue_body);
-                    }
-                    free_string_array(&default_branches);
-                    free_string_array(&target_repos);
+
                 }
             }
             else

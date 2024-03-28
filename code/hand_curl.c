@@ -940,6 +940,7 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *sheet)
             cJSON *row = 0;
             cJSON_ArrayForEach(row, rows)
             {
+                // TODO: the row can be empty, fill in blank value
                 assert(cJSON_GetArraySize(row) == width);
                 cJSON *cell = 0;
                 cJSON_ArrayForEach(cell, row)

@@ -612,7 +612,7 @@ win32_init_git(void)
         static char certificate_path[MAX_PATH_LEN];
         if(win32_get_root_dir(root_dir, MAX_PATH_LEN) &&
            format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir) &&
-           format_string(global_temporary_clone_dir, sizeof(global_temporary_clone_dir), "%s/cache/tmp", root_dir))
+           format_string(global_git_temporary_dir, sizeof(global_git_temporary_dir), "%s/cache/tmp", root_dir))
         {
             if(git2.git_libgit2_init() > 0)
             {
