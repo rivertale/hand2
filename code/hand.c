@@ -137,6 +137,7 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
     write_output("[Late submission]");
     write_output("%3s  %12s  %-19s  %-24s  %-40s",
                  "#", "delay (days)", "push_time", "repository", "hash");
+    int submission_count = 0;
     int late_submission_count = 0;
     int start_weekday = (t0.tm_hour < 12) ? t0.tm_wday : (t0.tm_wday + 1) % 7;
 
@@ -153,31 +154,35 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
         }
 
         int delay = 0;
-        if(index != -1 && push_time[index] > deadline)
+        if(index != -1)
         {
-            ++late_submission_count;
-            delay = (int)((push_time[index] - deadline + 86399) / 86400);
-            assert(delay > 0);
-            if(is_weekends_one_day)
+            ++submission_count;
+            if(push_time[index] > deadline)
             {
-                int weekend_before_deadline = (start_weekday + 6) / 7 + start_weekday / 7;
-                int weekend_before_cutoff = (start_weekday + delay + 6) / 7 + (start_weekday + delay) / 7;
-                int weekend_day_count = weekend_before_cutoff - weekend_before_deadline;
-                delay -= (weekend_day_count / 2);
-            }
+                ++late_submission_count;
+                delay = (int)((push_time[index] - deadline + 86399) / 86400);
+                assert(delay > 0);
+                if(is_weekends_one_day)
+                {
+                    int weekend_before_deadline = (start_weekday + 6) / 7 + start_weekday / 7;
+                    int weekend_before_cutoff = (start_weekday + delay + 6) / 7 + (start_weekday + delay) / 7;
+                    int weekend_day_count = weekend_before_cutoff - weekend_before_deadline;
+                    delay -= (weekend_day_count / 2);
+                }
 
-            tm t = calendar_time(push_time[index]);
-            write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s",
-                         late_submission_count, delay,
-                         t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
-                         repos.elem[index], hash[index].trim);
+                tm t = calendar_time(push_time[index]);
+                write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s",
+                             late_submission_count, delay,
+                             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+                             repos.elem[index], hash[index].trim);
+            }
         }
         fprintf(out_file, "%d%%\n", max(100 - penalty_per_day * delay, 0));
     }
     write_output("");
     write_output("[Summary]");
     write_output("    Total student: %d", sheet.height);
-    write_output("    Total submission: %d", repos.count);
+    write_output("    Total submission: %d", submission_count);
     write_output("    Late submission: %d", late_submission_count);
     write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
@@ -266,7 +271,7 @@ grade_homework_on_complete(int index, int count, int exit_code, char *work_dir, 
 }
 
 static void
-grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char *template_repo, char *feedback_repo,
+grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char *template_repo, char *template_branch, char *feedback_repo,
                char *command, char *score_relative_path, int thread_count, int should_match_title,
                char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
 {
@@ -309,7 +314,8 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
 
     // TODO: handle cache_repository error
     write_output("Retrieving homework template...");
-    cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, 0);
+    GitCommitHash template_hash = retrieve_latest_commit(github_token, organization, template_repo, template_branch);
+    cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, &template_hash);
 
     write_output("Retrieving feedback repository...");
     cache_repository(feedback_dir, MAX_PATH_LEN, username, github_token, organization, feedback_repo, 0);
@@ -395,6 +401,8 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
     }
 
     // TODO: use new indent strategy for single line block
+    int submission_count = 0;
+    int late_submission_count = 0;
     int failure_count = 0;
     write_output("Start grading...");
     platform.wait_for_completion(thread_count, work_count, works, grade_homework_on_progress, grade_homework_on_complete);
@@ -418,49 +426,56 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
             index = find_index_case_insensitive(&repos, requested_name);
         }
 
-        int score = 0;
+        double score = 0;
         static char work_dir[MAX_PATH_LEN];
         static char report_path[MAX_PATH_LEN];
         static char score_path[MAX_PATH_LEN];
-        if(index != -1 &&
-           // TODO: propagate the work_dir when retrieving student repositories
-           format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s-%s", global_root_dir, repos.elem[index], hash[index].full) &&
-           format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
-           format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
-        {
-            GrowableBuffer score_content = read_entire_file(score_path);
-            for(char *c = score_content.memory; *c; ++c)
-            {
-                if('0' <= *c && *c <= '9')
-                {
-                    score = atoi(c);
-                    break;
-                }
-            }
-            free_growable_buffer(&score_content);
 
-            GrowableBuffer report;
-            if(format_report_by_file_replacement(&report, &report_template, work_dir))
+        if(index != -1)
+        {
+            ++submission_count;
+            if(push_time[index] > deadline) { ++late_submission_count; }
+
+            if(// TODO: propagate the work_dir when retrieving student repositories
+               format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s-%s", global_root_dir, repos.elem[index], hash[index].full) &&
+               format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
+               format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
             {
-                FILE *report_file = fopen(report_path, "wb");
-                if(report_file)
+
+                GrowableBuffer score_content = read_entire_file(score_path);
+                for(char *c = score_content.memory; *c; ++c)
                 {
-                    fwrite(report.memory, report.used, 1, report_file);
-                    fclose(report_file);
+                    if('0' <= *c && *c <= '9')
+                    {
+                        score = atof(c);
+                        break;
+                    }
                 }
-            }
-            else
-            {
-                // TODO: error
+                free_growable_buffer(&score_content);
+
+                GrowableBuffer report;
+                if(format_report_by_file_replacement(&report, &report_template, work_dir))
+                {
+                    FILE *report_file = fopen(report_path, "wb");
+                    if(report_file)
+                    {
+                        fwrite(report.memory, report.used, 1, report_file);
+                        fclose(report_file);
+                    }
+                }
+                else
+                {
+                    // TODO: error
+                }
             }
         }
-
-        fprintf(out_file, "%d\n", score);
+        fprintf(out_file, "%f\n", score);
     }
     write_output("");
     write_output("[Summary]");
     write_output("    Total student: %d", sheet.height);
-    write_output("    Total submission: %d", repos.count);
+    write_output("    Total submission: %d", submission_count);
+    write_output("    Late submission: %d", late_submission_count);
     write_output("    Failed submission: %d", failure_count);
     write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
@@ -896,24 +911,26 @@ eval(ArgParser *parser, Config *config)
 
         char *title = next_arg(parser);
         char *template_repo = next_arg(parser);
+        char *template_branch = next_arg(parser);
         char *in_time = next_arg(parser);
         char *cutoff_time = next_arg(parser);
         char *out_path = next_arg(parser);
         if(!title || !template_repo || !in_time || !cutoff_time || !out_path || show_command_usage)
         {
             char *usage =
-                "usage: hand2 grade-homework [--command-option] ... title template_repo deadline cutoff_time out_path"  "\n"
-                                                                                                                        "\n"
-                "[arguments]"                                                                                           "\n"
-                "    title             title of the homework"                                                           "\n"
-                "    template_repo     homework template repository name"                                               "\n"
-                "    deadline          deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                 "\n"
-                "    cutoff_time       max late submission time after deadline (in days)"                               "\n"
-                "    out_path          output file that lists score for all students (in the same order of the"         "\n"
-                "                      spreadsheet)"                                                                    "\n"
-                "[command-options]"                                                                                     "\n"
-                "    --match-title     only grade for repository named 'title', instead of using `title` as a prefix"   "\n"
-                "                      to find repositories to grade"                                                   "\n";
+                "usage: hand2 grade-homework [--command-option] ... title template_repo template_branch deadline cutoff_time out_path"  "\n"
+                                                                                                                                        "\n"
+                "[arguments]"                                                                                                           "\n"
+                "    title              title of the homework"                                                                          "\n"
+                "    template_repo      homework template repository name"                                                              "\n"
+                "    template_branch    the template_repo branch that contains all testcases"                                           "\n"
+                "    deadline           deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                                "\n"
+                "    cutoff_time        max late submission time after deadline (in days)"                                              "\n"
+                "    out_path           output file that lists score for all students (in the same order of the"                        "\n"
+                "                       spreadsheet)"                                                                                   "\n"
+                "[command-options]"                                                                                                     "\n"
+                "    --match-title      only grade for repository named 'title', instead of using `title` as a prefix"                  "\n"
+                "                       to find repositories to grade"                                                                  "\n";
             write_output(usage);
             return;
         }
@@ -929,7 +946,7 @@ eval(ArgParser *parser, Config *config)
         int thread_count = atoi(config->value[Config_grade_thread_count]);
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
-        grade_homework(title, out_path, deadline, cutoff, template_repo, feedback_repo,
+        grade_homework(title, out_path, deadline, cutoff, template_repo, template_branch, feedback_repo,
                        grade_command, score_relative_path, thread_count, should_match_title,
                        github_token, organization, google_token, spreadsheet_id, student_key, id_key);
     }
