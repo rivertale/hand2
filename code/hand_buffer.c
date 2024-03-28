@@ -176,30 +176,6 @@ find_index_case_insensitive(StringArray *array, char *keyword)
     return index;
 }
 
-static GrowableBuffer
-escape_growable_buffer(GrowableBuffer *buffer)
-{
-	GrowableBuffer result = allocate_growable_buffer();
-	for(size_t i = 0; i < buffer->used; ++i)
-	{
-		char c = buffer->memory[i];
-		switch(c)
-		{
-			// NOTE: json escape sequences are from https://www.json.org/json-en.html
-			case '\"': { write_constant_string(&result, "\\\""); } break;
-			case '\\': { write_constant_string(&result, "\\\\"); } break;
-			case '/': { write_constant_string(&result, "\\/"); } break;
-			case '\b': { write_constant_string(&result, "\\b"); } break;
-			case '\f': { write_constant_string(&result, "\\f"); } break;
-			case '\n': { write_constant_string(&result, "\\n"); } break;
-			case '\r': { write_constant_string(&result, "\\r"); } break;
-			case '\t': { write_constant_string(&result, "\\t"); } break;
-			default: { write_growable_buffer(&result, &c, 1); } break;
-		}
-	}
-	return result;
-}
-
 static StringArray
 read_string_array_file(char *path)
 {

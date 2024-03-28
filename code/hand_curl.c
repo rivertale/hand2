@@ -449,23 +449,6 @@ retrieve_latest_commits(GitCommitHash *out_hash, StringArray *repos, StringArray
 #undef MAX_WORKER
 }
 
-static GrowableBuffer
-retrieve_default_branch(char *github_token, char *organization, char *repo)
-{
-    GrowableBuffer result = allocate_growable_buffer();
-    StringArray repos = {0};
-    repos.count = 1;
-    repos.elem = &repo;
-    StringArray branches = retrieve_default_branches(&repos, github_token, organization);
-    if(branches.count > 0)
-    {
-        size_t len = string_len(branches.elem[0]);
-        write_growable_buffer(&result, branches.elem[0], len);
-    }
-    free_string_array(&branches);
-    return result;
-}
-
 static GitCommitHash
 retrieve_latest_commit(char *github_token, char *organization, char *repo, char *branch)
 {
@@ -631,61 +614,6 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
     return split_null_terminated_strings(&buffer);
 }
 
-static GrowableBuffer
-retrieve_issue_body(char *github_token, char *organization, char *revise_repo, char *issue_title)
-{
-	GrowableBuffer result = allocate_growable_buffer();
-	int found = 0;
-    int page = 1;
-	for(;;)
-	{
-		int worker_count = 8;
-		CurlGroup group = begin_curl_group(worker_count);
-		for(int i = 0; i < worker_count; ++i)
-		{
-			static char url[MAX_URL_LEN];
-			if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues?page=%d&per_page=100",
-						     organization, revise_repo, page))
-			{
-				assign_github_get(&group, i, url, github_token);
-			}
-			else
-			{
-				// TODO: log
-			}
-            ++page;
-		}
-		complete_all_works(&group);
-
-		int issue_count_in_page = 0;
-		for(int i = 0; i < worker_count; ++i)
-		{
-			issue_count_in_page = 0;
-			cJSON *json = cJSON_Parse(get_response(&group, i));
-			cJSON *issue = 0;
-			cJSON_ArrayForEach(issue, json)
-			{
-				++issue_count_in_page;
-				cJSON *title = cJSON_GetObjectItemCaseSensitive(issue, "title");
-				cJSON *body = cJSON_GetObjectItemCaseSensitive(issue, "body");
-				if(cJSON_IsString(title) && compare_string(title->valuestring, issue_title) &&
-				   cJSON_IsString(body))
-				{
-                    found = 1;
-					write_growable_buffer(&result, body->valuestring, string_len(body->valuestring));
-					break;
-				}
-			}
-            cJSON_Delete(json);
-
-			if(found || issue_count_in_page == 0) break;
-		}
-		end_curl_group(&group);
-		if(found || issue_count_in_page == 0) break;
-	}
-	return result;
-}
-
 // NOTE:
 // - we don't believe commit time since it can be modifed by students.
 // - we return creation time of the repository and the latest commit as the last resort, this will
@@ -820,41 +748,6 @@ invite_user_to_team(char *github_token, char *username, char *organization, char
         assign_github_post_like(&group, 0, url, github_token, "PUT", "{\"role\":\"member\"}");
         complete_all_works(&group);
         result = end_curl_group(&group);
-    }
-    return result;
-}
-
-static int
-create_pull_request(char *github_token, char *organization, char *repo,
-                    char *branch, char *branch_to_merge, char *title, GrowableBuffer *body)
-{
-    int result = 0;
-    static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/pulls", organization, repo))
-    {
-        GrowableBuffer post_data = allocate_growable_buffer();
-        write_constant_string(&post_data, "{");
-        write_constant_string(&post_data, "\"title\":\"[PATCH] ");
-        write_growable_buffer(&post_data, title, string_len(title));
-        write_constant_string(&post_data, "\",\"body\":\"");
-        write_growable_buffer(&post_data, body->memory, body->used);
-        write_constant_string(&post_data, "\",\"head\":\"");
-        write_growable_buffer(&post_data, branch, string_len(branch));
-        write_constant_string(&post_data, "\",\"base\":\"");
-        write_growable_buffer(&post_data, branch_to_merge, string_len(branch_to_merge));
-        write_constant_string(&post_data, "\"}");
-
-        CurlGroup group = begin_curl_group(1);
-        assign_github_post_like(&group, 0, url, github_token, "POST", post_data.memory);
-        complete_all_works(&group);
-        if(end_curl_group(&group))
-        {
-            result = 1;
-        }
-    }
-    else
-    {
-        // TODO: log
     }
     return result;
 }

@@ -138,6 +138,7 @@ write_output(char *format, ...)
     va_start(arg_list, format);
     vprintf(format, arg_list);
     printf("\n");
+    fflush(stdout);
     va_end(arg_list);
 }
 
@@ -149,6 +150,7 @@ write_error(char *format, ...)
     printf("[ERROR] ");
     vprintf(format, arg_list);
     printf("\n");
+    fflush(stdout);
     write_log_with_args(format, arg_list);
     va_end(arg_list);
 }
