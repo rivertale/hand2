@@ -130,7 +130,7 @@ begin_cache_repository(char *username, char *github_token, char *organization, c
     GitCommitHash hash = req_hash ? *req_hash : retrieve_latest_commit(github_token, organization, repo, 0);
     assert(hash_is_valid(&hash));
 
-    if(format_string(g_git_placement_dir, MAX_PATH_LEN, "%s/cache/%s-%s", g_root_dir, repo, hash.full) &&
+    if(format_string(g_git_placement_dir, MAX_PATH_LEN, "%s/%s_%s", g_cache_dir, repo, hash.full) &&
        format_string(url, MAX_URL_LEN, "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, repo) &&
        !platform.directory_exists(g_git_placement_dir))
     {

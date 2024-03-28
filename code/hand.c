@@ -386,9 +386,9 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         if(format_string(work->command, sizeof(work->command), "%s", command) &&
            format_string(work->work_dir, sizeof(work->work_dir), "%s", g_git_placement_dir) &&
            format_string(work->stdout_path, sizeof(work->stdout_path),
-                         "%s/logs/%s_%s_stdout.log", g_root_dir, repos.elem[i], hash[i].trim) &&
+                         "%s/%s_%s_stdout.log", g_log_dir, repos.elem[i], hash[i].trim) &&
            format_string(work->stderr_path, sizeof(work->stderr_path),
-                         "%s/logs/%s_%s_stderr.log", g_root_dir, repos.elem[i], hash[i].trim))
+                         "%s/%s_%s_stderr.log", g_log_dir, repos.elem[i], hash[i].trim))
         {
             ++work_count;
         }
@@ -434,8 +434,8 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
             ++submission_count;
             if(push_time[index] > deadline) { ++late_submission_count; }
 
-            if(// TODO: propagate the work_dir when retrieving student repositories
-               format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s-%s", g_root_dir, repos.elem[index], hash[index].full) &&
+            // TODO: propagate the work_dir when retrieving student repositories
+            if(format_string(work_dir, MAX_PATH_LEN, "%s/%s_%s", g_cache_dir, repos.elem[index], hash[index].full) &&
                format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
                format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
             {
@@ -880,15 +880,8 @@ static void
 run_hand(int arg_count, char **args)
 {
     static char config_path[MAX_PATH_LEN];
-    if(!platform.get_root_dir(g_root_dir, MAX_PATH_LEN))
-    {
-        write_error("unable to get program root dir");
-        return;
-    }
-
     if(!format_string(config_path, MAX_PATH_LEN, "%s/config.txt", g_root_dir))
     {
-        write_error("buffer too short: %s", config_path);
         return;
     }
 

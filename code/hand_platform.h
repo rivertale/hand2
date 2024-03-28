@@ -39,7 +39,6 @@ typedef struct Platform
     int (*delete_directory)(char *path);
     int (*delete_file)(char *path);
     int (*directory_exists)(char *path);
-    int (*get_root_dir)(char *buffer, size_t size);
 } Platform;
 
 static Platform platform = {0};

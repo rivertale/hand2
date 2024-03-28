@@ -23,6 +23,8 @@ typedef struct GitCommitHash
 } GitCommitHash;
 
 static char g_root_dir[MAX_PATH_LEN];
+static char g_cache_dir[MAX_PATH_LEN];
+static char g_log_dir[MAX_PATH_LEN];
 
 static GitCommitHash
 init_git_commit_hash(char *string)

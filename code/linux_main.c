@@ -526,11 +526,9 @@ linux_init_git(void)
     git2.git_blob_rawsize = git_blob_rawsize;
     git2.git_tree_entry_type = git_tree_entry_type;
 
-    static char root_dir[MAX_PATH_LEN];
     static char certificate_path[MAX_PATH_LEN];
-    if(linux_get_root_dir(root_dir, MAX_PATH_LEN) &&
-       format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir) &&
-       format_string(g_git_temporary_dir, sizeof(g_git_temporary_dir), "%s/cache/tmp", root_dir))
+    if(format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", g_root_dir) &&
+       format_string(g_git_temporary_dir, sizeof(g_git_temporary_dir), "%s/tmp", g_cache_dir))
     {
         if(git2.git_libgit2_init() > 0)
         {
@@ -563,25 +561,38 @@ linux_cleanup_git(void)
     git2.git_libgit2_shutdown();
 }
 
-static void
+static int
 linux_init_platform(Platform *linux_code)
 {
-    linux_code->wait_for_completion = linux_wait_for_completion;
-    linux_code->calender_time_to_time = linux_calender_time_to_time;
-    linux_code->copy_directory = linux_copy_directory;
-    linux_code->create_directory = linux_create_directory;
-    linux_code->delete_directory = linux_delete_directory;
-    linux_code->copy_file = linux_copy_file;
-    linux_code->delete_file = linux_delete_file;
-    linux_code->directory_exists = linux_directory_exists;
-    linux_code->rename_directory = linux_rename_directory;
-    linux_code->get_root_dir = linux_get_root_dir;
+    int success = 0;
+    if(linux_get_root_dir(g_root_dir, MAX_PATH_LEN))
+    {
+        if(format_string(g_cache_dir, MAX_PATH_LEN, "%s/cache", g_root_dir) &&
+           format_string(g_log_dir, MAX_PATH_LEN, "%s/log", g_root_dir))
+        {
+            success = 1;
+            linux_code->wait_for_completion = linux_wait_for_completion;
+            linux_code->calender_time_to_time = linux_calender_time_to_time;
+            linux_code->copy_directory = linux_copy_directory;
+            linux_code->create_directory = linux_create_directory;
+            linux_code->delete_directory = linux_delete_directory;
+            linux_code->copy_file = linux_copy_file;
+            linux_code->delete_file = linux_delete_file;
+            linux_code->directory_exists = linux_directory_exists;
+            linux_code->rename_directory = linux_rename_directory;
+        }
+    }
+    else
+    {
+        write_error("unable to get root directory");
+    }
+    return success;
 }
 
 int
 main(int arg_count, char **args)
 {
-    linux_init_platform(&platform);
+    if(!linux_init_platform(&platform)) return 0;
     if(!linux_init_curl()) return 0;
     if(!linux_init_git()) return 0;
 
