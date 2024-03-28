@@ -18,7 +18,7 @@ enum
     Config_one_past_last,
 };
 
-static char *global_config_key_name[] =
+static char *g_config_key_name[] =
 {
     "github_access_token",
     "google_api_key",
@@ -34,6 +34,45 @@ static char *global_config_key_name[] =
     "penalty_per_day",
     "score_relative_path",
 };
+static char g_default_config[] =
+    "# The course's GitHub organization name"                           "\n"
+    "organization = \"github-organization-name\""                       "\n"
+                                                                        "\n"
+    "# https://github.com/blog/1509-personal-api-tokens"                "\n"
+    "github_access_token = \"your-github-personal-api-token\""          "\n"
+                                                                        "\n"
+    "# https://cloud.google.com/docs/authentication/api-keys"           "\n"
+    "google_api_key = \"your-google-api_key\""                          "\n"
+                                                                        "\n"
+    "# The student team name in the GitHub organization"                "\n"
+    "student_team = \"student-team-name\""                              "\n"
+                                                                        "\n"
+    "# The TA team name in the GitHub organization"                     "\n"
+    "ta_team = \"ta-team-name\""                                        "\n"
+                                                                        "\n"
+    "# The command executed under homework directory for grading"       "\n"
+    "grade_command = \"executed command for grading\""                  "\n"
+                                                                        "\n"
+    "# feedback_repository"                                             "\n"
+    "feedback_repository = \"feedbacks\""                               "\n"
+                                                                        "\n"
+    "# spreadsheet"                                                     "\n"
+    "spreadsheet = \"spreadsheet-id\""                                  "\n"
+                                                                        "\n"
+    "# sheet_key_username"                                              "\n"
+    "sheet_key_username = \"key-for-username-in-sheet\""                "\n"
+                                                                        "\n"
+    "# sheet_key_student_id"                                            "\n"
+    "sheet_key_student_id = \"key-for-student-id-in-sheet\""            "\n"
+                                                                        "\n"
+    "# penalty per day"                                                 "\n"
+    "penalty_per_day = \"15\""                                          "\n"
+                                                                        "\n"
+    "# relative path for 'score.txt'"                                   "\n"
+    "score_relative_path = \"./test/result/score.txt\""                 "\n"
+                                                                        "\n"
+    "# thread count for grading"                                        "\n"
+    "grade_thread_count = \"1\""                                        "\n";
 
 enum
 {

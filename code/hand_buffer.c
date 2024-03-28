@@ -205,19 +205,19 @@ read_string_array_file(char *path)
 {
     GrowableBuffer buffer = allocate_growable_buffer();
 
-    FILE *file_handle = fopen(path, "rb");
-    if(file_handle)
+    FILE *file = fopen(path, "rb");
+    if(file)
     {
-        fseek(file_handle, 0, SEEK_END);
-        size_t file_size = ftell(file_handle);
-        fseek(file_handle, 0, SEEK_SET);
+        fseek(file, 0, SEEK_END);
+        size_t file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
 
         reserve_growable_buffer(&buffer, file_size);
-        if(fread(buffer.memory + buffer.used, file_size, 1, file_handle))
+        if(fread(buffer.memory + buffer.used, file_size, 1, file))
         {
             buffer.used += file_size;
         }
-        fclose(file_handle);
+        fclose(file);
     }
     else
     {

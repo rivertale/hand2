@@ -146,11 +146,11 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
     for(int y = 0; y < sheet.height; ++y)
     {
         int index = -1;
-        static char requested_repo[256];
+        static char req_repo[256];
         char *student = get_value(&sheet, student_x, y);
-        if(format_string(requested_repo, sizeof(requested_repo), "%s-%s", title, student))
+        if(format_string(req_repo, sizeof(req_repo), "%s-%s", title, student))
         {
-            index = find_index_case_insensitive(&repos, requested_repo);
+            index = find_index_case_insensitive(&repos, req_repo);
         }
 
         int delay = 0;
@@ -197,16 +197,16 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
 }
 
 static int
-format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *template, char *dir)
+format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *format, char *dir)
 {
     *out = allocate_growable_buffer();
 
     int success = 1;
     int depth = 0;
     char *identifier = 0;
-    for(size_t i = 0; i < template->used; ++i)
+    for(size_t i = 0; i < format->used; ++i)
     {
-        char *c = template->memory + i;
+        char *c = format->memory + i;
         if(c[0] == '$' && c[1] == '$')
         {
             write_constant_string(out, "$$");
@@ -292,7 +292,6 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
     static char feedback_dir[MAX_PATH_LEN];
     static char template_test_dir[MAX_PATH_LEN];
     static char template_docker_dir[MAX_PATH_LEN];
-    // TODO: what is a good naming? what is a feedback and a report
     static char feedback_report_dir[MAX_PATH_LEN];
     static char feedback_homework_dir[MAX_PATH_LEN];
     static char report_template_path[MAX_PATH_LEN];
@@ -383,13 +382,13 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         }
 
         // TODO: create a global_log_dir variable
-        // NOTE: global_git_placement_dir is set by begin_sync_repository to be the output directory for syncing
+        // NOTE: g_git_placement_dir is set by begin_sync_repository to be the output directory for syncing
         if(format_string(work->command, sizeof(work->command), "%s", command) &&
-           format_string(work->work_dir, sizeof(work->work_dir), "%s", global_git_placement_dir) &&
+           format_string(work->work_dir, sizeof(work->work_dir), "%s", g_git_placement_dir) &&
            format_string(work->stdout_path, sizeof(work->stdout_path),
-                         "%s/logs/%s_%s_stdout.log", global_root_dir, repos.elem[i], hash[i].trim) &&
+                         "%s/logs/%s_%s_stdout.log", g_root_dir, repos.elem[i], hash[i].trim) &&
            format_string(work->stderr_path, sizeof(work->stderr_path),
-                         "%s/logs/%s_%s_stderr.log", global_root_dir, repos.elem[i], hash[i].trim))
+                         "%s/logs/%s_%s_stderr.log", g_root_dir, repos.elem[i], hash[i].trim))
         {
             ++work_count;
         }
@@ -400,7 +399,6 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         end_cache_repository(dir);
     }
 
-    // TODO: use new indent strategy for single line block
     int submission_count = 0;
     int late_submission_count = 0;
     int failure_count = 0;
@@ -418,12 +416,12 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
     for(int y = 0; y < sheet.height; ++y)
     {
         int index = -1;
-        static char requested_name[256];
+        static char req_name[256];
         char *student = get_value(&sheet, student_x, y);
         char *student_id = get_value(&sheet, id_x, y);
-        if(format_string(requested_name, sizeof(requested_name), "%s-%s", title, student))
+        if(format_string(req_name, sizeof(req_name), "%s-%s", title, student))
         {
-            index = find_index_case_insensitive(&repos, requested_name);
+            index = find_index_case_insensitive(&repos, req_name);
         }
 
         double score = 0;
@@ -437,7 +435,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
             if(push_time[index] > deadline) { ++late_submission_count; }
 
             if(// TODO: propagate the work_dir when retrieving student repositories
-               format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s-%s", global_root_dir, repos.elem[index], hash[index].full) &&
+               format_string(work_dir, MAX_PATH_LEN, "%s/cache/%s-%s", g_root_dir, repos.elem[index], hash[index].full) &&
                format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
                format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
             {
@@ -597,23 +595,22 @@ announce_grade(char *title, char *feedback_repo,
             int *issue_numbers = (int *)allocate_memory(sheet.height * sizeof(*issue_numbers));
             retrieve_issue_numbers_by_title(issue_numbers, &repos, github_token, organization, issue_title);
 
-            // TODO: need better naming, template is used as homework template, report_template.md, and {student_id}.md
-            static char template_path[MAX_PATH_LEN];
-            GrowableBuffer template_list = allocate_growable_buffer();
+            static char report_path[MAX_PATH_LEN];
+            GrowableBuffer report_list = allocate_growable_buffer();
             for(int y = 0; y < sheet.height; ++y)
             {
                 char *student_id = get_value(&sheet, id_x, y);
-                if(format_string(template_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id))
+                if(format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id))
                 {
-                    GrowableBuffer content = read_entire_file(template_path);
-                    write_growable_buffer(&template_list, content.memory, content.used);
+                    GrowableBuffer content = read_entire_file(report_path);
+                    write_growable_buffer(&report_list, content.memory, content.used);
                 }
-                write_constant_string(&template_list, "\0");
+                write_constant_string(&report_list, "\0");
             }
 
             StringArray issue_bodies;
-            StringArray templates = split_null_terminated_strings(&template_list);
-            if(format_feedback_issues(&issue_bodies, &templates, &sheet))
+            StringArray reports = split_null_terminated_strings(&report_list);
+            if(format_feedback_issues(&issue_bodies, &reports, &sheet))
             {
                 StringArray escaped_issue_bodies = escape_string_array(&issue_bodies);
                 for(int i = 0; i < repos.count; ++i)
@@ -664,13 +661,13 @@ eval(ArgParser *parser, Config *config)
             struct tm time = current_calendar_time();
             static char log_dir[MAX_PATH_LEN];
             static char log_path[MAX_PATH_LEN];
-            if(format_string(log_dir, MAX_PATH_LEN, "%s/logs", global_root_dir) &&
+            if(format_string(log_dir, MAX_PATH_LEN, "%s/logs", g_root_dir) &&
                format_string(log_path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
                              log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
                              time.tm_hour, time.tm_min, time.tm_sec))
             {
                 platform.create_directory(log_dir);
-                global_log_file = fopen(log_path, "wb");
+                g_log_file = fopen(log_path, "wb");
             }
             else
             {
@@ -876,20 +873,20 @@ eval(ArgParser *parser, Config *config)
         write_error("unknown command %s", command);
     }
 
-    if(global_log_file) { fclose(global_log_file); }
+    if(g_log_file) { fclose(g_log_file); }
 }
 
 static void
 run_hand(int arg_count, char **args)
 {
     static char config_path[MAX_PATH_LEN];
-    if(!platform.get_root_dir(global_root_dir, MAX_PATH_LEN))
+    if(!platform.get_root_dir(g_root_dir, MAX_PATH_LEN))
     {
         write_error("unable to get program root dir");
         return;
     }
 
-    if(!format_string(config_path, MAX_PATH_LEN, "%s/config.txt", global_root_dir))
+    if(!format_string(config_path, MAX_PATH_LEN, "%s/config.txt", g_root_dir))
     {
         write_error("buffer too short: %s", config_path);
         return;

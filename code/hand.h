@@ -22,7 +22,7 @@ typedef struct GitCommitHash
     char trim[GIT_SHORT_HASH_LEN + 1];
 } GitCommitHash;
 
-static char global_root_dir[MAX_PATH_LEN];
+static char g_root_dir[MAX_PATH_LEN];
 
 static GitCommitHash
 init_git_commit_hash(char *string)

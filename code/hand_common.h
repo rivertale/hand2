@@ -4,7 +4,7 @@
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 
-static FILE *global_log_file = {0};
+static FILE *g_log_file = {0};
 
 static size_t
 next_pow_of_two(size_t value)
@@ -114,11 +114,11 @@ current_calendar_time(void)
 static void
 write_log_with_args(char *format, va_list arg_list)
 {
-    if(global_log_file)
+    if(g_log_file)
     {
-        vfprintf(global_log_file, format, arg_list);
-        fprintf(global_log_file, "\n");
-        fflush(global_log_file);
+        vfprintf(g_log_file, format, arg_list);
+        fprintf(g_log_file, "\n");
+        fflush(g_log_file);
     }
 }
 

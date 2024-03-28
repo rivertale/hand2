@@ -120,36 +120,36 @@ find_latest_identical_commit(git_repository *search_repo, GitCommitHash search_h
     return result;
 }
 
-// TODO: rename all requested to req
+// TODO: rename all req to req
 static char *
-begin_cache_repository(char *username, char *github_token, char *organization, char *repo, GitCommitHash *requested_hash)
+begin_cache_repository(char *username, char *github_token, char *organization, char *repo, GitCommitHash *req_hash)
 {
     char *temporary_dir = 0;
     static char url[MAX_URL_LEN];
 
-    GitCommitHash hash = requested_hash ? *requested_hash : retrieve_latest_commit(github_token, organization, repo, 0);
+    GitCommitHash hash = req_hash ? *req_hash : retrieve_latest_commit(github_token, organization, repo, 0);
     assert(hash_is_valid(&hash));
 
-    if(format_string(global_git_placement_dir, MAX_PATH_LEN, "%s/cache/%s-%s", global_root_dir, repo, hash.full) &&
+    if(format_string(g_git_placement_dir, MAX_PATH_LEN, "%s/cache/%s-%s", g_root_dir, repo, hash.full) &&
        format_string(url, MAX_URL_LEN, "https://%s:%s@github.com/%s/%s.git", username, github_token, organization, repo) &&
-       !platform.directory_exists(global_git_placement_dir))
+       !platform.directory_exists(g_git_placement_dir))
     {
-        platform.delete_directory(global_git_temporary_dir);
+        platform.delete_directory(g_git_temporary_dir);
         git_repository *repository;
-        if(git2.git_clone(&repository, url, global_git_temporary_dir, 0) == 0)
+        if(git2.git_clone(&repository, url, g_git_temporary_dir, 0) == 0)
         {
             git_oid commit_oid;
             git_commit *commit;
             git_checkout_options reset_options = GIT_CHECKOUT_OPTIONS_INIT;
             reset_options.notify_flags = GIT_CHECKOUT_NOTIFY_UNTRACKED | GIT_CHECKOUT_NOTIFY_IGNORED;
             reset_options.notify_cb = git_reset_callback;
-            reset_options.notify_payload = global_git_temporary_dir;
+            reset_options.notify_payload = g_git_temporary_dir;
             if(git2.git_oid_fromstrn(&commit_oid, hash.full, GIT_HASH_LEN) == 0 &&
                git2.git_commit_lookup(&commit, repository, &commit_oid) == 0)
             {
                 if(git2.git_reset(repository, (git_object *)commit, GIT_RESET_HARD, &reset_options) == 0)
                 {
-                    temporary_dir = global_git_temporary_dir;
+                    temporary_dir = g_git_temporary_dir;
                 }
                 git2.git_commit_free(commit);
             }
@@ -172,8 +172,8 @@ end_cache_repository(char *dir)
 {
     if(dir)
     {
-        platform.delete_directory(global_git_placement_dir);
-        platform.rename_directory(global_git_placement_dir, global_git_temporary_dir);
+        platform.delete_directory(g_git_placement_dir);
+        platform.rename_directory(g_git_placement_dir, g_git_temporary_dir);
     }
 }
 
@@ -181,10 +181,10 @@ static int
 cache_repository(char *buffer, size_t size, char *username, char *github_token, char *organization, char *repo, GitCommitHash *hash)
 {
     char *dir = begin_cache_repository(username, github_token, organization, repo, hash);
-    int formatted = format_string(buffer, size, "%s", global_git_placement_dir);
+    int formatted = format_string(buffer, size, "%s", g_git_placement_dir);
     end_cache_repository(dir);
 
-    int success = formatted && platform.directory_exists(global_git_placement_dir);
+    int success = formatted && platform.directory_exists(g_git_placement_dir);
     return success;
 }
 

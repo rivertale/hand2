@@ -194,15 +194,15 @@ load_config(Config *config, char *path)
     clear_memory(config, sizeof(*config));
 
     int success = 1;
-    FILE *file_handle = fopen(path, "rb");
-    if(file_handle)
+    FILE *file = fopen(path, "rb");
+    if(file)
     {
-        fseek(file_handle, 0, SEEK_END);
-        size_t file_size = ftell(file_handle);
-        fseek(file_handle, 0, SEEK_SET);
+        fseek(file, 0, SEEK_END);
+        size_t file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
 
         char *file_content = allocate_memory(file_size);
-        if(fread(file_content, file_size, 1, file_handle))
+        if(fread(file_content, file_size, 1, file))
         {
             ConfigParser parser;
             init_config_parser(&parser, file_content, file_size);
@@ -215,7 +215,7 @@ load_config(Config *config, char *path)
                 int key_found = 0;
                 for(int i = 0; i < Config_one_past_last; ++i)
                 {
-                    if(compare_substring(key, global_config_key_name[i], key_len))
+                    if(compare_substring(key, g_config_key_name[i], key_len))
                     {
                         key_found = 1;
                         config->value[i] = allocate_and_copy_string(value, value_len);
@@ -237,7 +237,7 @@ load_config(Config *config, char *path)
         {
             write_error("read file '%s' failed", path);
         }
-        fclose(file_handle);
+        fclose(file);
     }
 
     for(int i = 0; i < Config_one_past_last; ++i)
@@ -245,7 +245,7 @@ load_config(Config *config, char *path)
         if(!config->value[i])
         {
             success = 0;
-            write_error("config: incomplete config because key '%s' not found", global_config_key_name[i]);
+            write_error("config: incomplete config because key '%s' not found", g_config_key_name[i]);
         }
     }
     return success;
@@ -256,59 +256,20 @@ ensure_config_exists(char *path)
 {
     int config_exists = 0;
 
-    FILE *config_handle = fopen(path, "rb");
-    if(config_handle)
+    FILE *config_file = fopen(path, "rb");
+    if(config_file)
     {
         config_exists = 1;
-        fclose(config_handle);
+        fclose(config_file);
     }
     else
     {
-        FILE *default_config_handle = fopen(path, "wb");
-        if(default_config_handle)
+        FILE *file = fopen(path, "wb");
+        if(file)
         {
-            static char default_config_content[] =
-                "# The course's GitHub organization name"                           "\n"
-                "organization = \"github-organization-name\""                       "\n"
-                                                                                    "\n"
-                "# https://github.com/blog/1509-personal-api-tokens"                "\n"
-                "github_access_token = \"your-github-personal-api-token\""          "\n"
-                                                                                    "\n"
-                "# https://cloud.google.com/docs/authentication/api-keys"           "\n"
-                "google_api_key = \"your-google-api_key\""                          "\n"
-                                                                                    "\n"
-                "# The student team name in the GitHub organization"                "\n"
-                "student_team = \"student-team-name\""                              "\n"
-                                                                                    "\n"
-                "# The TA team name in the GitHub organization"                     "\n"
-                "ta_team = \"ta-team-name\""                                        "\n"
-                                                                                    "\n"
-                "# The command executed under homework directory for grading"       "\n"
-                "grade_command = \"executed command for grading\""                  "\n"
-                                                                                    "\n"
-                "# feedback_repository"                                             "\n"
-                "feedback_repository = \"feedbacks\""                               "\n"
-                                                                                    "\n"
-                "# spreadsheet"                                                     "\n"
-                "spreadsheet = \"spreadsheet-id\""                                  "\n"
-                                                                                    "\n"
-                "# sheet_key_username"                                              "\n"
-                "sheet_key_username = \"key-for-username-in-sheet\""                "\n"
-                                                                                    "\n"
-                "# sheet_key_student_id"                                            "\n"
-                "sheet_key_student_id = \"key-for-student-id-in-sheet\""            "\n"
-                                                                                    "\n"
-                "# penalty per day"                                                 "\n"
-                "penalty_per_day = \"15\""                                          "\n"
-                                                                                    "\n"
-                "# relative path for 'score.txt'"                                   "\n"
-                "score_relative_path = \"./test/result/score.txt\""                 "\n"
-                                                                                    "\n"
-                "# thread count for grading"                                        "\n"
-                "grade_thread_count = \"1\""                                        "\n";
-            size_t default_config_size = sizeof(default_config_content) - 1;
-            fwrite(default_config_content, default_config_size, 1, default_config_handle);
-            fclose(default_config_handle);
+            size_t size = sizeof(g_default_config) - 1;
+            fwrite(g_default_config, size, 1, file);
+            fclose(file);
         }
     }
     return config_exists;

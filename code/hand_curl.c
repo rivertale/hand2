@@ -695,7 +695,7 @@ retrieve_issue_body(char *github_token, char *organization, char *revise_repo, c
 // NOTE: push events only retain for 90 days, if the student only push 90 days before you collect and
 // grade it, it will assume the student pushes the latest commit in Day 1 (when accepting homework).
 static void
-retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, StringArray *repos, StringArray *requested_branches,
+retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, StringArray *repos, StringArray *req_branches,
                               char *github_token, char *organization, time_t cutoff)
 {
     clear_memory(out_hash, repos->count * sizeof(*out_hash));
@@ -703,7 +703,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
     time_t *last_resort_push_times = (time_t *)allocate_memory(repos->count * sizeof(*last_resort_push_times));
     GitCommitHash *last_resort_hashes = (GitCommitHash *)allocate_memory(repos->count * sizeof(*last_resort_hashes));
     retrieve_creation_times(last_resort_push_times, repos, github_token, organization);
-    retrieve_latest_commits(last_resort_hashes, repos, requested_branches, github_token, organization);
+    retrieve_latest_commits(last_resort_hashes, repos, req_branches, github_token, organization);
 
 #define MAX_WORKER 64
 	for(int at = 0; at < repos->count; at += MAX_WORKER)
@@ -731,8 +731,8 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                 if(worker_done[i]) continue;
 
                 int event_count_in_page = 0;
-                static char requested_ref[256];
-                if(format_string(requested_ref, sizeof(requested_ref), "refs/heads/%s", requested_branches->elem[at + i]))
+                static char req_ref[256];
+                if(format_string(req_ref, sizeof(req_ref), "refs/heads/%s", req_branches->elem[at + i]))
                 {
                     cJSON *json = cJSON_Parse(get_response(&group, i));
                     cJSON *event = 0;
@@ -748,7 +748,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                         cJSON *default_branch = cJSON_GetObjectItemCaseSensitive(payload, "master_branch");
                         if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "PushEvent") &&
                            cJSON_IsString(created_at) && cJSON_IsString(push_hash) &&
-                           cJSON_IsString(ref) && compare_string(ref->valuestring, requested_ref))
+                           cJSON_IsString(ref) && compare_string(ref->valuestring, req_ref))
                         {
                             time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
                             if(push_time < cutoff)
@@ -764,7 +764,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                                 cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "branch") &&
                                 // NOTE: weird github api, create event's ref is 'branch',
                                 // while push event's ref is 'refs/heads/branch'
-                                cJSON_IsString(ref) && compare_string(ref->valuestring, requested_branches->elem[at + i]))
+                                cJSON_IsString(ref) && compare_string(ref->valuestring, req_branches->elem[at + i]))
                         {
                             time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
                             if(push_time < cutoff)
@@ -779,7 +779,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                                 cJSON_IsString(created_at) &&
                                 cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "repository") &&
                                 cJSON_IsString(default_branch) &&
-                                compare_string(default_branch->valuestring, requested_branches->elem[at + i]))
+                                compare_string(default_branch->valuestring, req_branches->elem[at + i]))
                         {
                             time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
                             if(push_time < cutoff)

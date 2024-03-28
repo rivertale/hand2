@@ -61,23 +61,23 @@ static int
 linux_copy_file(char *target_path, char *source_path)
 {
     int result = 0;
-    FILE *source_handle = fopen(source_path, "rb");
-    FILE *target_handle = fopen(target_path, "wb");
-    if(source_handle && target_handle)
+    FILE *source_file = fopen(source_path, "rb");
+    FILE *target_file = fopen(target_path, "wb");
+    if(source_file && target_file)
     {
-        fseek(source_handle, 0, SEEK_END);
-        size_t file_size = ftell(source_handle);
-        fseek(source_handle, 0, SEEK_SET);
+        fseek(source_file, 0, SEEK_END);
+        size_t file_size = ftell(source_file);
+        fseek(source_file, 0, SEEK_SET);
         char *content = allocate_memory(file_size);
-        if(fread(content, file_size, 1, source_handle) > 0 &&
-           fwrite(content, file_size, 1, target_handle) > 0)
+        if(fread(content, file_size, 1, source_file) > 0 &&
+           fwrite(content, file_size, 1, target_file) > 0)
         {
             result = 1;
         }
         free_memory(content);
     }
-    if(source_handle) { fclose(source_handle); }
-    if(target_handle) { fclose(target_handle); }
+    if(source_file) { fclose(source_file); }
+    if(target_file) { fclose(target_file); }
     return result;
 }
 
@@ -530,7 +530,7 @@ linux_init_git(void)
     static char certificate_path[MAX_PATH_LEN];
     if(linux_get_root_dir(root_dir, MAX_PATH_LEN) &&
        format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir) &&
-       format_string(global_git_temporary_dir, sizeof(global_git_temporary_dir), "%s/cache/tmp", root_dir))
+       format_string(g_git_temporary_dir, sizeof(g_git_temporary_dir), "%s/cache/tmp", root_dir))
     {
         if(git2.git_libgit2_init() > 0)
         {

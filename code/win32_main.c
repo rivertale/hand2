@@ -1,8 +1,8 @@
 #include <windows.h>
 typedef SOCKET curl_socket_t;
 #include "hand.c"
-static HANDLE global_work_dir_lock = 0;
-static wchar_t *global_work_dir = 0;
+static HANDLE g_work_dir_lock = 0;
+static wchar_t *g_work_dir = 0;
 
 static size_t
 win32_utf16_len(wchar_t *string)
@@ -291,11 +291,11 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
             startup_info.hStdError = stderr_write_handle;
             PROCESS_INFORMATION process_info;
 
-            WaitForSingleObject(global_work_dir_lock, INFINITE);
+            WaitForSingleObject(g_work_dir_lock, INFINITE);
             SetCurrentDirectoryW(utf16_work_dir);
             BOOL process_created = CreateProcessW(0, utf16_command, 0, 0, 1, 0, 0, utf16_work_dir, &startup_info, &process_info);
-            SetCurrentDirectoryW(global_work_dir);
-            ReleaseMutex(global_work_dir_lock);
+            SetCurrentDirectoryW(g_work_dir);
+            ReleaseMutex(g_work_dir_lock);
 
             CloseHandle(stdout_write_handle);
             CloseHandle(stderr_write_handle);
@@ -612,7 +612,7 @@ win32_init_git(void)
         static char certificate_path[MAX_PATH_LEN];
         if(win32_get_root_dir(root_dir, MAX_PATH_LEN) &&
            format_string(certificate_path, sizeof(certificate_path), "%s/curl-ca-bundle.crt", root_dir) &&
-           format_string(global_git_temporary_dir, sizeof(global_git_temporary_dir), "%s/cache/tmp", root_dir))
+           format_string(g_git_temporary_dir, sizeof(g_git_temporary_dir), "%s/cache/tmp", root_dir))
         {
             if(git2.git_libgit2_init() > 0)
             {
@@ -672,16 +672,16 @@ main(int arg_count, char **args)
     if(!win32_init_curl()) return 0;
     if(!win32_init_git()) return 0;
 
-    global_work_dir_lock = CreateMutexA(0, 0, 0);
-    if(!global_work_dir_lock)
+    g_work_dir_lock = CreateMutexA(0, 0, 0);
+    if(!g_work_dir_lock)
     {
         write_error("CreateMutexA: %d", GetLastError());
         return 0;
     }
 
     DWORD work_dir_len = GetCurrentDirectoryW(0, 0);
-    global_work_dir = (wchar_t *)allocate_memory(work_dir_len * sizeof(wchar_t));
-    if(!GetCurrentDirectoryW(work_dir_len, global_work_dir))
+    g_work_dir = (wchar_t *)allocate_memory(work_dir_len * sizeof(wchar_t));
+    if(!GetCurrentDirectoryW(work_dir_len, g_work_dir))
     {
         write_error("GetCurrentDirectory: %d", GetLastError());
         return 0;
@@ -689,8 +689,8 @@ main(int arg_count, char **args)
 
     run_hand(arg_count - 1, args + 1);
 
-    free_memory(global_work_dir);
-    CloseHandle(global_work_dir_lock);
+    free_memory(g_work_dir);
+    CloseHandle(g_work_dir_lock);
     win32_cleanup_curl();
     win32_cleanup_git();
     return 0;
