@@ -7,8 +7,8 @@ typedef struct GrowableBuffer
 
 typedef struct StringArray
 {
-    int padding_;
     int count;
+    int max;
     char **elem;
     GrowableBuffer buffer;
 } StringArray;

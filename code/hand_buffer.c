@@ -39,6 +39,13 @@ null_terminate(GrowableBuffer *buffer)
     buffer->memory[buffer->used] = 0;
 }
 
+static void
+clear_growable_buffer(GrowableBuffer *buffer)
+{
+    buffer->used = 0;
+    null_terminate(buffer);
+}
+
 static GrowableBuffer
 allocate_growable_buffer(void)
 {
@@ -77,67 +84,64 @@ free_string_array(StringArray *array)
     clear_memory(array, sizeof(*array));
 }
 
-static StringArray
-split_null_terminated_strings(GrowableBuffer *buffer)
+static void
+reserve_string_array(StringArray *array, int count)
 {
-    StringArray result = {0};
-    char prev_char;
-
-    prev_char = 0;
-    for(size_t i = 0; i < buffer->used; ++i)
+    int total = array->count + count;
+    if(total > array->max)
     {
-        if(!prev_char) { ++result.count; }
-        prev_char = buffer->memory[i];
+        int allocated = (int)next_pow_of_two(total);
+        char **elem = (char **)allocate_memory(allocated * sizeof(*elem));
+        copy_memory(elem, array->elem, array->count * sizeof(*elem));
+        free_memory(array->elem);
+        array->max = allocated;
+        array->elem = elem;
     }
-
-    result.buffer = *buffer;
-    result.elem = (char **)allocate_memory(result.count * sizeof(char *));
-    int index = 0;
-    prev_char = 0;
-    for(size_t i = 0; i < buffer->used; ++i)
-    {
-        char *c = buffer->memory + i;
-        if(!prev_char) { result.elem[index++] = c; }
-        prev_char = *c;
-    }
-    return result;
 }
 
 static StringArray
-split_by_whitespace(GrowableBuffer *buffer)
+allocate_string_array(void)
 {
+    // TODO: use larger initial_count, this is for testing the growing feature for now
+    int initial_count = 16;
     StringArray result = {0};
-    char prev_char;
-
-    prev_char = 0;
-    for(size_t i = 0; i < buffer->used; ++i)
-    {
-        char *c = buffer->memory + i;
-        if(*c == ' ' || *c == '\t' || *c == '\r' || *c == '\n') { *c = 0; }
-
-        if(!prev_char && *c) { ++result.count; }
-        prev_char = *c;
-    }
-
-    result.buffer = *buffer;
-    result.elem = (char **)allocate_memory(result.count * sizeof(char *));
-    int index = 0;
-    prev_char = 0;
-    for(size_t i = 0; i < buffer->used; ++i)
-    {
-        char *c = buffer->memory + i;
-        if(!prev_char && *c) { result.elem[index++] = c; }
-        prev_char = *c;
-    }
+    result.max = initial_count;
+    result.elem = (char **)allocate_memory(initial_count * sizeof(*result.elem));
+    result.buffer = allocate_growable_buffer();
     return result;
+}
+
+static void
+append_string_array(StringArray *array, char *string)
+{
+    GrowableBuffer *buffer = &array->buffer;
+    size_t old_size = buffer->used;
+    char *old_ptr = buffer->memory;
+
+    write_growable_buffer(buffer, string, string_len(string));
+    write_constant_string(buffer, "\0");
+    int dirty = buffer->memory != old_ptr;
+    if(dirty)
+    {
+        // NOTE: the memory has grown, fixup the pointers
+        for(int i = 0; i < array->count; ++i)
+        {
+            array->elem[i] = buffer->memory + (array->elem[i] - old_ptr);
+        }
+
+    }
+    reserve_string_array(array, 1);
+    array->elem[array->count++] = buffer->memory + old_size;
 }
 
 static StringArray
 escape_string_array(StringArray *array)
 {
+    StringArray result = allocate_string_array();
     GrowableBuffer buffer = allocate_growable_buffer();
     for(int i = 0; i < array->count; ++i)
     {
+        clear_growable_buffer(&buffer);
         for(char *c = array->elem[i]; *c; ++c)
         {
             switch(*c)
@@ -154,9 +158,8 @@ escape_string_array(StringArray *array)
                 default: { write_growable_buffer(&buffer, &c, 1); } break;
             }
         }
-        write_constant_string(&buffer, "\0");
+        append_string_array(&result, buffer.memory);
     }
-    StringArray result = split_null_terminated_strings(&buffer);
     assert(result.count == array->count);
     return result;
 }
@@ -179,28 +182,22 @@ find_index_case_insensitive(StringArray *array, char *keyword)
 static StringArray
 read_string_array_file(char *path)
 {
-    GrowableBuffer buffer = allocate_growable_buffer();
-
-    FILE *file = fopen(path, "rb");
-    if(file)
+    StringArray result = allocate_string_array();
+    GrowableBuffer content = read_entire_file(path);
+    for(size_t i = 0; i < content.used; ++i)
     {
-        fseek(file, 0, SEEK_END);
-        size_t file_size = ftell(file);
-        fseek(file, 0, SEEK_SET);
+        char *c = content.memory + i;
+        if(*c == ' ' || *c == '\t' || *c == '\r' || *c == '\n') { *c = 0; }
+    }
 
-        reserve_growable_buffer(&buffer, file_size);
-        if(fread(buffer.memory + buffer.used, file_size, 1, file))
-        {
-            buffer.used += file_size;
-        }
-        fclose(file);
-    }
-    else
+    char prev_char = 0;
+    for(size_t i = 0; i < content.used; ++i)
     {
-        write_log("file '%s' not exist", path);
+        char *c = content.memory + i;
+        if(!prev_char && *c) { append_string_array(&result, c); }
+        prev_char = *c;
     }
-    null_terminate(&buffer);
-    return split_by_whitespace(&buffer);
+    return result;
 }
 
 static int

@@ -374,7 +374,7 @@ retrieve_creation_times(time_t *out_times, StringArray *repos, char *github_toke
 static StringArray
 retrieve_default_branches(StringArray *repos, char *github_token, char *organization)
 {
-    GrowableBuffer buffer = allocate_growable_buffer();
+    StringArray result = allocate_string_array();
 #define MAX_WORKER 64
     for(int at = 0; at < repos->count; at += MAX_WORKER)
     {
@@ -396,19 +396,22 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
             cJSON *default_branch = cJSON_GetObjectItemCaseSensitive(json, "default_branch");
             if(cJSON_IsString(default_branch))
             {
-                size_t len = string_len(default_branch->valuestring);
-                write_growable_buffer(&buffer, default_branch->valuestring, len);
+                append_string_array(&result, default_branch->valuestring);
+            }
+            else
+            {
+                // NOTE: must align to the number of repository, so we write a empty string even when we can't find the
+                // default branch name
+                append_string_array(&result, "");
+                write_error("default branch can't be found for '%s/%s'", organization, repos->elem[i]);
             }
             cJSON_Delete(json);
-
-            // NOTE: must align to the number of repository, so we write a empty string even when we can't find the
-            // default branch name
-            write_constant_string(&buffer, "\0");
         }
         end_curl_group(&group);
     }
 #undef MAX_WORKER
-    return split_null_terminated_strings(&buffer);
+    assert(result.count == repos->count);
+    return result;
 }
 
 static void
@@ -476,7 +479,7 @@ retrieve_latest_commit(char *github_token, char *organization, char *repo, char 
 static StringArray
 retrieve_users_in_team(char *github_token, char *organization, char *team)
 {
-    GrowableBuffer buffer = allocate_growable_buffer();
+    StringArray result = allocate_string_array();
     int page = 1;
     for(;;)
     {
@@ -506,10 +509,12 @@ retrieve_users_in_team(char *github_token, char *organization, char *team)
                 cJSON *username = cJSON_GetObjectItemCaseSensitive(member, "login");
                 if(cJSON_IsString(username))
                 {
-                    size_t len = string_len(username->valuestring);
-                    write_growable_buffer(&buffer, username->valuestring, len);
+                    append_string_array(&result, username->valuestring);
                 }
-                write_constant_string(&buffer, "\0");
+                else
+                {
+                    write_error("json corrupted");
+                }
             }
             cJSON_Delete(json);
             if(count_in_page == 0) break;
@@ -517,13 +522,13 @@ retrieve_users_in_team(char *github_token, char *organization, char *team)
         end_curl_group(&group);
         if(count_in_page == 0) break;
     }
-    return split_null_terminated_strings(&buffer);
+    return result;
 }
 
 static StringArray
 retrieve_existing_invitations(char *github_token, char *organization, char *team)
 {
-    GrowableBuffer buffer = allocate_growable_buffer();
+    StringArray result = allocate_string_array();
     int page = 1;
     for(;;)
     {
@@ -553,10 +558,12 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
                 cJSON *username = cJSON_GetObjectItemCaseSensitive(member, "login");
                 if(cJSON_IsString(username))
                 {
-                    size_t len = string_len(username->valuestring);
-                    write_growable_buffer(&buffer, username->valuestring, len);
+                    append_string_array(&result, username->valuestring);
                 }
-                write_constant_string(&buffer, "\0");
+                else
+                {
+                    write_error("json corrupted");
+                }
             }
             cJSON_Delete(json);
             if(count_in_page == 0) break;
@@ -564,13 +571,13 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
         end_curl_group(&group);
         if(count_in_page == 0) break;
     }
-    return split_null_terminated_strings(&buffer);
+    return result;
 }
 
 static StringArray
 retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
 {
-    GrowableBuffer buffer = allocate_growable_buffer();
+    StringArray result = allocate_string_array();
     int page = 1;
     for(;;)
     {
@@ -600,9 +607,7 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
                 cJSON *repo_name = cJSON_GetObjectItemCaseSensitive(repo, "name");
                 if(cJSON_IsString(repo_name) && compare_substring(repo_name->valuestring, prefix, string_len(prefix)))
                 {
-                    size_t len = string_len(repo_name->valuestring);
-                    write_growable_buffer(&buffer, repo_name->valuestring, len);
-                    write_constant_string(&buffer, "\0");
+                    append_string_array(&result, repo_name->valuestring);
                 }
             }
             cJSON_Delete(json);
@@ -611,7 +616,7 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
         end_curl_group(&group);
         if(count_in_page == 0) break;
     }
-    return split_null_terminated_strings(&buffer);
+    return result;
 }
 
 // NOTE:

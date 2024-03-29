@@ -340,9 +340,8 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
 
     if(should_match_title)
     {
-        GrowableBuffer repo = allocate_growable_buffer();
-        write_growable_buffer(&repo, title, string_len(title));
-        repos = split_null_terminated_strings(&repo);
+        repos = allocate_string_array();
+        append_string_array(&repos, title);
     }
     else
     {
@@ -482,11 +481,13 @@ static int
 format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
 {
     int success = 1;
+    *out = allocate_string_array();
     assert(format->count == sheet->height);
 
     GrowableBuffer buffer = allocate_growable_buffer();
     for(int y = 0; y < sheet->height; ++y)
     {
+        clear_growable_buffer(&buffer);
         int depth = 0;
         char *identifier = 0;
         for(char *c = format->elem[y]; *c; ++c)
@@ -526,18 +527,14 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
                 write_growable_buffer(&buffer, c, 1);
             }
         }
-        write_constant_string(&buffer, "\0");
+        append_string_array(out, buffer.memory);
     }
+    free_growable_buffer(&buffer);
 
-    if(success)
+    assert(out->count == sheet->height);
+    if(!success)
     {
-        *out = split_null_terminated_strings(&buffer);
-        assert(out->count == sheet->height);
-    }
-    else
-    {
-        clear_memory(out, sizeof(*out));
-        free_growable_buffer(&buffer);
+        free_string_array(out);
     }
     return success;
 }
@@ -577,34 +574,28 @@ announce_grade(char *title, char *feedback_repo,
         if(student_x >= 0 && id_x >= 0)
         {
             // NOTE: repos_list will be free by repos
-            GrowableBuffer repos_list = allocate_growable_buffer();
+            StringArray repos = allocate_string_array();
             for(int y = 0; y < sheet.height; ++y)
             {
                 char *student = get_value(&sheet, student_x, y);
-                write_growable_buffer(&repos_list, title, string_len(title));
-                write_constant_string(&repos_list, "-");
-                write_growable_buffer(&repos_list, student, string_len(student));
-                write_constant_string(&repos_list, "\0");
+                static char repo_name[MAX_URL_LEN];
+                format_string(repo_name, MAX_URL_LEN, "%s-%s", title, student);
+                append_string_array(&repos, repo_name);
             }
-            StringArray repos = split_null_terminated_strings(&repos_list);
             int *issue_numbers = (int *)allocate_memory(sheet.height * sizeof(*issue_numbers));
             retrieve_issue_numbers_by_title(issue_numbers, &repos, github_token, organization, issue_title);
 
-            static char report_path[MAX_PATH_LEN];
-            GrowableBuffer report_list = allocate_growable_buffer();
+            StringArray reports = allocate_string_array();
             for(int y = 0; y < sheet.height; ++y)
             {
                 char *student_id = get_value(&sheet, id_x, y);
-                if(format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id))
-                {
-                    GrowableBuffer content = read_entire_file(report_path);
-                    write_growable_buffer(&report_list, content.memory, content.used);
-                }
-                write_constant_string(&report_list, "\0");
+                static char report_path[MAX_PATH_LEN];
+                format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id);
+                GrowableBuffer content = read_entire_file(report_path);
+                append_string_array(&reports, content.memory);
             }
 
             StringArray issue_bodies;
-            StringArray reports = split_null_terminated_strings(&report_list);
             if(format_feedback_issues(&issue_bodies, &reports, &sheet))
             {
                 StringArray escaped_issue_bodies = escape_string_array(&issue_bodies);
