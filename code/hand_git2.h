@@ -660,5 +660,4 @@ typedef struct Git2Code
 } Git2Code;
 
 static Git2Code git2 = {0};
-static char g_git_placement_dir[MAX_PATH_LEN];
 static char g_git_temporary_dir[MAX_PATH_LEN];

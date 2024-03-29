@@ -269,13 +269,6 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
         pthread_mutex_unlock(callback_lock);
     }
 
-    GrowableBuffer bootstrap = allocate_growable_buffer();
-    if(string_len(command) > 0)
-    {
-        write_growable_buffer(&bootstrap, command, string_len(command));
-    }
-    null_terminate(&bootstrap);
-
     GrowableBuffer stdout_content = allocate_growable_buffer();
     GrowableBuffer stderr_content = allocate_growable_buffer();
     int stdout_handle[2];
@@ -296,7 +289,7 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
             close(stderr_handle[1]);
             if(chdir(work_dir) == 0)
             {
-                execl("/bin/sh", "sh", "-c", bootstrap.memory, (char *)0);
+                execl("/bin/sh", "sh", "-c", command, (char *)0);
             }
             exit(-1);
         }
@@ -415,10 +408,11 @@ linux_thread_proc(void *param)
         if(__sync_bool_compare_and_swap(context->next_to_work, next_to_work, next_to_work + 1))
         {
             Work *work = context->works + next_to_work;
+            char *command = work->command[0] ? work->command : 0;
             char *work_dir = work->work_dir[0] ? work->work_dir : 0;
             char *stdout_path = work->stdout_path[0] ? work->stdout_path : 0;
             char *stderr_path = work->stderr_path[0] ? work->stderr_path : 0;
-            work->exit_code = linux_exec_process(context, next_to_work, work->command, work_dir, stdout_path, stderr_path);
+            work->exit_code = linux_exec_process(context, next_to_work, command, work_dir, stdout_path, stderr_path);
         }
     }
     return 0;

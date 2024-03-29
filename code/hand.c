@@ -355,19 +355,19 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
     retrieve_pushes_before_cutoff(hash, push_time, &repos, &branches, github_token, organization, cutoff);
 
     write_output("Retrieving student repositories...");
-    int work_count = 0;
     Work *works = (Work *)allocate_memory(repos.count * sizeof(*works));
+    clear_memory(works, repos.count * sizeof(*works));
     for(int i = 0; i < repos.count; ++i)
     {
-        Work *work = works + work_count;
+        Work *work = works + i;
+        static char dir[MAX_PATH_LEN];
         static char test_dir[MAX_PATH_LEN];
         static char docker_dir[MAX_PATH_LEN];
-        char *dir = begin_cache_repository(username, github_token, organization, repos.elem[i], &hash[i]);
-        if(dir &&
+        write_output("Retrieving homework from '%s'", repos.elem[i]);
+        if(cache_repository(dir, MAX_PATH_LEN, username, github_token, organization, repos.elem[i], &hash[i]) &&
            format_string(test_dir, MAX_PATH_LEN, "%s/test", dir) &&
            format_string(docker_dir, MAX_PATH_LEN, "%s/docker", dir))
         {
-            write_output("Retrieving homework from '%s'", repos.elem[i]);
             // IMPORTANT: After mounting a volume for the first time on wsl with "docker run -v", change the
             // volume's content seems to mess up the ".." inode that navigates to /mnt
             //
@@ -375,39 +375,32 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
             // "../../.." that navigate to /mnt become the same as "../../."
             //
             // I don't know why, I don't want to know why, I shouldn't wonder why, just don't use WSL
+            // to directly launch hand2
+
+            // NOTE: in case we want to modify cache/tmpl-hwX locally after cloning students' repository,
+            // we update the directories every time instead of updating it only when we clone.
             platform.delete_directory(test_dir);
             platform.delete_directory(docker_dir);
             platform.copy_directory(test_dir, template_test_dir);
             platform.copy_directory(docker_dir, template_docker_dir);
-        }
-
-        // TODO: create a global_log_dir variable
-        // NOTE: g_git_placement_dir is set by begin_sync_repository to be the output directory for syncing
-        if(format_string(work->command, sizeof(work->command), "%s", command) &&
-           format_string(work->work_dir, sizeof(work->work_dir), "%s", g_git_placement_dir) &&
-           format_string(work->stdout_path, sizeof(work->stdout_path),
-                         "%s/%s_%s_stdout.log", g_log_dir, repos.elem[i], hash[i].trim) &&
-           format_string(work->stderr_path, sizeof(work->stderr_path),
-                         "%s/%s_%s_stderr.log", g_log_dir, repos.elem[i], hash[i].trim))
-        {
-            ++work_count;
+            format_string(work->command, sizeof(work->command), "%s", command);
+            format_string(work->work_dir, sizeof(work->work_dir), "%s", dir);
+            format_string(work->stdout_path, sizeof(work->stdout_path),
+                          "%s/%s_%s_stdout.log", g_log_dir, repos.elem[i], hash[i].trim);
+            format_string(work->stderr_path, sizeof(work->stderr_path),
+                          "%s/%s_%s_stderr.log", g_log_dir, repos.elem[i], hash[i].trim);
         }
         else
         {
             // TODO: error
         }
-        end_cache_repository(dir);
     }
 
     int submission_count = 0;
     int late_submission_count = 0;
     int failure_count = 0;
     write_output("Start grading...");
-    platform.wait_for_completion(thread_count, work_count, works, grade_homework_on_progress, grade_homework_on_complete);
-    for(int i = 0; i < work_count; ++i)
-    {
-        if(works[i].exit_code != 0) { ++failure_count; }
-    }
+    platform.wait_for_completion(thread_count, repos.count, works, grade_homework_on_progress, grade_homework_on_complete);
 
     write_output("Generating report...");
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
@@ -425,21 +418,18 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         }
 
         double score = 0;
-        static char work_dir[MAX_PATH_LEN];
-        static char report_path[MAX_PATH_LEN];
-        static char score_path[MAX_PATH_LEN];
-
         if(index != -1)
         {
             ++submission_count;
             if(push_time[index] > deadline) { ++late_submission_count; }
+            if(works[index].exit_code != 0) { ++failure_count; }
 
-            // TODO: propagate the work_dir when retrieving student repositories
-            if(format_string(work_dir, MAX_PATH_LEN, "%s/%s_%s", g_cache_dir, repos.elem[index], hash[index].full) &&
+            static char report_path[MAX_PATH_LEN];
+            static char score_path[MAX_PATH_LEN];
+            if(works[index].exit_code == 0 &&
                format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
-               format_string(score_path, MAX_PATH_LEN, "%s/%s", work_dir, score_relative_path))
+               format_string(score_path, MAX_PATH_LEN, "%s/%s", works[index].work_dir, score_relative_path))
             {
-
                 GrowableBuffer score_content = read_entire_file(score_path);
                 for(char *c = score_content.memory; *c; ++c)
                 {
@@ -452,7 +442,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                 free_growable_buffer(&score_content);
 
                 GrowableBuffer report;
-                if(format_report_by_file_replacement(&report, &report_template, work_dir))
+                if(format_report_by_file_replacement(&report, &report_template, works[index].work_dir))
                 {
                     FILE *report_file = fopen(report_path, "wb");
                     if(report_file)
@@ -659,15 +649,13 @@ eval(ArgParser *parser, Config *config)
         else if(compare_string(option, "--log"))
         {
             struct tm time = current_calendar_time();
-            static char log_dir[MAX_PATH_LEN];
-            static char log_path[MAX_PATH_LEN];
-            if(format_string(log_dir, MAX_PATH_LEN, "%s/logs", g_root_dir) &&
-               format_string(log_path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
-                             log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+            static char path[MAX_PATH_LEN];
+            if(format_string(path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
+                             g_log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
                              time.tm_hour, time.tm_min, time.tm_sec))
             {
-                platform.create_directory(log_dir);
-                g_log_file = fopen(log_path, "wb");
+                platform.create_directory(g_log_dir);
+                g_log_file = fopen(path, "wb");
             }
             else
             {
