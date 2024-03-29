@@ -134,9 +134,6 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
     //    (1) submit at 12:00:00 (Sat.) is counted as 1-day, hour  0-24 are treated as Saturday.
     //    (2) submit at 12:00:00 (Sun.) is counted as 1-day, hour 24-48 are treated as Sunday.
     //    (3) submit at 12:00:00 (Mon.) is counted as 2-day, hour 48-72 are treated as Monday.
-    write_output("[Late submission]");
-    write_output("%3s  %12s  %-19s  %-24s  %-40s",
-                 "#", "delay (days)", "push_time", "repository", "hash");
     int submission_count = 0;
     int late_submission_count = 0;
     int start_weekday = (t0.tm_hour < 12) ? t0.tm_wday : (t0.tm_wday + 1) % 7;
@@ -171,6 +168,13 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
                 }
 
                 tm t = calendar_time(push_time[index]);
+                if(late_submission_count == 0)
+                {
+                    write_output("");
+                    write_output("[Late submission]");
+                    write_output("%3s  %12s  %-19s  %-24s  %-40s",
+                                 "#", "delay (days)", "push_time", "repository", "hash");
+                }
                 write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s",
                              late_submission_count, delay,
                              t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
@@ -179,6 +183,7 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
         }
         fprintf(out_file, "%d%%\n", max(100 - penalty_per_day * delay, 0));
     }
+
     write_output("");
     write_output("[Summary]");
     write_output("    Total student: %d", sheet.height);
