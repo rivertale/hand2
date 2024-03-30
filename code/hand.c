@@ -328,7 +328,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
        !format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir) ||
        !format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s",feedback_dir, title) ||
        !format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports",feedback_dir, title) ||
-       !format_string(report_template_path, MAX_PATH_LEN, "%s/report_template.md", feedback_dir))
+       !format_string(report_template_path, MAX_PATH_LEN, "%s/report_template_%s.md", feedback_dir, title))
     {
         return;
     }
@@ -566,6 +566,15 @@ announce_grade(char *title, char *feedback_repo,
         return;
     }
 
+    write_output("Retrieving repos with prefix '%s'...", title);
+    StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
+
+    write_output("Retrieving issue '%s'...", issue_title);
+    int *issue_numbers = (int *)allocate_memory(repos.count * sizeof(*issue_numbers));
+    retrieve_issue_numbers_by_title(issue_numbers, &repos, github_token, organization, issue_title);
+
+    int announcement_count = 0;
+    int failure_count = 0;
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
     if(sheet.width && sheet.height)
     {
@@ -573,18 +582,6 @@ announce_grade(char *title, char *feedback_repo,
         int id_x = find_key_index(&sheet, id_key);
         if(student_x >= 0 && id_x >= 0)
         {
-            // NOTE: repos_list will be free by repos
-            StringArray repos = allocate_string_array();
-            for(int y = 0; y < sheet.height; ++y)
-            {
-                char *student = get_value(&sheet, student_x, y);
-                static char repo_name[MAX_URL_LEN];
-                format_string(repo_name, MAX_URL_LEN, "%s-%s", title, student);
-                append_string_array(&repos, repo_name);
-            }
-            int *issue_numbers = (int *)allocate_memory(sheet.height * sizeof(*issue_numbers));
-            retrieve_issue_numbers_by_title(issue_numbers, &repos, github_token, organization, issue_title);
-
             StringArray reports = allocate_string_array();
             for(int y = 0; y < sheet.height; ++y)
             {
@@ -598,16 +595,37 @@ announce_grade(char *title, char *feedback_repo,
             StringArray issue_bodies;
             if(format_feedback_issues(&issue_bodies, &reports, &sheet))
             {
-                StringArray escaped_issue_bodies = escape_string_array(&issue_bodies);
-                for(int i = 0; i < repos.count; ++i)
+                for(int y = 0; y < sheet.height; ++y)
                 {
-                    if(issue_numbers[i])
+                    int index = -1;
+                    static char req_repo[256];
+                    char *student = get_value(&sheet, student_x, y);
+                    if(format_string(req_repo, sizeof(req_repo), "%s-%s", title, student))
                     {
-                        edit_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_bodies.elem[i], issue_numbers[i]);
+                        index = find_index_case_insensitive(&repos, req_repo);
                     }
-                    else
+
+                    if(index != -1)
                     {
-                        create_issue(github_token, organization, repos.elem[i], issue_title, escaped_issue_bodies.elem[i]);
+                        write_output("Announce grade for '%s'", repos.elem[index]);
+                        ++announcement_count;
+                        if(issue_numbers[index])
+                        {
+                            if(!edit_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y], issue_numbers[index]))
+                            {
+                                ++failure_count;
+                            }
+                        }
+                        else
+                        {
+                            if(!create_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y]))
+                            {
+                                ++failure_count;
+                            }
+                        }
+                        // NOTE: to bypass the github rate limit
+                        // TODO: need further investigation on the error messages github returns
+                        sleep(1);
                     }
                 }
             }
@@ -615,6 +633,12 @@ announce_grade(char *title, char *feedback_repo,
             {
 
             }
+
+            write_output("");
+            write_output("[Summary]");
+            write_output("    Total students: %d", sheet.height);
+            write_output("    Total announcement: %d", announcement_count);
+            write_output("    Failed announcement: %d", failure_count);
         }
         else
         {

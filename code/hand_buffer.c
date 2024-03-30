@@ -134,33 +134,26 @@ append_string_array(StringArray *array, char *string)
     array->elem[array->count++] = buffer->memory + old_size;
 }
 
-static StringArray
-escape_string_array(StringArray *array)
+static GrowableBuffer
+escape_string(char *string)
 {
-    StringArray result = allocate_string_array();
-    GrowableBuffer buffer = allocate_growable_buffer();
-    for(int i = 0; i < array->count; ++i)
+    GrowableBuffer result = allocate_growable_buffer();
+    for(char *c = string; *c; ++c)
     {
-        clear_growable_buffer(&buffer);
-        for(char *c = array->elem[i]; *c; ++c)
+        switch(*c)
         {
-            switch(*c)
-            {
-                // NOTE: json escape sequences are from https://www.json.org/json-en.html
-                case '\"': { write_constant_string(&buffer, "\\\""); } break;
-                case '\\': { write_constant_string(&buffer, "\\\\"); } break;
-                case '/': { write_constant_string(&buffer, "\\/"); } break;
-                case '\b': { write_constant_string(&buffer, "\\b"); } break;
-                case '\f': { write_constant_string(&buffer, "\\f"); } break;
-                case '\n': { write_constant_string(&buffer, "\\n"); } break;
-                case '\r': { write_constant_string(&buffer, "\\r"); } break;
-                case '\t': { write_constant_string(&buffer, "\\t"); } break;
-                default: { write_growable_buffer(&buffer, &c, 1); } break;
-            }
+            // NOTE: json escape sequences are from https://www.json.org/json-en.html
+            case '\"': { write_constant_string(&result, "\\\""); } break;
+            case '\\': { write_constant_string(&result, "\\\\"); } break;
+            case '/': { write_constant_string(&result, "\\/"); } break;
+            case '\b': { write_constant_string(&result, "\\b"); } break;
+            case '\f': { write_constant_string(&result, "\\f"); } break;
+            case '\n': { write_constant_string(&result, "\\n"); } break;
+            case '\r': { write_constant_string(&result, "\\r"); } break;
+            case '\t': { write_constant_string(&result, "\\t"); } break;
+            default: { write_growable_buffer(&result, c, 1); } break;
         }
-        append_string_array(&result, buffer.memory);
     }
-    assert(result.count == array->count);
     return result;
 }
 

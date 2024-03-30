@@ -302,7 +302,7 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
                 if(worker_done[i]) continue;
                 static char url[MAX_URL_LEN];
                 // TODO: aren't prev_pages always the same for all workers?
-                if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues/?state=all&per_page=100&page=%d",
+                if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues?state=all&per_page=100&page=%d",
                                  organization, repos->elem[at + i], ++prev_pages[i]))
                 {
                     assign_github_get(&group, i, url, github_token);
@@ -764,11 +764,12 @@ create_issue(char *github_token, char *organization, char *repo, char *title, ch
     static char url[MAX_URL_LEN];
     if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues", organization, repo))
     {
+        GrowableBuffer escaped_body = escape_string(body);
         GrowableBuffer post_data = allocate_growable_buffer();
         write_constant_string(&post_data, "{\"title\":\"");
         write_growable_buffer(&post_data, title, string_len(title));
         write_constant_string(&post_data, "\",\"body\":\"");
-        write_growable_buffer(&post_data, body, string_len(body));
+        write_growable_buffer(&post_data, escaped_body.memory, escaped_body.used);
         write_constant_string(&post_data, "\",\"state\":\"open\"}");
 
         CurlGroup group = begin_curl_group(1);
@@ -793,11 +794,12 @@ edit_issue(char *github_token, char *organization, char *repo, char *title, char
     static char url[MAX_URL_LEN];
     if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues/%d", organization, repo, issue_number))
     {
+        GrowableBuffer escaped_body = escape_string(body);
         GrowableBuffer post_data = allocate_growable_buffer();
         write_constant_string(&post_data, "{\"title\":\"");
         write_growable_buffer(&post_data, title, string_len(title));
         write_constant_string(&post_data, "\",\"body\":\"");
-        write_growable_buffer(&post_data, body, string_len(body));
+        write_growable_buffer(&post_data, escaped_body.memory, escaped_body.used);
         write_constant_string(&post_data, "\",\"state\":\"open\"}");
 
         CurlGroup group = begin_curl_group(1);
