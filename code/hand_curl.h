@@ -112,6 +112,83 @@ typedef enum
 
 typedef enum
 {
+  CURLINFO_NONE                         = 0,
+  CURLINFO_EFFECTIVE_URL                = 0x100000 + 1,
+  CURLINFO_RESPONSE_CODE                = 0x200000 + 2,
+  CURLINFO_TOTAL_TIME                   = 0x300000 + 3,
+  CURLINFO_NAMELOOKUP_TIME              = 0x300000 + 4,
+  CURLINFO_CONNECT_TIME                 = 0x300000 + 5,
+  CURLINFO_PRETRANSFER_TIME             = 0x300000 + 6,
+  CURLINFO_SIZE_UPLOAD                  = 0x300000 + 7,
+  CURLINFO_SIZE_UPLOAD_T                = 0x600000 + 7,
+  CURLINFO_SIZE_DOWNLOAD                = 0x300000 + 8,
+  CURLINFO_SIZE_DOWNLOAD_T              = 0x600000 + 8,
+  CURLINFO_SPEED_DOWNLOAD               = 0x300000 + 9,
+  CURLINFO_SPEED_DOWNLOAD_T             = 0x600000 + 9,
+  CURLINFO_SPEED_UPLOAD                 = 0x300000 + 10,
+  CURLINFO_SPEED_UPLOAD_T               = 0x600000 + 10,
+  CURLINFO_HEADER_SIZE                  = 0x200000 + 11,
+  CURLINFO_REQUEST_SIZE                 = 0x200000 + 12,
+  CURLINFO_SSL_VERIFYRESULT             = 0x200000 + 13,
+  CURLINFO_FILETIME                     = 0x200000 + 14,
+  CURLINFO_FILETIME_T                   = 0x600000 + 14,
+  CURLINFO_CONTENT_LENGTH_DOWNLOAD      = 0x300000 + 15,
+  CURLINFO_CONTENT_LENGTH_DOWNLOAD_T    = 0x600000 + 15,
+  CURLINFO_CONTENT_LENGTH_UPLOAD        = 0x300000 + 16,
+  CURLINFO_CONTENT_LENGTH_UPLOAD_T      = 0x600000 + 16,
+  CURLINFO_STARTTRANSFER_TIME           = 0x300000 + 17,
+  CURLINFO_CONTENT_TYPE                 = 0x100000 + 18,
+  CURLINFO_REDIRECT_TIME                = 0x300000 + 19,
+  CURLINFO_REDIRECT_COUNT               = 0x200000 + 20,
+  CURLINFO_PRIVATE                      = 0x100000 + 21,
+  CURLINFO_HTTP_CONNECTCODE             = 0x200000 + 22,
+  CURLINFO_HTTPAUTH_AVAIL               = 0x200000 + 23,
+  CURLINFO_PROXYAUTH_AVAIL              = 0x200000 + 24,
+  CURLINFO_OS_ERRNO                     = 0x200000 + 25,
+  CURLINFO_NUM_CONNECTS                 = 0x200000 + 26,
+  CURLINFO_SSL_ENGINES                  = 0x400000 + 27,
+  CURLINFO_COOKIELIST                   = 0x400000 + 28,
+  CURLINFO_LASTSOCKET                   = 0x200000 + 29,
+  CURLINFO_FTP_ENTRY_PATH               = 0x100000 + 30,
+  CURLINFO_REDIRECT_URL                 = 0x100000 + 31,
+  CURLINFO_PRIMARY_IP                   = 0x100000 + 32,
+  CURLINFO_APPCONNECT_TIME              = 0x300000 + 33,
+  CURLINFO_CERTINFO                     = 0x400000 + 34,
+  CURLINFO_CONDITION_UNMET              = 0x200000 + 35,
+  CURLINFO_RTSP_SESSION_ID              = 0x100000 + 36,
+  CURLINFO_RTSP_CLIENT_CSEQ             = 0x200000 + 37,
+  CURLINFO_RTSP_SERVER_CSEQ             = 0x200000 + 38,
+  CURLINFO_RTSP_CSEQ_RECV               = 0x200000 + 39,
+  CURLINFO_PRIMARY_PORT                 = 0x200000 + 40,
+  CURLINFO_LOCAL_IP                     = 0x100000 + 41,
+  CURLINFO_LOCAL_PORT                   = 0x200000 + 42,
+  CURLINFO_TLS_SESSION                  = 0x400000 + 43,
+  CURLINFO_ACTIVESOCKET                 = 0x500000 + 44,
+  CURLINFO_TLS_SSL_PTR                  = 0x400000 + 45,
+  CURLINFO_HTTP_VERSION                 = 0x200000 + 46,
+  CURLINFO_PROXY_SSL_VERIFYRESULT       = 0x200000 + 47,
+  CURLINFO_PROTOCOL                     = 0x200000 + 48,
+  CURLINFO_SCHEME                       = 0x100000 + 49,
+  CURLINFO_TOTAL_TIME_T                 = 0x600000 + 50,
+  CURLINFO_NAMELOOKUP_TIME_T            = 0x600000 + 51,
+  CURLINFO_CONNECT_TIME_T               = 0x600000 + 52,
+  CURLINFO_PRETRANSFER_TIME_T           = 0x600000 + 53,
+  CURLINFO_STARTTRANSFER_TIME_T         = 0x600000 + 54,
+  CURLINFO_REDIRECT_TIME_T              = 0x600000 + 55,
+  CURLINFO_APPCONNECT_TIME_T            = 0x600000 + 56,
+  CURLINFO_RETRY_AFTER                  = 0x600000 + 57,
+  CURLINFO_EFFECTIVE_METHOD             = 0x100000 + 58,
+  CURLINFO_PROXY_ERROR                  = 0x200000 + 59,
+  CURLINFO_REFERER                      = 0x100000 + 60,
+  CURLINFO_CAINFO                       = 0x100000 + 61,
+  CURLINFO_CAPATH                       = 0x100000 + 62,
+  CURLINFO_XFER_ID                      = 0x600000 + 63,
+  CURLINFO_CONN_ID                      = 0x600000 + 64,
+  CURLINFO_LASTONE                      = 64
+} CURLINFO;
+
+typedef enum
+{
     CURLM_CALL_MULTI_PERFORM    = -1,
     CURLM_OK                    = 0,
     CURLM_BAD_HANDLE            = 1,
@@ -477,6 +554,7 @@ typedef struct CURLMsg
 
 typedef curl_slist *CurlSListAppend(curl_slist *list, const char *string);
 typedef CURL *CurlEasyInit(void);
+typedef CURLcode CurlEasyGetInfo(CURL *handle, CURLINFO info, ...);
 typedef CURLcode CurlEasySetOpt(CURL *handle, CURLoption option, ...);
 typedef CURLcode CurlGlobalInit(long flags);
 typedef CURLM *CurlMultiInit(void);
@@ -492,6 +570,8 @@ typedef void CurlSListFreeAll(curl_slist *list);
 
 typedef struct CurlWorker
 {
+    int status;
+    int padding_;
     CURL *handle;
     curl_slist *header_list;
     GrowableBuffer response;
@@ -509,6 +589,7 @@ typedef struct CurlGroup
 typedef struct CurlCode
 {
     CurlEasyCleanup *curl_easy_cleanup;
+    CurlEasyGetInfo *curl_easy_getinfo;
     CurlEasyInit *curl_easy_init;
     CurlEasySetOpt *curl_easy_setopt;
     CurlGlobalCleanup *curl_global_cleanup;

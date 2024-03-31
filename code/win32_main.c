@@ -500,6 +500,7 @@ win32_init_curl(void)
     if(module)
     {
         curl.curl_easy_cleanup = (CurlEasyCleanup *)GetProcAddress(module, "curl_easy_cleanup");
+        curl.curl_easy_getinfo = (CurlEasyGetInfo *)GetProcAddress(module, "curl_easy_getinfo");
         curl.curl_easy_init = (CurlEasyInit *)GetProcAddress(module, "curl_easy_init");
         curl.curl_easy_setopt = (CurlEasySetOpt *)GetProcAddress(module, "curl_easy_setopt");
         curl.curl_global_cleanup = (CurlGlobalCleanup *)GetProcAddress(module, "curl_global_cleanup");

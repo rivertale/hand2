@@ -36,11 +36,18 @@ config_check(Config *config)
     int ok[Config_one_past_last];
     for(int i = 0; i < Config_one_past_last; ++i) { ok[i] = 1; }
     ok[Config_github_token] = retrieve_username(username, MAX_URL_LEN, github_token);
-    ok[Config_organization] = github_organization_exists(github_token, organization);
-    ok[Config_ta_team] = github_team_exists(github_token, organization, ta_team);
-    ok[Config_student_team] = github_team_exists(github_token, organization, student_team);
-    ok[Config_feedback_repo] = github_repository_exists(github_token, organization, feedback_repo);
-    ok[Config_spreadsheet] = retrieve_spreadsheet(&spreadsheet, google_token, spreadsheet_id);
+    if(ok[Config_github_token])
+    {
+        ok[Config_organization] = github_organization_exists(github_token, organization);
+        ok[Config_ta_team] = github_team_exists(github_token, organization, ta_team);
+        ok[Config_student_team] = github_team_exists(github_token, organization, student_team);
+        ok[Config_feedback_repo] = github_repository_exists(github_token, organization, feedback_repo);
+    }
+    ok[Config_google_token] = google_token_is_valid(google_token);
+    if(ok[Config_google_token])
+    {
+        ok[Config_spreadsheet] = retrieve_spreadsheet(&spreadsheet, google_token, spreadsheet_id);
+    }
     ok[Config_grade_thread_count] = (atoi(grade_thread_count) > 0);
     ok[Config_penalty_per_day] = penalty_is_int;
 
@@ -58,25 +65,28 @@ config_check(Config *config)
     write_output("");
     write_output("[Google Sheet]");
     // TODO: find a way to verify the google token
-    write_output("    Spreadsheet: %s ... %s", spreadsheet_id, ok[Config_spreadsheet] ? "OK" : "Not found");
-    
-    if(ok[Config_spreadsheet])
+    write_output("    Token ... %s", ok[Config_google_token] ? "OK" : "Not found");
+    if(ok[Config_google_token])
     {
-        write_output("");
-        write_output("[Homework sheet]");
-        for(int i = 0; i < spreadsheet.count; ++i)
+        write_output("    Spreadsheet: %s ... %s", spreadsheet_id, ok[Config_spreadsheet] ? "OK" : "Not found");
+        if(ok[Config_spreadsheet])
         {
-            static char buffer[65536];
-            Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, spreadsheet.elem[i]);
-            int username_x = find_key_index(&sheet, key_username);
-            int id_x = find_key_index(&sheet, key_student_id);
-            if(format_string(buffer, sizeof(buffer), "    %s: %s=%d, %s=%d ... %s",
-                             spreadsheet.elem[i],
-                             key_username, (username_x != -1) ? username_x + 1 : -1,
-                             key_student_id, (id_x != -1) ? id_x + 1 : -1,
-                             (username_x != -1 && id_x != -1) ? "OK" : "Not a homework"))
+            write_output("");
+            write_output("[Homework sheet]");
+            for(int i = 0; i < spreadsheet.count; ++i)
             {
-                write_output(buffer);
+                static char buffer[65536];
+                Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, spreadsheet.elem[i]);
+                int username_x = find_key_index(&sheet, key_username);
+                int id_x = find_key_index(&sheet, key_student_id);
+                if(format_string(buffer, sizeof(buffer), "    %s: %s=%d, %s=%d ... %s",
+                                 spreadsheet.elem[i],
+                                 key_username, (username_x != -1) ? username_x + 1 : -1,
+                                 key_student_id, (id_x != -1) ? id_x + 1 : -1,
+                                 (username_x != -1 && id_x != -1) ? "OK" : "Not a homework"))
+                {
+                    write_output(buffer);
+                }
             }
         }
     }
@@ -85,8 +95,8 @@ config_check(Config *config)
     write_output("[Misc]");
     write_output("    Use %s grading thread ... %s", grade_thread_count, ok[Config_grade_thread_count] ? "OK" : "Not a positive integer");
     write_output("    Penalty per day is %s%% ... %s", penalty_per_day, ok[Config_penalty_per_day] ? "OK" : "Not a integer");
-    write_output("    Score will be read from '{hwdir}/%s'", score_relative_path);
-    write_output("    Grading command is '%s'", grade_command);
+    write_output("    Score read from: {hwdir}/%s", score_relative_path);
+    write_output("    Grading command: %s", grade_command);
 
     write_output("");
     write_output("[Summary]");
@@ -98,7 +108,7 @@ config_check(Config *config)
     {
         for(int i = 0; i < Config_one_past_last; ++i)
         {
-            if(!ok[i]) { write_output("    Invalid config '%s'", g_config_name[i]); }
+            if(!ok[i]) { write_output("    Invalid config: %s", g_config_name[i]); }
         }
     }
 }

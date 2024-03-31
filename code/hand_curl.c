@@ -104,6 +104,7 @@ complete_all_works(CurlGroup *group)
 
     for(int i = 0; i < group->worker_count; ++i)
     {
+        curl.curl_easy_getinfo(group->workers[i].handle, CURLINFO_RESPONSE_CODE, (long *)&group->workers[i].status);
         null_terminate(&group->workers[i].response);
     }
 }
@@ -860,6 +861,18 @@ edit_issue(char *github_token, char *organization, char *repo, char *title, char
         // TODO: log
     }
     return result;
+}
+
+static int
+google_token_is_valid(char *google_token)
+{
+    char *url = "https://sheets.googleapis.com/v4/spreadsheets/0";
+    CurlGroup group = begin_curl_group(1);
+    assign_sheet_get(&group, 0, url, google_token);
+    complete_all_works(&group);
+    int status = group.workers[0].status;
+    end_curl_group(&group);
+    return (status == 404);
 }
 
 static int

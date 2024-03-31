@@ -1,4 +1,5 @@
 extern CurlEasyCleanup curl_easy_cleanup;
+extern CurlEasyGetInfo curl_easy_getinfo;
 extern CurlEasyInit curl_easy_init;
 extern CurlEasySetOpt curl_easy_setopt;
 extern CurlGlobalCleanup curl_global_cleanup;

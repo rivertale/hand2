@@ -219,6 +219,7 @@ linux_init_curl(void)
 {
     int success = 0;
     curl.curl_easy_cleanup = curl_easy_cleanup;
+    curl.curl_easy_getinfo = curl_easy_getinfo;
     curl.curl_easy_init = curl_easy_init;
     curl.curl_easy_setopt = curl_easy_setopt;
     curl.curl_global_cleanup = curl_global_cleanup;
