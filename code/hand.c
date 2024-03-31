@@ -5,6 +5,15 @@
 #include "hand_git2.c"
 
 static void
+delete_cache_and_log(void)
+{
+    write_output("Deleting cache from '%s'...", g_cache_dir);
+    platform.delete_directory(g_cache_dir);
+    write_output("Deleting log from '%s'...", g_log_dir);
+    platform.delete_directory(g_log_dir);
+}
+
+static void
 config_check(Config *config)
 {
     char *github_token = config->value[Config_github_token];
@@ -804,6 +813,7 @@ eval(ArgParser *parser, Config *config)
 
     if(show_usage)
     {
+        // TODO: the log path is wrong
         char *usage =
             "usage: hand2 [--options] ... command [--command-options] ... [args] ..."   "\n"
             "[options]"                                                                 "\n"
@@ -815,13 +825,40 @@ eval(ArgParser *parser, Config *config)
             "    collect-homework   collect homework and retrieve late submission info" "\n"
             "    grade-homework     grade homework"                                     "\n"
             "    announce-grade     announce grade"                                     "\n"
+            "    clean              delete unrelated files such as logs and caches"     "\n"
             "[common-command-options]"                                                  "\n"
             "    --help             show the help message regards to the command"       "\n";
         write_output(usage);
         return;
     }
 
-    if(compare_string(command, "config-check"))
+    if(compare_string(command, "clean"))
+    {
+        int show_command_usage = 0;
+        for(char *option = next_option(parser); option; option = next_option(parser))
+        {
+            if(compare_string(option, "--help")) { show_command_usage = 1; }
+            else
+            {
+                show_command_usage = 1;
+                write_error("unknown option '%s'", option);
+            }
+        }
+
+        if(show_command_usage)
+        {
+            char *usage =
+                "usage: hand2 clean"    "\n"
+                                        "\n"
+                "[arguments]"           "\n"
+                ""                      "\n"
+                "[command-options]"     "\n";
+            write_output(usage);
+            return;
+        }
+        delete_cache_and_log();
+    }
+    else if(compare_string(command, "config-check"))
     {
         int show_command_usage = 0;
         for(char *option = next_option(parser); option; option = next_option(parser))
