@@ -4,6 +4,7 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <locale.h>
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -13,14 +14,6 @@ typedef int curl_socket_t;
 #include "hand.c"
 #include "linux_git2.h"
 #include "linux_curl.h"
-
-typedef struct LinuxWaitPidData
-{
-    int exit_code;
-    pid_t *process_id;
-    pthread_cond_t condition;
-    pthread_mutex_t lock;
-} LinuxWaitPidData;
 
 static time_t
 linux_calender_time_to_time(tm *calender_time, int time_zone)
@@ -189,6 +182,12 @@ linux_create_directory(char *path)
 {
     int result = (mkdir(path, 0777) == 0);
     return result;
+}
+
+static void
+linux_sleep(unsigned int milliseconds)
+{
+    usleep(milliseconds * 1000);
 }
 
 static int
@@ -574,6 +573,7 @@ linux_init_platform(Platform *linux_code)
             linux_code->delete_file = linux_delete_file;
             linux_code->directory_exists = linux_directory_exists;
             linux_code->rename_directory = linux_rename_directory;
+            linux_code->sleep = linux_sleep;
         }
     }
     else
@@ -586,6 +586,7 @@ linux_init_platform(Platform *linux_code)
 int
 main(int arg_count, char **args)
 {
+    setlocale(LC_ALL, "C");
     if(!linux_init_platform(&platform)) return 0;
     if(!linux_init_curl()) return 0;
     if(!linux_init_git()) return 0;

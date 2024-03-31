@@ -215,7 +215,7 @@ load_config(Config *config, char *path)
                 int key_found = 0;
                 for(int i = 0; i < Config_one_past_last; ++i)
                 {
-                    if(compare_substring(key, g_config_key_name[i], key_len))
+                    if(compare_substring(key, g_config_name[i], key_len))
                     {
                         key_found = 1;
                         config->value[i] = allocate_and_copy_string(value, value_len);
@@ -245,7 +245,7 @@ load_config(Config *config, char *path)
         if(!config->value[i])
         {
             success = 0;
-            write_error("config: incomplete config because key '%s' not found", g_config_key_name[i]);
+            write_error("config: incomplete config because key '%s' not found", g_config_name[i]);
         }
     }
     return success;

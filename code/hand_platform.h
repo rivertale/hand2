@@ -25,9 +25,9 @@ typedef struct Platform
 {
     time_t (*calender_time_to_time)(tm *calender_time, int time_zone);
 
-    // IMPORTANT: there is no timeout on grading since there isn't an obvious way to force terminate a 
-    // container without using "docker stop <name or container_id>", which requires another config to state 
-    // how to stop the grade process on timeout (in case we use other grading process in the future), and 
+    // IMPORTANT: there is no timeout on grading since there isn't an obvious way to force terminate a
+    // container without using "docker stop <name or container_id>", which requires another config to state
+    // how to stop the grade process on timeout (in case we use other grading process in the future), and
     // also requires a way to convey the container name or id.
     void (*wait_for_completion)(int thread_count, int work_count, Work *works,
                                 WorkOnProgressCallback *on_progress, WorkOnCompleteCallback *on_complete);
@@ -39,6 +39,7 @@ typedef struct Platform
     int (*delete_directory)(char *path);
     int (*delete_file)(char *path);
     int (*directory_exists)(char *path);
+    void (*sleep)(unsigned int milliseconds);
 } Platform;
 
 static Platform platform = {0};

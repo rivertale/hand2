@@ -226,6 +226,12 @@ win32_create_directory(char *path)
     return result;
 }
 
+static void
+win32_sleep(unsigned int milliseconds)
+{
+    Sleep(milliseconds);
+}
+
 static int
 win32_get_root_dir(char *out_buffer, size_t size)
 {
@@ -669,6 +675,7 @@ win32_init_platform(Platform *win32_code)
             win32_code->delete_file = win32_delete_file;
             win32_code->directory_exists = win32_directory_exists;
             win32_code->rename_directory = win32_rename_directory;
+            win32_code->sleep = win32_sleep;
         }
     }
     else
@@ -681,6 +688,7 @@ win32_init_platform(Platform *win32_code)
 int
 main(int arg_count, char **args)
 {
+    SetConsoleOutputCP(65001);
     if(!win32_init_platform(&platform)) return 0;
     if(!win32_init_curl()) return 0;
     if(!win32_init_git()) return 0;

@@ -18,7 +18,7 @@ enum
     Config_one_past_last,
 };
 
-static char *g_config_key_name[] =
+static char *g_config_name[] =
 {
     "github_access_token",
     "google_api_key",

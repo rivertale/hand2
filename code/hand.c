@@ -5,6 +5,105 @@
 #include "hand_git2.c"
 
 static void
+config_check(Config *config)
+{
+    char *github_token = config->value[Config_github_token];
+    char *google_token = config->value[Config_google_token];
+    char *organization = config->value[Config_organization];
+    char *ta_team = config->value[Config_ta_team];
+    char *student_team = config->value[Config_student_team];
+    char *grade_command = config->value[Config_grade_command];
+    char *feedback_repo = config->value[Config_feedback_repo];
+    char *spreadsheet_id = config->value[Config_spreadsheet];
+    char *key_username = config->value[Config_key_username];
+    char *key_student_id = config->value[Config_key_student_id];
+    char *grade_thread_count = config->value[Config_grade_thread_count];
+    char *penalty_per_day = config->value[Config_penalty_per_day];
+    char *score_relative_path = config->value[Config_score_relative_path];
+
+    int penalty_is_int = 1;
+    for(char *c = penalty_per_day; *c; ++c)
+    {
+        if(*c < '0' && '9' < *c)
+        {
+            penalty_is_int = 0;
+            break;
+        }
+    }
+
+    static char username[MAX_URL_LEN];
+    StringArray spreadsheet = {0};
+    int ok[Config_one_past_last];
+    for(int i = 0; i < Config_one_past_last; ++i) { ok[i] = 1; }
+    ok[Config_github_token] = retrieve_username(username, MAX_URL_LEN, github_token);
+    ok[Config_organization] = github_organization_exists(github_token, organization);
+    ok[Config_ta_team] = github_team_exists(github_token, organization, ta_team);
+    ok[Config_student_team] = github_team_exists(github_token, organization, student_team);
+    ok[Config_feedback_repo] = github_repository_exists(github_token, organization, feedback_repo);
+    ok[Config_spreadsheet] = retrieve_spreadsheet(&spreadsheet, google_token, spreadsheet_id);
+    ok[Config_grade_thread_count] = (atoi(grade_thread_count) > 0);
+    ok[Config_penalty_per_day] = penalty_is_int;
+
+    write_output("");
+    write_output("[GitHub]");
+    write_output("    Token owner: %s ... %s", username, ok[Config_github_token] ? "OK" : "Not found");
+    if(ok[Config_github_token])
+    {
+        write_output("    Organization: %s ... %s", organization, ok[Config_organization] ? "OK" : "Not found");
+        write_output("    Teaching team: %s ... %s", ta_team, ok[Config_ta_team] ? "OK" : "Not found");
+        write_output("    Student team: %s ... %s", student_team, ok[Config_student_team] ? "OK" : "Not found");
+        write_output("    Feedback repository: %s ... %s", feedback_repo, ok[Config_feedback_repo] ? "OK" : "Not found");
+    }
+
+    write_output("");
+    write_output("[Google Sheet]");
+    // TODO: find a way to verify the google token
+    write_output("    Spreadsheet: %s ... %s", spreadsheet_id, ok[Config_spreadsheet] ? "OK" : "Not found");
+    
+    if(ok[Config_spreadsheet])
+    {
+        write_output("");
+        write_output("[Homework sheet]");
+        for(int i = 0; i < spreadsheet.count; ++i)
+        {
+            static char buffer[65536];
+            Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, spreadsheet.elem[i]);
+            int username_x = find_key_index(&sheet, key_username);
+            int id_x = find_key_index(&sheet, key_student_id);
+            if(format_string(buffer, sizeof(buffer), "    %s: %s=%d, %s=%d ... %s",
+                             spreadsheet.elem[i],
+                             key_username, (username_x != -1) ? username_x + 1 : -1,
+                             key_student_id, (id_x != -1) ? id_x + 1 : -1,
+                             (username_x != -1 && id_x != -1) ? "OK" : "Not a homework"))
+            {
+                write_output(buffer);
+            }
+        }
+    }
+
+    write_output("");
+    write_output("[Misc]");
+    write_output("    Use %s grading thread ... %s", grade_thread_count, ok[Config_grade_thread_count] ? "OK" : "Not a positive integer");
+    write_output("    Penalty per day is %s%% ... %s", penalty_per_day, ok[Config_penalty_per_day] ? "OK" : "Not a integer");
+    write_output("    Score will be read from '{hwdir}/%s'", score_relative_path);
+    write_output("    Grading command is '%s'", grade_command);
+
+    write_output("");
+    write_output("[Summary]");
+    if(true_for_all(ok, Config_one_past_last))
+    {
+        write_output("    Config is OK");
+    }
+    else
+    {
+        for(int i = 0; i < Config_one_past_last; ++i)
+        {
+            if(!ok[i]) { write_output("    Invalid config '%s'", g_config_name[i]); }
+        }
+    }
+}
+
+static void
 invite_students(char *path, char *github_token, char *organization, char *team)
 {
     write_log("[invite students] path='%s', org='%s', team='%s'", path, organization, team);
@@ -625,7 +724,7 @@ announce_grade(char *title, char *feedback_repo,
                         }
                         // NOTE: to bypass the github rate limit
                         // TODO: need further investigation on the error messages github returns
-                        sleep(1);
+                        platform.sleep(1000);
                     }
                 }
             }
@@ -701,6 +800,7 @@ eval(ArgParser *parser, Config *config)
             "    --help    show this message"                                           "\n"
             "    --log     log to YYYY-MM-DD_hh-mm-ss.log"                              "\n"
             "[command]"                                                                 "\n"
+            "    config-check       check if the config is valid"                       "\n"
             "    invite-students    invite student into github organization"            "\n"
             "    collect-homework   collect homework and retrieve late submission info" "\n"
             "    grade-homework     grade homework"                                     "\n"
@@ -711,7 +811,33 @@ eval(ArgParser *parser, Config *config)
         return;
     }
 
-    if(compare_string(command, "invite-students"))
+    if(compare_string(command, "config-check"))
+    {
+        int show_command_usage = 0;
+        for(char *option = next_option(parser); option; option = next_option(parser))
+        {
+            if(compare_string(option, "--help")) { show_command_usage = 1; }
+            else
+            {
+                show_command_usage = 1;
+                write_error("unknown option '%s'", option);
+            }
+        }
+
+        if(show_command_usage)
+        {
+            char *usage =
+                "usage: hand2 config-check" "\n"
+                                            "\n"
+                "[arguments]"               "\n"
+                ""                          "\n"
+                "[command-options]"         "\n";
+            write_output(usage);
+            return;
+        }
+        config_check(config);
+    }
+    else if(compare_string(command, "invite-students"))
     {
         int show_command_usage = 0;
         for(char *option = next_option(parser); option; option = next_option(parser))

@@ -255,6 +255,51 @@ github_user_exists(char *github_token, char *username)
 }
 
 static int
+github_organization_exists(char *github_token, char *organization)
+{
+    int result = 0;
+    static char url[MAX_URL_LEN];
+    if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s", organization))
+    {
+        CurlGroup group = begin_curl_group(1);
+        assign_github_get(&group, 0, url, github_token);
+        complete_all_works(&group);
+        result = end_curl_group(&group);
+    }
+    return result;
+}
+
+static int
+github_team_exists(char *github_token, char *organization, char *team)
+{
+    int result = 0;
+    static char url[MAX_URL_LEN];
+    if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s", organization, team))
+    {
+        CurlGroup group = begin_curl_group(1);
+        assign_github_get(&group, 0, url, github_token);
+        complete_all_works(&group);
+        result = end_curl_group(&group);
+    }
+    return result;
+}
+
+static int
+github_repository_exists(char *github_token, char *organization, char *repo)
+{
+    int result = 0;
+    static char url[MAX_URL_LEN];
+    if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s", organization, repo))
+    {
+        CurlGroup group = begin_curl_group(1);
+        assign_github_get(&group, 0, url, github_token);
+        complete_all_works(&group);
+        result = end_curl_group(&group);
+    }
+    return result;
+}
+
+static int
 retrieve_username(char *out_username, size_t max_username_len, char *github_token)
 {
     if(max_username_len > 0 && !out_username) return 0;
@@ -817,31 +862,82 @@ edit_issue(char *github_token, char *organization, char *repo, char *title, char
     return result;
 }
 
+static int
+retrieve_spreadsheet(StringArray *out, char *google_token, char *spreadsheet_id)
+{
+    int result = 0;
+    static char url[MAX_URL_LEN];
+    *out = allocate_string_array();
+    if(format_string(url, MAX_URL_LEN, "https://sheets.googleapis.com/v4/spreadsheets/%s", spreadsheet_id))
+    {
+        CurlGroup group = begin_curl_group(1);
+        assign_sheet_get(&group, 0, url, google_token);
+        complete_all_works(&group);
+        cJSON *json = cJSON_Parse(get_response(&group, 0));
+        cJSON *sheets = cJSON_GetObjectItemCaseSensitive(json, "sheets");
+        cJSON *sheet = 0;
+        cJSON_ArrayForEach(sheet, sheets)
+        {
+            cJSON *properties = cJSON_GetObjectItemCaseSensitive(sheet, "properties");
+            cJSON *title = cJSON_GetObjectItemCaseSensitive(properties, "title");
+            if(cJSON_IsString(title))
+            {
+                append_string_array(out, title->valuestring);
+            }
+        }
+        result = end_curl_group(&group);
+    }
+    return result;
+}
+
 static Sheet
 retrieve_sheet(char *google_token, char *spreadsheet, char *sheet)
 {
     Sheet result = {0};
+    static char hex_char[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://sheets.googleapis.com/v4/spreadsheets/%s/values/'%s'", spreadsheet, sheet))
+
+    GrowableBuffer escaped_sheet = allocate_growable_buffer();
+    for(unsigned char *c = (unsigned char *)sheet; *c; ++c)
+    {
+        if(('A' <= *c && *c <= 'Z') || ('a' <= *c && *c <= 'z') || ('0' <= *c && *c <= '9') ||
+           *c == '-' || *c == '_' || *c == '.' || *c == '~')
+        {
+            write_growable_buffer(&escaped_sheet, c, 1);
+        }
+        else
+        {
+            write_constant_string(&escaped_sheet, "%");
+            write_growable_buffer(&escaped_sheet, &hex_char[(*c >> 4) & 0xf], 1);
+            write_growable_buffer(&escaped_sheet, &hex_char[(*c >> 0) & 0xf], 1);
+        }
+    }
+
+    if(format_string(url, MAX_URL_LEN,
+                     "https://sheets.googleapis.com/v4/spreadsheets/%s/values/'%s'", spreadsheet, escaped_sheet.memory))
     {
         CurlGroup group = begin_curl_group(1);
         assign_sheet_get(&group, 0, url, google_token);
         complete_all_works(&group);
 
         cJSON *json = cJSON_Parse(get_response(&group, 0));
+        cJSON *row = 0;
         cJSON *rows = cJSON_GetObjectItemCaseSensitive(json, "values");
-        cJSON *first_row = cJSON_GetArrayItem(rows, 0);
-        int width = cJSON_GetArraySize(first_row);
+        int width = 0;
         int height = cJSON_GetArraySize(rows) - 1;
+        cJSON_ArrayForEach(row, rows)
+        {
+            int row_width = cJSON_GetArraySize(row);
+            width = max(width, row_width);
+        }
+
         if(width > 0 && height > 0)
         {
             result = allocate_sheet(width, height);
             // NOTE: fill all string first to make sure the pointers don't change
-            cJSON *row = 0;
             cJSON_ArrayForEach(row, rows)
             {
-                // TODO: the row can be empty, fill in blank value
-                assert(cJSON_GetArraySize(row) == width);
+                int row_width = cJSON_GetArraySize(row);
                 cJSON *cell = 0;
                 cJSON_ArrayForEach(cell, row)
                 {
@@ -849,6 +945,11 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *sheet)
                     {
                         write_growable_buffer(&result.content, cell->valuestring, string_len(cell->valuestring));
                     }
+                    write_constant_string(&result.content, "\0");
+                }
+
+                for(int x = row_width; x < width; ++x)
+                {
                     write_constant_string(&result.content, "\0");
                 }
             }
