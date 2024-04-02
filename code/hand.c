@@ -432,13 +432,6 @@ grade_homework(char *title, char *out_path,
     static char feedback_homework_dir[MAX_PATH_LEN];
     static char report_template_path[MAX_PATH_LEN];
 
-    FILE *out_file = fopen(out_path, "wb");
-    if(!out_file)
-    {
-        write_error("unable to create '%s'", out_path);
-        return;
-    }
-
     if(!retrieve_username(username, MAX_URL_LEN, github_token))
     {
         write_error("unable to retrieve username");
@@ -448,10 +441,18 @@ grade_homework(char *title, char *out_path,
     // TODO: handle cache_repository error
     write_output("Retrieving homework template...");
     GitCommitHash template_hash = retrieve_latest_commit(github_token, organization, template_repo, template_branch);
-    cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, &template_hash);
+    if(!cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, &template_hash))
+    {
+        write_error("Unable to retrieve '%s/%s'", organization, template_repo);
+        return;
+    }
 
     write_output("Retrieving feedback repository...");
-    cache_repository(feedback_dir, MAX_PATH_LEN, username, github_token, organization, feedback_repo, 0);
+    if(!cache_repository(feedback_dir, MAX_PATH_LEN, username, github_token, organization, feedback_repo, 0))
+    {
+        write_error("Unable to retrieve '%s/%s'", organization, feedback_repo);
+        return;
+    }
 
     if(!format_string(template_test_dir, MAX_PATH_LEN, "%s/test", template_dir) ||
        !format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir) ||
@@ -459,6 +460,13 @@ grade_homework(char *title, char *out_path,
        !format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports",feedback_dir, title) ||
        !format_string(report_template_path, MAX_PATH_LEN, "%s/report_template_%s.md", feedback_dir, title))
     {
+        return;
+    }
+
+    FILE *out_file = fopen(out_path, "wb");
+    if(!out_file)
+    {
+        write_error("unable to create '%s'", out_path);
         return;
     }
 
@@ -714,7 +722,11 @@ announce_grade(char *title, char *feedback_repo,
     }
 
     write_output("Retrieving feedback repository...");
-    cache_repository(feedback_dir, MAX_PATH_LEN, username, github_token, organization, feedback_repo, 0);
+    if(!cache_repository(feedback_dir, MAX_PATH_LEN, username, github_token, organization, feedback_repo, 0))
+    {
+        write_error("Unable to retrieve '%s/%s'", organization, feedback_repo);
+        return;
+    }
 
     if(!format_string(issue_title, sizeof(issue_title), "Grade for %s", title) ||
        !format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports", feedback_dir, title))
