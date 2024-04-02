@@ -114,7 +114,8 @@ win32_delete_directory_by_wide_path(wchar_t *dir_path)
             more_file = FindNextFileW(find_handle, &find_data))
         {
             wchar_t *name = find_data.cFileName;
-            if(win32_compare_utf16(name, L".") || win32_compare_utf16(name, L"..")) continue;
+            if(win32_compare_utf16(name, L".") || win32_compare_utf16(name, L".."))
+                continue;
 
             size_t name_len = win32_utf16_len(name);
             wchar_t *child = (wchar_t *)allocate_memory((dir_len + 1 + name_len + 1) * sizeof(wchar_t));
@@ -179,7 +180,8 @@ win32_copy_directory_by_wide_path(wchar_t *target_dir, wchar_t *source_dir)
             more_file = FindNextFileW(find_handle, &find_data))
         {
             wchar_t *name = find_data.cFileName;
-            if(win32_compare_utf16(name, L".") || win32_compare_utf16(name, L"..")) continue;
+            if(win32_compare_utf16(name, L".") || win32_compare_utf16(name, L".."))
+                continue;
 
             size_t name_len = win32_utf16_len(name);
             wchar_t *source_child = (wchar_t *)allocate_memory((source_len + 1 + name_len + 1) * sizeof(wchar_t));
@@ -259,7 +261,8 @@ win32_get_root_dir(char *out_buffer, size_t size)
         while(result_len > 0)
         {
             --result_len;
-            if(full_path[result_len] == '\\') break;
+            if(full_path[result_len] == '\\')
+                break;
         }
         full_path[result_len] = 0;
 

@@ -452,7 +452,8 @@ linux_wait_for_completion(int thread_count, int work_count, Work *works,
 
         for(int i = 0; i < thread_count; ++i)
         {
-            if(!thread_is_valid[i]) continue;
+            if(!thread_is_valid[i])
+                continue;
             pthread_join(thread_handles[i], 0);
         }
         free_memory(contexts);

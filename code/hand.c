@@ -438,7 +438,6 @@ grade_homework(char *title, char *out_path,
         return;
     }
 
-    // TODO: handle cache_repository error
     write_output("Retrieving homework template...");
     GitCommitHash template_hash = retrieve_latest_commit(github_token, organization, template_repo, template_branch);
     if(!cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, &template_hash))
@@ -704,7 +703,7 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
 }
 
 static void
-announce_grade(char *title, char *feedback_repo,
+announce_grade(char *title, char *feedback_repo, int dry,
                char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
 {
     write_log("[announce grade] title='%s', feedback_repo='%s', spreadsheet_id='%s', student_key='%s', organization='%s'",
@@ -780,14 +779,24 @@ announce_grade(char *title, char *feedback_repo,
                         ++announcement_count;
                         if(issue_numbers[index])
                         {
-                            if(!edit_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y], issue_numbers[index]))
+                            if(dry)
+                            {
+                                write_output("DRY RUN: attempt to edit issue '%s #%d' to:", issue_title, issue_numbers[index]);
+                                write_output("%s", issue_bodies.elem[y]);
+                            }
+                            else if(!edit_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y], issue_numbers[index]))
                             {
                                 ++failure_count;
                             }
                         }
                         else
                         {
-                            if(!create_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y]))
+                            if(dry)
+                            {
+                                write_output("DRY RUN: attempt to create issue '%s #%d' with content:", issue_title, issue_numbers[index]);
+                                write_output("%s", issue_bodies.elem[y]);
+                            }
+                            else if(!create_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y]))
                             {
                                 ++failure_count;
                             }
@@ -813,8 +822,10 @@ announce_grade(char *title, char *feedback_repo,
         }
         else
         {
-            if(student_x < 0) write_error("Key '%s' not found", student_key);
-            if(id_x < 0) write_error("Key '%s' not found", id_key);
+            if(student_x < 0)
+                write_error("Key '%s' not found", student_key);
+            if(id_x < 0)
+                write_error("Key '%s' not found", id_key);
         }
     }
     else
@@ -1101,10 +1112,13 @@ run_hand(int arg_count, char **args)
     else if(compare_string(command, "announce-grade"))
     {
         int show_command_usage = 0;
+        int dry = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help"))
                 show_command_usage = 1;
+            else if(compare_string(option, "--dry"))
+                dry = 1;
             else
                 write_error("unknown option '%s'", option);
         }
@@ -1128,7 +1142,7 @@ run_hand(int arg_count, char **args)
         char *google_token = config.value[Config_google_token];
         char *github_token = config.value[Config_github_token];
         char *organization = config.value[Config_organization];
-        announce_grade(title, feedback_repo, github_token, organization, google_token, spreadsheet_id, student_key, id_key);
+        announce_grade(title, feedback_repo, dry, github_token, organization, google_token, spreadsheet_id, student_key, id_key);
     }
     else
     {
