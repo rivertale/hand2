@@ -60,20 +60,20 @@ allocate_growable_buffer(void)
 static GrowableBuffer
 read_entire_file(char *path)
 {
-    GrowableBuffer buffer = allocate_growable_buffer();
+    GrowableBuffer result = allocate_growable_buffer();
     FILE *file = fopen(path, "rb");
     if(file)
     {
         fseek(file, 0, SEEK_END);
         size_t file_size = (size_t)ftell(file);
         fseek(file, 0, SEEK_SET);
-        reserve_growable_buffer(&buffer, file_size);
-        fread(buffer.memory + buffer.used, file_size, 1, file);
-        buffer.used += file_size;
+        reserve_growable_buffer(&result, file_size);
+        fread(result.memory + result.used, file_size, 1, file);
+        result.used += file_size;
         fclose(file);
     }
-    null_terminate(&buffer);
-    return buffer;
+    null_terminate(&result);
+    return result;
 }
 
 static void
@@ -190,6 +190,7 @@ read_string_array_file(char *path)
         if(!prev_char && *c) { append_string_array(&result, c); }
         prev_char = *c;
     }
+    free_growable_buffer(&content);
     return result;
 }
 

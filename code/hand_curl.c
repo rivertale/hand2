@@ -825,6 +825,8 @@ create_issue(char *github_token, char *organization, char *repo, char *title, ch
         {
             result = 1;
         }
+        free_growable_buffer(&post_data);
+        free_growable_buffer(&escaped_body);
     }
     else
     {
@@ -855,6 +857,8 @@ edit_issue(char *github_token, char *organization, char *repo, char *title, char
         {
             result = 1;
         }
+        free_growable_buffer(&post_data);
+        free_growable_buffer(&escaped_body);
     }
     else
     {
@@ -904,30 +908,30 @@ retrieve_spreadsheet(StringArray *out, char *google_token, char *spreadsheet_id)
 }
 
 static Sheet
-retrieve_sheet(char *google_token, char *spreadsheet, char *sheet)
+retrieve_sheet(char *google_token, char *spreadsheet, char *name)
 {
     Sheet result = {0};
     static char hex_char[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     static char url[MAX_URL_LEN];
 
-    GrowableBuffer escaped_sheet = allocate_growable_buffer();
-    for(unsigned char *c = (unsigned char *)sheet; *c; ++c)
+    GrowableBuffer escaped_name = allocate_growable_buffer();
+    for(unsigned char *c = (unsigned char *)name; *c; ++c)
     {
         if(('A' <= *c && *c <= 'Z') || ('a' <= *c && *c <= 'z') || ('0' <= *c && *c <= '9') ||
            *c == '-' || *c == '_' || *c == '.' || *c == '~')
         {
-            write_growable_buffer(&escaped_sheet, c, 1);
+            write_growable_buffer(&escaped_name, c, 1);
         }
         else
         {
-            write_constant_string(&escaped_sheet, "%");
-            write_growable_buffer(&escaped_sheet, &hex_char[(*c >> 4) & 0xf], 1);
-            write_growable_buffer(&escaped_sheet, &hex_char[(*c >> 0) & 0xf], 1);
+            write_constant_string(&escaped_name, "%");
+            write_growable_buffer(&escaped_name, &hex_char[(*c >> 4) & 0xf], 1);
+            write_growable_buffer(&escaped_name, &hex_char[(*c >> 0) & 0xf], 1);
         }
     }
 
     if(format_string(url, MAX_URL_LEN,
-                     "https://sheets.googleapis.com/v4/spreadsheets/%s/values/'%s'", spreadsheet, escaped_sheet.memory))
+                     "https://sheets.googleapis.com/v4/spreadsheets/%s/values/'%s'", spreadsheet, escaped_name.memory))
     {
         CurlGroup group = begin_curl_group(1);
         assign_sheet_get(&group, 0, url, google_token);
@@ -986,9 +990,6 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *sheet)
         }
         end_curl_group(&group);
     }
-    else
-    {
-        // TODO: log
-    }
+    free_growable_buffer(&escaped_name);
     return result;
 }

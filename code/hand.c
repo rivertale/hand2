@@ -75,7 +75,6 @@ config_check(Config *config)
 
     write_output("");
     write_output("[Google Sheet]");
-    // TODO: find a way to verify the google token
     write_output("    Token ... %s", ok[Config_google_token] ? "OK" : "Not found");
     if(ok[Config_google_token])
     {
@@ -98,6 +97,7 @@ config_check(Config *config)
                 {
                     write_output(buffer);
                 }
+                free_sheet(&sheet);
             }
         }
     }
@@ -122,6 +122,7 @@ config_check(Config *config)
             if(!ok[i]) { write_output("    Invalid config: %s", g_config_name[i]); }
         }
     }
+    free_string_array(&spreadsheet);
 }
 
 static void
@@ -314,7 +315,7 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
     write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
                  t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
     fclose(out_file);
-
+    free_sheet(&sheet);
     free_memory(push_time);
     free_memory(hash);
     free_string_array(&branches);
@@ -423,8 +424,6 @@ grade_homework(char *title, char *out_path,
     static char feedback_homework_dir[MAX_PATH_LEN];
     static char report_template_path[MAX_PATH_LEN];
 
-    GrowableBuffer report_template = {0};
-    StringArray repos = {0};
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
     {
@@ -458,8 +457,9 @@ grade_homework(char *title, char *out_path,
     platform.delete_directory(feedback_report_dir);
     platform.create_directory(feedback_homework_dir);
     platform.create_directory(feedback_report_dir);
-    report_template = read_entire_file(report_template_path);
+    GrowableBuffer report_template = read_entire_file(report_template_path);
 
+    StringArray repos = {0};
     if(should_match_title)
     {
         repos = allocate_string_array();
@@ -576,6 +576,7 @@ grade_homework(char *title, char *out_path,
                         fwrite(report.memory, report.used, 1, report_file);
                         fclose(report_file);
                     }
+                    free_growable_buffer(&report);
                 }
                 else
                 {
@@ -613,6 +614,10 @@ grade_homework(char *title, char *out_path,
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
     write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
                  t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
+    free_sheet(&sheet);
+    free_string_array(&branches);
+    free_string_array(&repos);
+    free_growable_buffer(&report_template);
     fclose(out_file);
 }
 
@@ -729,6 +734,7 @@ announce_grade(char *title, char *feedback_repo,
                 format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id);
                 GrowableBuffer content = read_entire_file(report_path);
                 append_string_array(&reports, content.memory);
+                free_growable_buffer(&content);
             }
 
             StringArray issue_bodies;
@@ -767,11 +773,13 @@ announce_grade(char *title, char *feedback_repo,
                         platform.sleep(1000);
                     }
                 }
+                free_string_array(&issue_bodies);
             }
             else
             {
-
+                // TODO: log
             }
+            free_string_array(&reports);
 
             write_output("");
             write_output("[Summary]");
@@ -790,6 +798,7 @@ announce_grade(char *title, char *feedback_repo,
         write_error("Sheet '%s' is empty under spreadsheet id '%s'", title, spreadsheet_id);
     }
     free_sheet(&sheet);
+    free_string_array(&repos);
 }
 
 static void
