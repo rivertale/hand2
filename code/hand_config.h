@@ -38,7 +38,7 @@ static char *g_config_name[] =
 };
 static char g_default_config[] =
     "# Email use for commit"                                            "\n"
-    "organization = \"github-organization-name\""                       "\n"
+    "email = \"your@commit.email\""                                     "\n"
                                                                         "\n"
     "# The course's GitHub organization name"                           "\n"
     "organization = \"github-organization-name\""                       "\n"

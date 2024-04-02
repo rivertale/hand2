@@ -302,10 +302,11 @@ next_option(ArgParser *parser)
     return result;
 }
 
-static void
-init_arg_parser(ArgParser *parser, char **args, int arg_count)
+static ArgParser
+init_arg_parser(int arg_count, char **args)
 {
-    clear_memory(parser, sizeof(*parser));
-    parser->args = args;
-    parser->arg_count = arg_count;
+    ArgParser result = {0};
+    result.arg_count = arg_count;
+    result.args = args;
+    return result;
 }

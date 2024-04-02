@@ -396,7 +396,7 @@ grade_homework_on_complete(int index, int count, int exit_code, char *work_dir, 
 }
 
 static void
-grade_homework(char *title, char *out_path, 
+grade_homework(char *title, char *out_path,
                time_t deadline, time_t cutoff, char *template_repo, char *template_branch, char *feedback_repo,
                char *command, char *score_relative_path, int dry, int thread_count, int should_match_title,
                char *github_token, char *organization, char *email,
@@ -437,7 +437,7 @@ grade_homework(char *title, char *out_path,
         write_error("unable to retrieve username");
         return;
     }
-    
+
     // TODO: handle cache_repository error
     write_output("Retrieving homework template...");
     GitCommitHash template_hash = retrieve_latest_commit(github_token, organization, template_repo, template_branch);
@@ -585,7 +585,7 @@ grade_homework(char *title, char *out_path,
         }
         fprintf(out_file, "%f\n", score);
     }
-    
+
     if(dry)
     {
         write_output("DRY RUN: reports are not pushed, you can view the generated reports at '%s'", feedback_report_dir);
@@ -602,7 +602,7 @@ grade_homework(char *title, char *out_path,
             }
         }
     }
-    
+
     write_output("");
     write_output("[Summary]");
     write_output("    Total student: %d", sheet.height);
@@ -793,12 +793,14 @@ announce_grade(char *title, char *feedback_repo,
 }
 
 static void
-eval(ArgParser *parser, Config *config)
+run_hand(int arg_count, char **args)
 {
+    ArgParser parser = init_arg_parser(arg_count, args);
     int show_usage = 0;
+    int should_log = 0;
     for(;;)
     {
-        char *option = next_option(parser);
+        char *option = next_option(&parser);
         if(!option) break;
 
         if(compare_string(option, "--help"))
@@ -807,19 +809,7 @@ eval(ArgParser *parser, Config *config)
         }
         else if(compare_string(option, "--log"))
         {
-            struct tm time = current_calendar_time();
-            static char path[MAX_PATH_LEN];
-            if(format_string(path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
-                             g_log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                             time.tm_hour, time.tm_min, time.tm_sec))
-            {
-                platform.create_directory(g_log_dir);
-                g_log_file = fopen(path, "wb");
-            }
-            else
-            {
-                // TODO: log
-            }
+            should_log = 1;
         }
         else
         {
@@ -828,18 +818,32 @@ eval(ArgParser *parser, Config *config)
         }
     }
 
-    char *command = next_arg(parser);
-    // NOTE: we assume command is not null after this check
-    if(!command) { show_usage = 1; }
-
-    if(show_usage)
+    static char log_path[MAX_PATH_LEN];
+    static char config_path[MAX_PATH_LEN];
+    struct tm time = current_calendar_time();
+    if(!format_string(config_path, MAX_PATH_LEN, "%s/config.txt", g_root_dir) ||
+       !format_string(log_path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
+                      g_log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                      time.tm_hour, time.tm_min, time.tm_sec))
     {
-        // TODO: the log path is wrong
+        return;
+    }
+
+    if(!ensure_config_exists(config_path))
+    {
+        show_usage = 1;
+        write_output("config not found, default config created at '%s'", config_path);
+        write_output("");
+    }
+
+    char *command = next_arg(&parser);
+    if(show_usage || ! command)
+    {
         char *usage =
             "usage: hand2 [--options] ... command [--command-options] ... [args] ..."   "\n"
             "[options]"                                                                 "\n"
             "    --help    show this message"                                           "\n"
-            "    --log     log to YYYY-MM-DD_hh-mm-ss.log"                              "\n"
+            "    --log     log to log/YYYY-MM-DD_hh-mm-ss.log"                          "\n"
             "[command]"                                                                 "\n"
             "    config-check       check if the config is valid"                       "\n"
             "    invite-students    invite student into github organization"            "\n"
@@ -853,10 +857,25 @@ eval(ArgParser *parser, Config *config)
         return;
     }
 
+    Config config;
+    if(!load_config(&config, config_path))
+    {
+        write_error("unable to load config '%s'", config_path);
+        return;
+    }
+
+    // NOTE: no early return afterwards, open the log file here to ensure it's properly closed
+    if(should_log)
+    {
+        platform.create_directory(g_log_dir);
+        g_log_file = fopen(log_path, "wb");
+    }
+
+    // NOTE: we have checked the command is not null
     if(compare_string(command, "clean"))
     {
         int show_command_usage = 0;
-        for(char *option = next_option(parser); option; option = next_option(parser))
+        for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help")) { show_command_usage = 1; }
             else
@@ -882,7 +901,7 @@ eval(ArgParser *parser, Config *config)
     else if(compare_string(command, "config-check"))
     {
         int show_command_usage = 0;
-        for(char *option = next_option(parser); option; option = next_option(parser))
+        for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help")) { show_command_usage = 1; }
             else
@@ -903,12 +922,12 @@ eval(ArgParser *parser, Config *config)
             write_output(usage);
             return;
         }
-        config_check(config);
+        config_check(&config);
     }
     else if(compare_string(command, "invite-students"))
     {
         int show_command_usage = 0;
-        for(char *option = next_option(parser); option; option = next_option(parser))
+        for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help")) { show_command_usage = 1; }
             else
@@ -918,7 +937,7 @@ eval(ArgParser *parser, Config *config)
             }
         }
 
-        char *input_path = next_arg(parser);
+        char *input_path = next_arg(&parser);
         if(!input_path || show_command_usage)
         {
             char *usage =
@@ -930,16 +949,16 @@ eval(ArgParser *parser, Config *config)
             write_output(usage);
             return;
         }
-        char *github_token = config->value[Config_github_token];
-        char *organization = config->value[Config_organization];
-        char *team = config->value[Config_student_team];
+        char *github_token = config.value[Config_github_token];
+        char *organization = config.value[Config_organization];
+        char *team = config.value[Config_student_team];
         invite_students(input_path, github_token, organization, team);
     }
     else if(compare_string(command, "collect-homework"))
     {
         int show_command_usage = 0;
         int is_weekends_one_day = 1;
-        for(char *option = next_option(parser); option; option = next_option(parser))
+        for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help")) { show_command_usage = 1; }
             else if(compare_string(option, "--no-weekends")) { is_weekends_one_day = 0; }
@@ -950,10 +969,10 @@ eval(ArgParser *parser, Config *config)
             }
         }
 
-        char *title = next_arg(parser);
-        char *in_time = next_arg(parser);
-        char *cutoff_time = next_arg(parser);
-        char *out_path = next_arg(parser);
+        char *title = next_arg(&parser);
+        char *in_time = next_arg(&parser);
+        char *cutoff_time = next_arg(&parser);
+        char *out_path = next_arg(&parser);
         if(!title || !in_time || !cutoff_time || show_command_usage)
         {
             char *usage =
@@ -970,12 +989,12 @@ eval(ArgParser *parser, Config *config)
             write_output(usage);
             return;
         }
-        char *github_token = config->value[Config_github_token];
-        char *organization = config->value[Config_organization];
-        char *google_token = config->value[Config_google_token];
-        char *spreadsheet_id = config->value[Config_spreadsheet];
-        char *student_key = config->value[Config_key_username];
-        int penalty_per_day = atoi(config->value[Config_penalty_per_day]);
+        char *github_token = config.value[Config_github_token];
+        char *organization = config.value[Config_organization];
+        char *google_token = config.value[Config_google_token];
+        char *spreadsheet_id = config.value[Config_spreadsheet];
+        char *student_key = config.value[Config_key_username];
+        int penalty_per_day = atoi(config.value[Config_penalty_per_day]);
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
         collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day,
@@ -986,7 +1005,7 @@ eval(ArgParser *parser, Config *config)
         int show_command_usage = 0;
         int dry = 0;
         int should_match_title = 0;
-        for(char *option = next_option(parser); option; option = next_option(parser))
+        for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help")) { show_command_usage = 1; }
             else if(compare_string(option, "--match-title")) { should_match_title = 1; }
@@ -998,12 +1017,12 @@ eval(ArgParser *parser, Config *config)
             }
         }
 
-        char *title = next_arg(parser);
-        char *template_repo = next_arg(parser);
-        char *template_branch = next_arg(parser);
-        char *in_time = next_arg(parser);
-        char *cutoff_time = next_arg(parser);
-        char *out_path = next_arg(parser);
+        char *title = next_arg(&parser);
+        char *template_repo = next_arg(&parser);
+        char *template_branch = next_arg(&parser);
+        char *in_time = next_arg(&parser);
+        char *cutoff_time = next_arg(&parser);
+        char *out_path = next_arg(&parser);
         if(!title || !template_repo || !in_time || !cutoff_time || !out_path || show_command_usage)
         {
             char *usage =
@@ -1024,17 +1043,17 @@ eval(ArgParser *parser, Config *config)
             write_output(usage);
             return;
         }
-        char *github_token = config->value[Config_github_token];
-        char *organization = config->value[Config_organization];
-        char *email = config->value[Config_email];
-        char *google_token = config->value[Config_google_token];
-        char *spreadsheet_id = config->value[Config_spreadsheet];
-        char *student_key = config->value[Config_key_username];
-        char *id_key = config->value[Config_key_student_id];
-        char *grade_command = config->value[Config_grade_command];
-        char *feedback_repo = config->value[Config_feedback_repo];
-        char *score_relative_path = config->value[Config_score_relative_path];
-        int thread_count = atoi(config->value[Config_grade_thread_count]);
+        char *github_token = config.value[Config_github_token];
+        char *organization = config.value[Config_organization];
+        char *email = config.value[Config_email];
+        char *google_token = config.value[Config_google_token];
+        char *spreadsheet_id = config.value[Config_spreadsheet];
+        char *student_key = config.value[Config_key_username];
+        char *id_key = config.value[Config_key_student_id];
+        char *grade_command = config.value[Config_grade_command];
+        char *feedback_repo = config.value[Config_feedback_repo];
+        char *score_relative_path = config.value[Config_score_relative_path];
+        int thread_count = atoi(config.value[Config_grade_thread_count]);
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
         grade_homework(title, out_path, deadline, cutoff, template_repo, template_branch, feedback_repo,
@@ -1044,7 +1063,7 @@ eval(ArgParser *parser, Config *config)
     else if(compare_string(command, "announce-grade"))
     {
         int show_command_usage = 0;
-        for(char *option = next_option(parser); option; option = next_option(parser))
+        for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help")) { show_command_usage = 1; }
             else
@@ -1053,7 +1072,7 @@ eval(ArgParser *parser, Config *config)
             }
         }
 
-        char *title = next_arg(parser);
+        char *title = next_arg(&parser);
         if(!title || show_command_usage)
         {
             char *usage =
@@ -1065,13 +1084,13 @@ eval(ArgParser *parser, Config *config)
             write_output(usage);
             return;
         }
-        char *feedback_repo = config->value[Config_feedback_repo];
-        char *spreadsheet_id = config->value[Config_spreadsheet];
-        char *student_key = config->value[Config_key_username];
-        char *id_key = config->value[Config_key_student_id];
-        char *google_token = config->value[Config_google_token];
-        char *github_token = config->value[Config_github_token];
-        char *organization = config->value[Config_organization];
+        char *feedback_repo = config.value[Config_feedback_repo];
+        char *spreadsheet_id = config.value[Config_spreadsheet];
+        char *student_key = config.value[Config_key_username];
+        char *id_key = config.value[Config_key_student_id];
+        char *google_token = config.value[Config_google_token];
+        char *github_token = config.value[Config_github_token];
+        char *organization = config.value[Config_organization];
         announce_grade(title, feedback_repo, github_token, organization, google_token, spreadsheet_id, student_key, id_key);
     }
     else
@@ -1080,32 +1099,4 @@ eval(ArgParser *parser, Config *config)
     }
 
     if(g_log_file) { fclose(g_log_file); }
-}
-
-static void
-run_hand(int arg_count, char **args)
-{
-    static char config_path[MAX_PATH_LEN];
-    if(!format_string(config_path, MAX_PATH_LEN, "%s/config.txt", g_root_dir))
-    {
-        return;
-    }
-
-    if(!ensure_config_exists(config_path))
-    {
-        write_error("config not found, default config created at '%s'", config_path);
-        return;
-    }
-
-    Config config;
-    if(load_config(&config, config_path))
-    {
-        ArgParser parser;
-        init_arg_parser(&parser, args, arg_count);
-        eval(&parser, &config);
-    }
-    else
-    {
-        write_error("unable to load config '%s'", config_path);
-    }
 }
