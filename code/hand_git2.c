@@ -107,7 +107,7 @@ push_to_remote(char *dir, char *commit_message, char *username, char *email)
        git2.git_index_write_tree(&tree_id, index) == 0 &&
        git2.git_tree_lookup(&tree, repository, &tree_id) == 0 &&
        git2.git_reference_peel((git_object **)&parent_commit, head_ref, GIT_OBJECT_COMMIT) == 0 &&
-       git2.git_commit_create(&commit_id, repository, "HEAD", author, committer, "UTF-8", commit_message, 
+       git2.git_commit_create(&commit_id, repository, "HEAD", author, committer, "UTF-8", commit_message,
                               tree, 1, (const git_commit **)&parent_commit) == 0)
     {
         char *upstream_name = (char *)git2.git_reference_name(upstream_ref);

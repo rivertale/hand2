@@ -47,7 +47,8 @@ hash_is_valid(GitCommitHash *hash)
         result = 1;
         for(int i = 0; i < GIT_HASH_LEN; ++i)
         {
-            if(hash->full[i] == 0) { result = 0; }
+            if(hash->full[i] == 0)
+                result = 0;
         }
     }
     return result;

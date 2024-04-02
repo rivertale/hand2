@@ -180,14 +180,17 @@ read_string_array_file(char *path)
     for(size_t i = 0; i < content.used; ++i)
     {
         char *c = content.memory + i;
-        if(*c == ' ' || *c == '\t' || *c == '\r' || *c == '\n') { *c = 0; }
+        if(*c == ' ' || *c == '\t' || *c == '\r' || *c == '\n')
+            *c = 0;
     }
 
     char prev_char = 0;
     for(size_t i = 0; i < content.used; ++i)
     {
         char *c = content.memory + i;
-        if(!prev_char && *c) { append_string_array(&result, c); }
+        if(!prev_char && *c)
+            append_string_array(&result, c);
+
         prev_char = *c;
     }
     free_growable_buffer(&content);

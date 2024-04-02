@@ -3,9 +3,7 @@ peek_char(ConfigParser *parser)
 {
     char result = 0;
     if(parser->at < parser->content_size)
-    {
         result = parser->content[parser->at];
-    }
     return result;
 }
 
@@ -13,9 +11,7 @@ static void
 eat_char(ConfigParser *parser)
 {
     if(parser->at < parser->content_size)
-    {
         ++parser->at;
-    }
 }
 
 static char
@@ -33,12 +29,15 @@ eat_whitespaces(ConfigParser *parser)
     {
         if(in_comment)
         {
-            if(c == '\n') { in_comment = 0; }
+            if(c == '\n')
+                in_comment = 0;
         }
         else
         {
-            if(c == '#') { in_comment = 1; }
-            else if(c != ' ' && c != '\t' && c != '\r' && c != '\n') break;
+            if(c == '#')
+                in_comment = 1;
+            else if(c != ' ' && c != '\t' && c != '\r' && c != '\n')
+                break;
         }
     }
 }
@@ -66,7 +65,9 @@ lex_token(ConfigParser *parser)
         token.identifier = parser->content + parser->at;
         for(char c = peek_char(parser); c; c = eat_and_peek_char(parser))
         {
-            if(c == c0) break;
+            if(c == c0)
+                break;
+
             ++token.len;
         }
 
@@ -89,12 +90,10 @@ lex_token(ConfigParser *parser)
         token.identifier = parser->content + parser->at;
         for(char c = peek_char(parser); c; c = eat_and_peek_char(parser))
         {
-            if(('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || ('0' <= c && c <= '9') ||
-               c == '_' || c == '.')
-            {
+            if(('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || ('0' <= c && c <= '9') || c == '_' || c == '.')
                 ++token.len;
-            }
-            else break;
+            else
+                break;
         }
     }
     else
@@ -141,7 +140,8 @@ parse_key_value_pair(ConfigParser *parser,
         Token t0 = peek_token(parser, 0);
         Token t1 = peek_token(parser, 1);
         Token t2 = peek_token(parser, 2);
-        if(t0.type == Token_eof) break;
+        if(t0.type == Token_eof)
+            break;
 
         if(t0.type == Token_identifier && t1.type == Token_equal && t2.type == Token_string)
         {
@@ -157,8 +157,11 @@ parse_key_value_pair(ConfigParser *parser,
         }
         else
         {
-            if(t0.type == Token_identifier) { eat_token(parser); }
-            if(t0.type == Token_identifier && t1.type == Token_equal) { eat_token(parser); }
+            if(t0.type == Token_identifier)
+                eat_token(parser);
+            if(t0.type == Token_identifier && t1.type == Token_equal)
+                eat_token(parser);
+
             Token t = peek_token(parser, 0);
             static char token_content[256];
             size_t token_len = min(t.len, sizeof(token_content) - 1);
@@ -210,7 +213,8 @@ load_config(Config *config, char *path)
             {
                 int key_len, value_len;
                 char *key, *value;
-                if(!parse_key_value_pair(&parser, &key, &value, &key_len, &value_len)) break;
+                if(!parse_key_value_pair(&parser, &key, &value, &key_len, &value_len))
+                    break;
 
                 int key_found = 0;
                 for(int i = 0; i < Config_one_past_last; ++i)

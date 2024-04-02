@@ -44,7 +44,9 @@ config_check(Config *config)
     static char username[MAX_URL_LEN];
     StringArray spreadsheet = {0};
     int ok[Config_one_past_last];
-    for(int i = 0; i < Config_one_past_last; ++i) { ok[i] = 1; }
+    for(int i = 0; i < Config_one_past_last; ++i)
+        ok[i] = 1;
+
     ok[Config_github_token] = retrieve_username(username, MAX_URL_LEN, github_token);
     if(ok[Config_github_token])
     {
@@ -119,7 +121,8 @@ config_check(Config *config)
     {
         for(int i = 0; i < Config_one_past_last; ++i)
         {
-            if(!ok[i]) { write_output("    Invalid config: %s", g_config_name[i]); }
+            if(!ok[i])
+                write_output("    Invalid config: %s", g_config_name[i]);
         }
     }
     free_string_array(&spreadsheet);
@@ -153,7 +156,8 @@ invite_students(char *path, char *github_token, char *organization, char *team)
                 }
             }
 
-            if(!students.elem[i]) continue;
+            if(!students.elem[i])
+                continue;
             for(int j = 0; j < existing_invitations.count; ++j)
             {
                 if(compare_case_insensitive(students.elem[i], existing_invitations.elem[j]))
@@ -163,7 +167,8 @@ invite_students(char *path, char *github_token, char *organization, char *team)
                 }
             }
 
-            if(!students.elem[i]) continue;
+            if(!students.elem[i])
+                continue;
             if(!github_user_exists(github_token, students.elem[i]))
             {
                 write_error("github user '%s' does not exist", students.elem[i]);
@@ -180,7 +185,8 @@ invite_students(char *path, char *github_token, char *organization, char *team)
             write_output("Inviting new members...");
             for(int i = 0; i < students.count; ++i)
             {
-                if(!students.elem[i]) continue;
+                if(!students.elem[i])
+                    continue;
                 if(invite_user_to_team(github_token, students.elem[i], organization, team))
                 {
                     ++success_count;
@@ -340,7 +346,9 @@ format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *format, c
         }
         else if(c[0] == '$' && c[1] == '{')
         {
-            if(depth++ == 0) { identifier = c + 2; }
+            if(depth++ == 0)
+                identifier = c + 2;
+
             ++i;
         }
         else if(c[0] == '}')
@@ -547,8 +555,10 @@ grade_homework(char *title, char *out_path,
         if(index != -1)
         {
             ++submission_count;
-            if(push_time[index] > deadline) { ++late_submission_count; }
-            if(works[index].exit_code != 0) { ++failure_count; }
+            if(push_time[index] > deadline)
+                ++late_submission_count;
+            if(works[index].exit_code != 0)
+                ++failure_count;
 
             static char report_path[MAX_PATH_LEN];
             static char score_path[MAX_PATH_LEN];
@@ -643,7 +653,9 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
             }
             else if(c[0] == '$' && c[1] == '{')
             {
-                if(depth++ == 0) { identifier = c + 2; }
+                if(depth++ == 0)
+                    identifier = c + 2;
+
                 ++c;
             }
             else if(c[0] == '}')
@@ -810,16 +822,13 @@ run_hand(int arg_count, char **args)
     for(;;)
     {
         char *option = next_option(&parser);
-        if(!option) break;
+        if(!option)
+            break;
 
         if(compare_string(option, "--help"))
-        {
             show_usage = 1;
-        }
         else if(compare_string(option, "--log"))
-        {
             should_log = 1;
-        }
         else
         {
             show_usage = 1;
@@ -886,7 +895,8 @@ run_hand(int arg_count, char **args)
         int show_command_usage = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
-            if(compare_string(option, "--help")) { show_command_usage = 1; }
+            if(compare_string(option, "--help"))
+                show_command_usage = 1;
             else
             {
                 show_command_usage = 1;
@@ -912,7 +922,8 @@ run_hand(int arg_count, char **args)
         int show_command_usage = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
-            if(compare_string(option, "--help")) { show_command_usage = 1; }
+            if(compare_string(option, "--help"))
+                show_command_usage = 1;
             else
             {
                 show_command_usage = 1;
@@ -938,7 +949,8 @@ run_hand(int arg_count, char **args)
         int show_command_usage = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
-            if(compare_string(option, "--help")) { show_command_usage = 1; }
+            if(compare_string(option, "--help"))
+                show_command_usage = 1;
             else
             {
                 show_command_usage = 1;
@@ -969,8 +981,10 @@ run_hand(int arg_count, char **args)
         int is_weekends_one_day = 1;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
-            if(compare_string(option, "--help")) { show_command_usage = 1; }
-            else if(compare_string(option, "--no-weekends")) { is_weekends_one_day = 0; }
+            if(compare_string(option, "--help"))
+                show_command_usage = 1;
+            else if(compare_string(option, "--no-weekends"))
+                is_weekends_one_day = 0;
             else
             {
                 show_command_usage = 1;
@@ -1016,9 +1030,12 @@ run_hand(int arg_count, char **args)
         int should_match_title = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
-            if(compare_string(option, "--help")) { show_command_usage = 1; }
-            else if(compare_string(option, "--match-title")) { should_match_title = 1; }
-            else if(compare_string(option, "--dry")) { dry = 1; }
+            if(compare_string(option, "--help"))
+                show_command_usage = 1;
+            else if(compare_string(option, "--match-title"))
+                should_match_title = 1;
+            else if(compare_string(option, "--dry"))
+                dry = 1;
             else
             {
                 show_command_usage = 1;
@@ -1074,11 +1091,10 @@ run_hand(int arg_count, char **args)
         int show_command_usage = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
-            if(compare_string(option, "--help")) { show_command_usage = 1; }
+            if(compare_string(option, "--help"))
+                show_command_usage = 1;
             else
-            {
                 write_error("unknown option '%s'", option);
-            }
         }
 
         char *title = next_arg(&parser);
@@ -1107,5 +1123,6 @@ run_hand(int arg_count, char **args)
         write_error("unknown command %s", command);
     }
 
-    if(g_log_file) { fclose(g_log_file); }
+    if(g_log_file)
+        fclose(g_log_file);
 }

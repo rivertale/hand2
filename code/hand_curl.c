@@ -31,7 +31,8 @@ static void
 assign_work(CurlGroup *group, int index, char *url, char *header, char *post_type, char *post_data)
 {
     assert(index < group->worker_count);
-    if(!group->handle) return;
+    if(!group->handle)
+        return;
 
     int is_post_like = (post_type != 0);
     CURL *handle = curl.curl_easy_init();
@@ -92,14 +93,18 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
 static void
 complete_all_works(CurlGroup *group)
 {
-    if(!group->handle) return;
+    if(!group->handle)
+        return;
 
     int still_running;
     for(;;)
     {
-        if(curl.curl_multi_perform(group->handle, &still_running) != 0) break;
-        if(still_running == 0) break;
-        if(curl.curl_multi_poll(group->handle, 0, 0, 5000, 0) != 0) break;
+        if(curl.curl_multi_perform(group->handle, &still_running) != 0)
+            break;
+        if(still_running == 0)
+            break;
+        if(curl.curl_multi_poll(group->handle, 0, 0, 5000, 0) != 0)
+            break;
     }
 
     for(int i = 0; i < group->worker_count; ++i)
@@ -119,7 +124,8 @@ end_curl_group(CurlGroup *group)
         {
             int message_in_queue;
             CURLMsg *message = curl.curl_multi_info_read(group->handle, &message_in_queue);
-            if(!message) break;
+            if(!message)
+                break;
 
             if(message->msg != CURLMSG_DONE || message->data.result != 0)
             {
@@ -214,7 +220,8 @@ format_sheet_url(char *buffer, size_t max_len, char *url, char *google_token)
         int has_query = 0;
         for(char *c = url; *c; ++c)
         {
-            if(*c == '?') { has_query = 1; }
+            if(*c == '?')
+                has_query = 1;
         }
         copy_memory(buffer,                                    url,                           url_len);
         copy_memory(buffer + url_len,                          has_query ? "&key=" : "?key=", prefix_len);
@@ -303,8 +310,10 @@ github_repository_exists(char *github_token, char *organization, char *repo)
 static int
 retrieve_username(char *out, size_t max_size, char *github_token)
 {
-    if(max_size > 0 && !out) return 0;
-    if(max_size > 0) { *out = 0; }
+    if(max_size > 0 && !out)
+        return 0;
+    if(max_size > 0)
+        *out = 0;
 
     int result = 0;
     static char url[MAX_URL_LEN];
@@ -345,7 +354,9 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
             CurlGroup group = begin_curl_group(worker_count);
             for(int i = 0; i < worker_count; ++i)
             {
-                if(worker_done[i]) continue;
+                if(worker_done[i])
+                    continue;
+
                 static char url[MAX_URL_LEN];
                 // TODO: aren't prev_pages always the same for all workers?
                 if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues?state=all&per_page=100&page=%d",
@@ -358,7 +369,9 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
 
             for(int i = 0; i < worker_count; ++i)
             {
-                if(worker_done[i]) continue;
+                if(worker_done[i])
+                    continue;
+
                 int issue_count_in_page = 0;
                 cJSON *issue_json = 0;
                 cJSON *json = cJSON_Parse(get_response(&group, i));
@@ -375,8 +388,9 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
                     }
                     ++issue_count_in_page;
                 }
-                if(issue_count_in_page == 0) { worker_done[i] = 1; }
                 cJSON_Delete(json);
+                if(issue_count_in_page == 0)
+                    worker_done[i] = 1;
             }
             end_curl_group(&group);
         }
@@ -563,10 +577,12 @@ retrieve_users_in_team(char *github_token, char *organization, char *team)
                 }
             }
             cJSON_Delete(json);
-            if(count_in_page == 0) break;
+            if(count_in_page == 0)
+                break;
         }
         end_curl_group(&group);
-        if(count_in_page == 0) break;
+        if(count_in_page == 0)
+            break;
     }
     return result;
 }
@@ -612,10 +628,12 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
                 }
             }
             cJSON_Delete(json);
-            if(count_in_page == 0) break;
+            if(count_in_page == 0)
+                break;
         }
         end_curl_group(&group);
-        if(count_in_page == 0) break;
+        if(count_in_page == 0)
+            break;
     }
     return result;
 }
@@ -657,10 +675,12 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
                 }
             }
             cJSON_Delete(json);
-            if(count_in_page == 0) break;
+            if(count_in_page == 0)
+                break;
         }
         end_curl_group(&group);
-        if(count_in_page == 0) break;
+        if(count_in_page == 0)
+            break;
     }
     return result;
 }
@@ -695,8 +715,10 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
             CurlGroup group = begin_curl_group(worker_count);
             for(int i = 0; i < worker_count; ++i)
             {
-                if(worker_done[i]) continue;
-                char url[MAX_URL_LEN];
+                if(worker_done[i])
+                    continue;
+
+                static char url[MAX_URL_LEN];
                 if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/events?page=%d&per_page=100",
                                  organization, repos->elem[at + i], page))
                 {
@@ -707,7 +729,8 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
 
             for(int i = 0; i < worker_count; ++i)
             {
-                if(worker_done[i]) continue;
+                if(worker_done[i])
+                    continue;
 
                 int event_count_in_page = 0;
                 static char req_ref[256];
@@ -778,7 +801,8 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                     out_hash[at + i] = last_resort_hashes[at + i];
                 }
 
-                if(event_count_in_page == 0) { worker_done[i] = 1; }
+                if(event_count_in_page == 0)
+                    worker_done[i] = 1;
             }
             end_curl_group(&group);
             ++page;
@@ -898,9 +922,7 @@ retrieve_spreadsheet(StringArray *out, char *google_token, char *spreadsheet_id)
             cJSON *properties = cJSON_GetObjectItemCaseSensitive(sheet, "properties");
             cJSON *title = cJSON_GetObjectItemCaseSensitive(properties, "title");
             if(cJSON_IsString(title))
-            {
                 append_string_array(out, title->valuestring);
-            }
         }
         result = end_curl_group(&group);
     }
@@ -959,16 +981,13 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *name)
                 cJSON_ArrayForEach(cell, row)
                 {
                     if(cJSON_IsString(cell))
-                    {
                         write_growable_buffer(&result.content, cell->valuestring, string_len(cell->valuestring));
-                    }
+
                     write_constant_string(&result.content, "\0");
                 }
 
                 for(int x = row_width; x < width; ++x)
-                {
                     write_constant_string(&result.content, "\0");
-                }
             }
 
             char *at = result.content.memory;

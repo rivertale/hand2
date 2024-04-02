@@ -24,7 +24,8 @@ true_for_all(int *booleans, int count)
 {
     for(int i = 0; i < count; ++i)
     {
-        if(!booleans[i]) return 0;
+        if(!booleans[i])
+            return 0;
     }
     return 1;
 }
@@ -33,7 +34,8 @@ static size_t
 string_len(char *string)
 {
     size_t result = 0;
-    while(*string++) { ++result; }
+    while(*string++)
+        ++result;
     return result;
 }
 
@@ -41,7 +43,8 @@ static void
 clear_memory(void *ptr, size_t size)
 {
     char *byte_ptr = (char *)ptr;
-    while(size-- > 0) { *byte_ptr++ = 0; }
+    while(size-- > 0)
+        *byte_ptr++ = 0;
 }
 
 static void
@@ -49,7 +52,8 @@ copy_memory(void *dest, void *source, size_t size)
 {
     char *byte_source = (char *)source;
     char *byte_dest = (char *)dest;
-    while(size-- > 0) { *byte_dest++ = *byte_source++; }
+    while(size-- > 0)
+        *byte_dest++ = *byte_source++;
 }
 
 static int
@@ -57,9 +61,8 @@ compare_substring(char *a, char *b, size_t len)
 {
     for(size_t i = 0; i < len; ++i)
     {
-        if(a[i] != b[i]) return 0;
-        if(a[i] == 0) return 0;
-        if(b[i] == 0) return 0;
+        if(a[i] != b[i] || a[i] == 0 || b[i] == 0)
+            return 0;
     }
     return 1;
 }
@@ -69,8 +72,11 @@ compare_string(char *a, char *b)
 {
     for(;;)
     {
-        if(*a != *b) return 0;
-        if(*a == 0) break;
+        if(*a != *b)
+            return 0;
+        if(*a == 0)
+            break;
+
         ++a;
         ++b;
     }
@@ -84,10 +90,15 @@ compare_case_insensitive(char *a, char *b)
     {
         char c_a = *a;
         char c_b = *b;
-        if('A' <= c_a && c_a <= 'Z') { c_a = c_a - 'A' + 'a'; }
-        if('A' <= c_b && c_b <= 'Z') { c_b = c_b - 'A' + 'a'; }
-        if(c_a != c_b) return 0;
-        if(c_a == 0) break;
+        if('A' <= c_a && c_a <= 'Z')
+            c_a = c_a - 'A' + 'a';
+        if('A' <= c_b && c_b <= 'Z')
+            c_b = c_b - 'A' + 'a';
+        if(c_a != c_b)
+            return 0;
+        if(c_a == 0)
+            break;
+
         ++a;
         ++b;
     }
@@ -100,7 +111,8 @@ calendar_time(time_t time)
     tm result = {0};
     time_t local_time = time + TIME_ZONE_UTC8 * 3600;
     tm *local_tm = gmtime(&local_time);
-    if(local_tm) { result = *local_tm; }
+    if(local_tm)
+        result = *local_tm;
     return result;
 }
 
@@ -170,7 +182,8 @@ allocate_memory(size_t size)
 static void
 free_memory(void *ptr)
 {
-    if(ptr) { free(ptr); }
+    if(ptr)
+        free(ptr);
 }
 
 static int
@@ -183,7 +196,8 @@ format_string(char *buffer, size_t size, char *format, ...)
     int required_size = vsnprintf(buffer, size, format, arg_list);
     if(required_size < 0)
     {
-        if(size >= 1) { *buffer = 0; }
+        if(size >= 1)
+            *buffer = 0;
         write_log("vsnprintf error: %d", required_size);
     }
     else if((size_t)required_size >= size)

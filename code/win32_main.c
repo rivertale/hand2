@@ -8,7 +8,8 @@ static size_t
 win32_utf16_len(wchar_t *string)
 {
     size_t result = 0;
-    while(*string++) { ++result; }
+    while(*string++)
+        ++result;
     return result;
 }
 
@@ -17,8 +18,11 @@ win32_compare_utf16(wchar_t *a, wchar_t *b)
 {
     for(;;)
     {
-        if(*a != *b) return 0;
-        if(*a == 0) break;
+        if(*a != *b)
+            return 0;
+        if(*a == 0)
+            break;
+
         ++a;
         ++b;
     }
@@ -120,17 +124,23 @@ win32_delete_directory_by_wide_path(wchar_t *dir_path)
             copy_memory(child + dir_len + 1 + name_len, L"\0",    sizeof(wchar_t));
             if(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
-                if(!win32_delete_directory_by_wide_path(child)) { result = 0; }
+                if(!win32_delete_directory_by_wide_path(child))
+                    result = 0;
             }
             else
             {
-                if(!DeleteFileW(child)) { result = 0; }
+                if(!DeleteFileW(child))
+                    result = 0;
             }
             free_memory(child);
         }
 
-        if(GetLastError() != ERROR_NO_MORE_FILES) { result = 0; }
-        if(find_handle != INVALID_HANDLE_VALUE) { FindClose(find_handle); }
+        if(GetLastError() != ERROR_NO_MORE_FILES)
+            result = 0;
+
+        if(find_handle != INVALID_HANDLE_VALUE)
+            FindClose(find_handle);
+
         RemoveDirectoryW(dir_path);
     }
     return result;
@@ -184,18 +194,23 @@ win32_copy_directory_by_wide_path(wchar_t *target_dir, wchar_t *source_dir)
             copy_memory(target_child + target_len + 1 + name_len, L"\0",      sizeof(wchar_t));
             if(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
-                if(!win32_copy_directory_by_wide_path(target_child, source_child)) { result = 0; }
+                if(!win32_copy_directory_by_wide_path(target_child, source_child))
+                    result = 0;
             }
             else
             {
-                if(!CopyFileW(source_child, target_child, 0)) { result = 0; }
+                if(!CopyFileW(source_child, target_child, 0))
+                    result = 0;
             }
             free_memory(source_child);
             free_memory(target_child);
         }
 
-        if(GetLastError() != ERROR_NO_MORE_FILES) { result = 0; }
-        if(find_handle != INVALID_HANDLE_VALUE) { FindClose(find_handle); }
+        if(GetLastError() != ERROR_NO_MORE_FILES)
+            result = 0;
+
+        if(find_handle != INVALID_HANDLE_VALUE)
+            FindClose(find_handle);
     }
     return result;
 }
@@ -321,7 +336,9 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
                             reserve_growable_buffer(&stdout_content, byte_available);
                             char *stdout_ptr = stdout_content.memory + stdout_content.used;
                             more_stdout = ReadFile(stdout_read_handle, stdout_ptr, byte_available, &byte_read, 0);
-                            if(more_stdout) { stdout_content.used += byte_read; }
+                            if(more_stdout)
+                                stdout_content.used += byte_read;
+
                             null_terminate(&stdout_content);
                         }
                         else
@@ -341,7 +358,9 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
                             reserve_growable_buffer(&stderr_content, byte_available);
                             char *stderr_ptr = stderr_content.memory + stderr_content.used;
                             more_stderr = ReadFile(stderr_read_handle, stderr_ptr, byte_available, &byte_read, 0);
-                            if(more_stderr) { stderr_content.used += byte_read; }
+                            if(more_stderr)
+                                stderr_content.used += byte_read;
+
                             null_terminate(&stderr_content);
                         }
                         else
@@ -477,7 +496,8 @@ win32_wait_for_completion(int thread_count, int work_count, Work *works,
 
         for(int i = 0; i < thread_count; ++i)
         {
-            if(!thread_handles[i]) continue;
+            if(!thread_handles[i])
+                continue;
             WaitForSingleObject(thread_handles[i], INFINITE);
             CloseHandle(thread_handles[i]);
         }
@@ -700,9 +720,8 @@ int
 main(int arg_count, char **args)
 {
     SetConsoleOutputCP(65001);
-    if(!win32_init_platform(&platform)) return 0;
-    if(!win32_init_curl()) return 0;
-    if(!win32_init_git()) return 0;
+    if(!win32_init_platform(&platform) || !win32_init_curl() || !win32_init_git())
+        return 0;
 
     g_work_dir_lock = CreateMutexA(0, 0, 0);
     if(!g_work_dir_lock)

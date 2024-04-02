@@ -33,9 +33,7 @@ linux_directory_exists(char *path)
     int result = 0;
     struct stat file_status;
     if(stat(path, &file_status) == 0)
-    {
         result = S_ISDIR(file_status.st_mode);
-    }
     return result;
 }
 
@@ -44,9 +42,7 @@ linux_rename_directory(char *target_path, char *source_path)
 {
     int result = 0;
     if(rename(source_path, target_path) == 0)
-    {
         result = 1;
-    }
     return result;
 }
 
@@ -69,8 +65,10 @@ linux_copy_file(char *target_path, char *source_path)
         }
         free_memory(content);
     }
-    if(source_file) { fclose(source_file); }
-    if(target_file) { fclose(target_file); }
+    if(source_file)
+        fclose(source_file);
+    if(target_file)
+        fclose(target_file);
     return result;
 }
 
@@ -95,7 +93,8 @@ linux_delete_directory(char *dir_path)
             child = readdir(dir_handle))
         {
             char *name = child->d_name;
-            if(compare_string(name, ".") || compare_string(name, "..")) continue;
+            if(compare_string(name, ".") || compare_string(name, ".."))
+                continue;
 
             size_t name_len = string_len(name);
             char *child = allocate_memory(dir_len + 1 + name_len + 1);
@@ -111,11 +110,13 @@ linux_delete_directory(char *dir_path)
             }
             else if(S_ISDIR(file_status.st_mode))
             {
-                if(!linux_delete_directory(child)) { result = 0; }
+                if(!linux_delete_directory(child))
+                    result = 0;
             }
             else
             {
-                if(unlink(child) != 0) { result = 0; }
+                if(unlink(child) != 0)
+                    result = 0;
             }
             free_memory(child);
         }
@@ -142,7 +143,8 @@ linux_copy_directory(char *target_dir, char *source_dir)
                 child = readdir(dir_handle))
             {
                 char *name = child->d_name;
-                if(compare_string(name, ".") || compare_string(name, "..")) continue;
+                if(compare_string(name, ".") || compare_string(name, ".."))
+                    continue;
 
                 size_t name_len = string_len(name);
                 char *source_child = (char *)allocate_memory(source_len + 1 + name_len + 1);
@@ -162,7 +164,8 @@ linux_copy_directory(char *target_dir, char *source_dir)
                 }
                 else if(S_ISDIR(file_status.st_mode))
                 {
-                    if(!linux_copy_directory(target_child, source_child)) { result = 0; }
+                    if(!linux_copy_directory(target_child, source_child))
+                        result = 0;
                 }
                 else
                 {
@@ -202,7 +205,8 @@ linux_get_root_dir(char *out_buffer, size_t size)
         while(dir_len > 0)
         {
             --dir_len;
-            if(full_path[dir_len] == '/') break;
+            if(full_path[dir_len] == '/')
+                break;
         }
         full_path[dir_len] = 0;
 
@@ -309,7 +313,8 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
                     FD_SET(stderr_handle[0], &read_set);
                     struct timeval timeout = {0};
                     timeout.tv_usec = 100000;
-                    if(select(max(stdout_handle[0], stderr_handle[0]) + 1, &read_set, 0, 0, &timeout) == -1) break;
+                    if(select(max(stdout_handle[0], stderr_handle[0]) + 1, &read_set, 0, 0, &timeout) == -1)
+                        break;
 
                     int max_byte_read = 4096;
                     if(more_stdout && FD_ISSET(stdout_handle[0], &read_set))
@@ -318,7 +323,9 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
                         char *stdout_ptr = stdout_content.memory + stdout_content.used;
                         ssize_t byte_read = read(stdout_handle[0], stdout_ptr, max_byte_read);
                         more_stdout = (byte_read > 0);
-                        if(more_stdout) { stdout_content.used += byte_read; }
+                        if(more_stdout)
+                            stdout_content.used += byte_read;
+
                         null_terminate(&stdout_content);
                     }
                     if(more_stderr && FD_ISSET(stderr_handle[0], &read_set))
@@ -327,7 +334,9 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
                         char *stderr_ptr = stderr_content.memory + stderr_content.used;
                         ssize_t byte_read = read(stderr_handle[0], stderr_ptr, max_byte_read);
                         more_stderr = (byte_read > 0);
-                        if(more_stderr) { stderr_content.used += byte_read; }
+                        if(more_stderr)
+                            stderr_content.used += byte_read;
+
                         null_terminate(&stderr_content);
                     }
                 }
@@ -598,9 +607,12 @@ int
 main(int arg_count, char **args)
 {
     setlocale(LC_ALL, "C");
-    if(!linux_init_platform(&platform)) return 0;
-    if(!linux_init_curl()) return 0;
-    if(!linux_init_git()) return 0;
+    if(!linux_init_platform(&platform))
+        return 0;
+    if(!linux_init_curl())
+        return 0;
+    if(!linux_init_git())
+        return 0;
 
     run_hand(arg_count - 1, args + 1);
     linux_cleanup_curl();
