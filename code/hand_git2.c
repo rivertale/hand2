@@ -78,3 +78,52 @@ cache_repository(char *dir, size_t size,
     }
     return success;
 }
+
+static int
+push_to_remote(char *dir, char *commit_message, char *username, char *email)
+{
+    int success = 0;
+    git_signature *author;
+    git_signature *committer;
+    git_repository *repository;
+    git_reference *head_ref;
+    git_reference *upstream_ref;
+    git_index *index;
+    git_oid tree_id;
+    git_oid commit_id;
+    git_tree *tree;
+    git_commit *parent_commit;
+    git_remote *remote;
+    git_buf remote_name = {0};
+    if(git2.git_signature_now(&author, username, email) == 0 &&
+       git2.git_signature_dup(&committer, author) == 0 &&
+       git2.git_repository_open(&repository, dir) == 0 &&
+       git2.git_repository_head(&head_ref, repository) == 0 &&
+       git2.git_branch_upstream(&upstream_ref, head_ref) == 0 &&
+       git2.git_reference_is_branch(head_ref) &&
+       git2.git_reference_is_remote(upstream_ref) &&
+       git2.git_repository_index(&index, repository) == 0 &&
+       git2.git_index_add_all(index, 0, GIT_INDEX_ADD_DEFAULT, 0, 0) == 0 &&
+       git2.git_index_write_tree(&tree_id, index) == 0 &&
+       git2.git_tree_lookup(&tree, repository, &tree_id) == 0 &&
+       git2.git_reference_peel((git_object **)&parent_commit, head_ref, GIT_OBJECT_COMMIT) == 0 &&
+       git2.git_commit_create(&commit_id, repository, "HEAD", author, committer, "UTF-8", commit_message, 
+                              tree, 1, (const git_commit **)&parent_commit) == 0)
+    {
+        char *upstream_name = (char *)git2.git_reference_name(upstream_ref);
+        char *branch_name = (char *)git2.git_reference_name(head_ref);
+        if(git2.git_branch_remote_name(&remote_name, repository, upstream_name) == 0 &&
+           git2.git_remote_lookup(&remote, repository, remote_name.ptr) == 0)
+        {
+            git_strarray refspecs = {0};
+            refspecs.count = 1;
+            refspecs.strings = &branch_name;
+            if(git2.git_remote_push(remote, &refspecs, 0) == 0 &&
+               git2.git_reset(repository, (git_object *)parent_commit, GIT_RESET_SOFT, 0) == 0)
+            {
+                success = 1;
+            }
+        }
+    }
+    return success;
+}

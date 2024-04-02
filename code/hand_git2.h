@@ -194,6 +194,13 @@ typedef enum
 	GIT_FETCH_NO_PRUNE
 } git_fetch_prune_t;
 
+typedef enum {
+	GIT_INDEX_ADD_DEFAULT = 0,
+	GIT_INDEX_ADD_FORCE = (1u << 0),
+	GIT_INDEX_ADD_DISABLE_PATHSPEC_MATCH = (1u << 1),
+	GIT_INDEX_ADD_CHECK_PATHSPEC = (1u << 2)
+} git_index_add_option_t;
+
 typedef enum
 {
 	GIT_OBJECT_ANY = -2,
@@ -308,6 +315,7 @@ typedef int (*git_checkout_notify_cb)(git_checkout_notify_t why, const char *pat
 typedef int (*git_credential_acquire_cb)(git_credential **out, const char *url, const char *username_from_url, unsigned int allowed_types, void *payload);
 typedef int (*git_diff_notify_cb)(const git_diff *diff_so_far, const git_diff_delta *delta_to_add, const char *matched_pathspec, void *payload);
 typedef int (*git_diff_progress_cb)(const git_diff *diff_so_far, const char *old_path, const char *new_path, void *payload);
+typedef int (*git_index_matched_path_cb)(const char *path, const char *matched_pathspec, void *payload);
 typedef int (*git_indexer_progress_cb)(const git_indexer_progress *stats, void *payload);
 typedef int (*git_packbuilder_progress)(int stage, uint32_t current, uint32_t total, void *payload);
 typedef int (*git_push_negotiation)(const git_push_update **updates, size_t len, void *payload);
@@ -543,6 +551,7 @@ typedef int GitBlobCreateFromBuffer(git_oid *id, git_repository *repo, const voi
 typedef int GitBlobLookup(git_blob **blob, git_repository *repo, const git_oid *id);
 typedef int GitBranchCreate(git_reference **out, git_repository *repo, const char *branch_name, const git_commit *target, int force);
 typedef int GitBranchDelete(git_reference *branch);
+typedef int GitBranchRemoteName(git_buf *out, git_repository *repo, const char *refname);
 typedef int GitBranchIteratorNew(git_branch_iterator **out, git_repository *repo, git_branch_t list_flags);
 typedef int GitBranchName(const char **out, const git_reference *ref);
 typedef int GitBranchNext(git_reference **out, git_branch_t *out_type, git_branch_iterator *iter);
@@ -554,18 +563,26 @@ typedef int GitCommitLookup(git_commit **commit, git_repository *repo, const git
 typedef int GitCommitParent(git_commit **out, const git_commit *commit, unsigned int n);
 typedef int GitCommitTree(git_tree **tree_out, const git_commit *commit);
 typedef int GitDiffTreeToTree(git_diff **diff, git_repository *repo, git_tree *old_tree, git_tree *new_tree, const git_diff_options *opts);
+typedef int GitIndexAddAll(git_index *index, const git_strarray *pathspec, unsigned int flags, git_index_matched_path_cb callback, void *payload);
+typedef int GitIndexWriteTree(git_oid *out, git_index *index);
+typedef int GitIndexWrite(git_index *index);
 typedef int GitLibgit2Init(void);
 typedef int	GitLibgit2Opts(int option, ...);
 typedef int GitLibgit2Shutdown(void);
 typedef int GitOidCmp(const git_oid *a, const git_oid *b);
 typedef int GitOidFromStrN(git_oid *out, const char *str, size_t length);
+typedef int GitReferenceIsBranch(const git_reference *ref);
+typedef int GitReferenceIsRemote(const git_reference *ref);
 typedef int GitReferenceLookup(git_reference **out, git_repository *repo, const char *name);
 typedef int GitReferenceNameToId(git_oid *out, git_repository *repo, const char *name);
+typedef int GitReferencePeel(git_object **out, const git_reference *ref, git_object_t type);
 typedef int GitRemoteCreate(git_remote **out, git_repository *repo, const char *name, const char *url);
 typedef int GitRemoteFetch(git_remote *remote, const git_strarray *refspecs, const git_fetch_options *opts, const char *reflog_message);
 typedef int GitRemoteLookup(git_remote **out, git_repository *repo, const char *name);
 typedef int GitRemotePrune(git_remote *remote, const git_remote_callbacks *callbacks);
 typedef int GitRemotePush(git_remote *remote, const git_strarray *refspecs, const git_push_options *opts);
+typedef int GitRepositoryHead(git_reference **out, git_repository *repo);
+typedef int GitRepositoryIndex(git_index **out, git_repository *repo);
 typedef int GitRepositoryOpen(git_repository **out, const char *path);
 typedef int GitReset(git_repository *repo, const git_object *target, git_reset_t reset_type, const git_checkout_options *checkout_opts);
 typedef int GitRevwalkHide(git_revwalk *walk, const git_oid *commit_id);
@@ -574,7 +591,9 @@ typedef int GitRevwalkNext(git_oid *out, git_revwalk *walk);
 typedef int GitRevwalkPush(git_revwalk *walk, const git_oid *id);
 typedef int GitRevwalkPushHead(git_revwalk *walk);
 typedef int GitRevwalkSorting(git_revwalk *walk, unsigned int sort_mode);
+typedef int GitSignatureDup(git_signature **dest, const git_signature *sig);
 typedef int GitSignatureNew(git_signature **out, const char *name, const char *email, git_time_t time, int offset);
+typedef int GitSignatureNow(git_signature **out, const char *name, const char *email);
 typedef int GitTreeLookup(git_tree **out, git_repository *repo, const git_oid *id);
 typedef int GitTreeWalk(const git_tree *tree, git_treewalk_mode mode, git_treewalk_cb callback, void *payload);
 typedef int GitTreebuilderNew(git_treebuilder **out, git_repository *repo, const git_tree *source);
@@ -604,6 +623,7 @@ typedef struct Git2Code
     GitBranchIteratorNew *git_branch_iterator_new;
     GitBranchName *git_branch_name;
     GitBranchNext *git_branch_next;
+    GitBranchRemoteName *git_branch_remote_name;
     GitBranchSetUpstream *git_branch_set_upstream;
     GitBranchUpstream *git_branch_upstream;
     GitClone *git_clone;
@@ -621,6 +641,9 @@ typedef struct Git2Code
     GitDiffNumDeltas *git_diff_num_deltas;
     GitDiffTreeToTree *git_diff_tree_to_tree;
     GitErrorLast *git_error_last;
+    GitIndexAddAll *git_index_add_all;
+    GitIndexWrite *git_index_write;
+    GitIndexWriteTree *git_index_write_tree;
     GitLibgit2Init *git_libgit2_init;
     GitLibgit2Opts *git_libgit2_opts;
     GitLibgit2Shutdown *git_libgit2_shutdown;
@@ -628,9 +651,12 @@ typedef struct Git2Code
     GitOidFromStrN *git_oid_fromstrn;
     GitOidToStr *git_oid_tostr;
     GitReferenceFree *git_reference_free;
+    GitReferenceIsBranch *git_reference_is_branch;
+    GitReferenceIsRemote *git_reference_is_remote;
     GitReferenceLookup *git_reference_lookup;
     GitReferenceName *git_reference_name;
     GitReferenceNameToId *git_reference_name_to_id;
+    GitReferencePeel *git_reference_peel;
     GitRemoteCreate *git_remote_create;
     GitRemoteFetch *git_remote_fetch;
     GitRemoteFree *git_remote_free;
@@ -638,6 +664,8 @@ typedef struct Git2Code
     GitRemotePrune *git_remote_prune;
     GitRemotePush *git_remote_push;
     GitRepositoryFree *git_repository_free;
+    GitRepositoryHead *git_repository_head;
+    GitRepositoryIndex *git_repository_index;
     GitRepositoryOpen *git_repository_open;
     GitReset *git_reset;
     GitRevwalkFree *git_revwalk_free;
@@ -647,8 +675,10 @@ typedef struct Git2Code
     GitRevwalkPush *git_revwalk_push;
     GitRevwalkPushHead *git_revwalk_push_head;
     GitRevwalkSorting *git_revwalk_sorting;
+    GitSignatureDup *git_signature_dup;
     GitSignatureFree *git_signature_free;
     GitSignatureNew *git_signature_new;
+    GitSignatureNow *git_signature_now;
     GitTreeEntryId *git_tree_entry_id;
     GitTreeEntryType *git_tree_entry_type;
     GitTreeFree *git_tree_free;

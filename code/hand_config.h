@@ -2,24 +2,26 @@
 
 enum
 {
-    Config_github_token         = 0,
-    Config_google_token         = 1,
-    Config_organization         = 2,
-    Config_ta_team              = 3,
-    Config_student_team         = 4,
-    Config_grade_command        = 5,
-    Config_feedback_repo        = 6,
-    Config_spreadsheet          = 7,
-    Config_key_username         = 8,
-    Config_key_student_id       = 9,
-    Config_grade_thread_count   = 10,
-    Config_penalty_per_day      = 11,
-    Config_score_relative_path  = 12,
+    Config_email                = 0,
+    Config_github_token         = 1,
+    Config_google_token         = 2,
+    Config_organization         = 3,
+    Config_ta_team              = 4,
+    Config_student_team         = 5,
+    Config_grade_command        = 6,
+    Config_feedback_repo        = 7,
+    Config_spreadsheet          = 8,
+    Config_key_username         = 9,
+    Config_key_student_id       = 10,
+    Config_grade_thread_count   = 11,
+    Config_penalty_per_day      = 12,
+    Config_score_relative_path  = 13,
     Config_one_past_last,
 };
 
 static char *g_config_name[] =
 {
+    "email",
     "github_access_token",
     "google_api_key",
     "organization",
@@ -35,6 +37,9 @@ static char *g_config_name[] =
     "score_relative_path",
 };
 static char g_default_config[] =
+    "# Email use for commit"                                            "\n"
+    "organization = \"github-organization-name\""                       "\n"
+                                                                        "\n"
     "# The course's GitHub organization name"                           "\n"
     "organization = \"github-organization-name\""                       "\n"
                                                                         "\n"

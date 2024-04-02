@@ -26,6 +26,7 @@ config_check(Config *config)
     char *spreadsheet_id = config->value[Config_spreadsheet];
     char *key_username = config->value[Config_key_username];
     char *key_student_id = config->value[Config_key_student_id];
+    char *email = config->value[Config_email];
     char *grade_thread_count = config->value[Config_grade_thread_count];
     char *penalty_per_day = config->value[Config_penalty_per_day];
     char *score_relative_path = config->value[Config_score_relative_path];
@@ -104,6 +105,7 @@ config_check(Config *config)
     write_output("[Misc]");
     write_output("    Use %s grading thread ... %s", grade_thread_count, ok[Config_grade_thread_count] ? "OK" : "Not a positive integer");
     write_output("    Penalty per day is %s%% ... %s", penalty_per_day, ok[Config_penalty_per_day] ? "OK" : "Not a integer");
+    write_output("    Email used to commit: %s", email);
     write_output("    Score read from: {hwdir}/%s", score_relative_path);
     write_output("    Grading command: %s", grade_command);
 
@@ -394,9 +396,11 @@ grade_homework_on_complete(int index, int count, int exit_code, char *work_dir, 
 }
 
 static void
-grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char *template_repo, char *template_branch, char *feedback_repo,
-               char *command, char *score_relative_path, int thread_count, int should_match_title,
-               char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
+grade_homework(char *title, char *out_path, 
+               time_t deadline, time_t cutoff, char *template_repo, char *template_branch, char *feedback_repo,
+               char *command, char *score_relative_path, int dry, int thread_count, int should_match_title,
+               char *github_token, char *organization, char *email,
+               char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
 {
     tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
@@ -433,7 +437,7 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         write_error("unable to retrieve username");
         return;
     }
-
+    
     // TODO: handle cache_repository error
     write_output("Retrieving homework template...");
     GitCommitHash template_hash = retrieve_latest_commit(github_token, organization, template_repo, template_branch);
@@ -581,6 +585,24 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
         }
         fprintf(out_file, "%f\n", score);
     }
+    
+    if(dry)
+    {
+        write_output("DRY RUN: reports are not pushed, you can view the generated reports at '%s'", feedback_report_dir);
+    }
+    else
+    {
+        write_output("Pushing reports...");
+        static char commit_message[64];
+        if(format_string(commit_message, sizeof(commit_message), "update %s report", title))
+        {
+            if(!push_to_remote(feedback_dir, commit_message, username, email))
+            {
+                write_error("Unable to push the reports");
+            }
+        }
+    }
+    
     write_output("");
     write_output("[Summary]");
     write_output("    Total student: %d", sheet.height);
@@ -591,7 +613,6 @@ grade_homework(char *title, char *out_path, time_t deadline, time_t cutoff, char
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
     write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
                  t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
-    write_output("NOTE: reports generated at '%s', remember to push the reports", feedback_report_dir);
     fclose(out_file);
 }
 
@@ -963,11 +984,13 @@ eval(ArgParser *parser, Config *config)
     else if(compare_string(command, "grade-homework"))
     {
         int show_command_usage = 0;
+        int dry = 0;
         int should_match_title = 0;
         for(char *option = next_option(parser); option; option = next_option(parser))
         {
             if(compare_string(option, "--help")) { show_command_usage = 1; }
             else if(compare_string(option, "--match-title")) { should_match_title = 1; }
+            else if(compare_string(option, "--dry")) { dry = 1; }
             else
             {
                 show_command_usage = 1;
@@ -995,6 +1018,7 @@ eval(ArgParser *parser, Config *config)
                 "    out_path           output file that lists score for all students (in the same order of the"                        "\n"
                 "                       spreadsheet)"                                                                                   "\n"
                 "[command-options]"                                                                                                     "\n"
+                "    --dry              perform a trial run without making any remote changes"                                          "\n"
                 "    --match-title      only grade for repository named 'title', instead of using `title` as a prefix"                  "\n"
                 "                       to find repositories to grade"                                                                  "\n";
             write_output(usage);
@@ -1002,6 +1026,7 @@ eval(ArgParser *parser, Config *config)
         }
         char *github_token = config->value[Config_github_token];
         char *organization = config->value[Config_organization];
+        char *email = config->value[Config_email];
         char *google_token = config->value[Config_google_token];
         char *spreadsheet_id = config->value[Config_spreadsheet];
         char *student_key = config->value[Config_key_username];
@@ -1013,8 +1038,8 @@ eval(ArgParser *parser, Config *config)
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
         grade_homework(title, out_path, deadline, cutoff, template_repo, template_branch, feedback_repo,
-                       grade_command, score_relative_path, thread_count, should_match_title,
-                       github_token, organization, google_token, spreadsheet_id, student_key, id_key);
+                       grade_command, score_relative_path, dry, thread_count, should_match_title,
+                       github_token, organization, email, google_token, spreadsheet_id, student_key, id_key);
     }
     else if(compare_string(command, "announce-grade"))
     {

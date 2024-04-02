@@ -301,10 +301,10 @@ github_repository_exists(char *github_token, char *organization, char *repo)
 }
 
 static int
-retrieve_username(char *out_username, size_t max_username_len, char *github_token)
+retrieve_username(char *out, size_t max_size, char *github_token)
 {
-    if(max_username_len > 0 && !out_username) return 0;
-    if(max_username_len > 0) { *out_username = 0; }
+    if(max_size > 0 && !out) return 0;
+    if(max_size > 0) { *out = 0; }
 
     int result = 0;
     static char url[MAX_URL_LEN];
@@ -318,11 +318,11 @@ retrieve_username(char *out_username, size_t max_username_len, char *github_toke
         cJSON *username = cJSON_GetObjectItemCaseSensitive(json, "login");
         if(cJSON_IsString(username))
         {
-            size_t username_len = min(string_len(username->valuestring), max_username_len - 1);
-            if(out_username)
+            size_t len = min(string_len(username->valuestring), max_size - 1);
+            if(out)
             {
-                copy_memory(out_username, username->valuestring, username_len);
-                out_username[username_len] = 0;
+                copy_memory(out, username->valuestring, len);
+                out[len] = 0;
             }
         }
         result = end_curl_group(&group);
