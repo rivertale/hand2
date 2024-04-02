@@ -70,6 +70,7 @@ config_check(Config *config)
         write_output("    Teaching team: %s ... %s", ta_team, ok[Config_ta_team] ? "OK" : "Not found");
         write_output("    Student team: %s ... %s", student_team, ok[Config_student_team] ? "OK" : "Not found");
         write_output("    Feedback repository: %s ... %s", feedback_repo, ok[Config_feedback_repo] ? "OK" : "Not found");
+        write_output("    Commit email: %s ... nocheck", email);
     }
 
     write_output("");
@@ -85,7 +86,7 @@ config_check(Config *config)
             write_output("[Homework sheet]");
             for(int i = 0; i < spreadsheet.count; ++i)
             {
-                static char buffer[65536];
+                static char buffer[4096];
                 Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, spreadsheet.elem[i]);
                 int username_x = find_key_index(&sheet, key_username);
                 int id_x = find_key_index(&sheet, key_student_id);
@@ -105,9 +106,8 @@ config_check(Config *config)
     write_output("[Misc]");
     write_output("    Use %s grading thread ... %s", grade_thread_count, ok[Config_grade_thread_count] ? "OK" : "Not a positive integer");
     write_output("    Penalty per day is %s%% ... %s", penalty_per_day, ok[Config_penalty_per_day] ? "OK" : "Not a integer");
-    write_output("    Email used to commit: %s", email);
-    write_output("    Score read from: {hwdir}/%s", score_relative_path);
-    write_output("    Grading command: %s", grade_command);
+    write_output("    Score read from: {hwdir}/%s ... nocheck", score_relative_path);
+    write_output("    Grading command: %s ... nocheck", grade_command);
 
     write_output("");
     write_output("[Summary]");
