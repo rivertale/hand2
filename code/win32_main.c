@@ -89,6 +89,11 @@ win32_delete_file(char *path)
     static wchar_t wide_path[MAX_PATH_LEN];
     if(MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, MAX_PATH_LEN))
     {
+        DWORD attrib = GetFileAttributesW(wide_path);
+        if(attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_READONLY))
+        {
+            SetFileAttributesW(wide_path, attrib & ~FILE_ATTRIBUTE_READONLY);
+        }
         result = DeleteFileW(wide_path);
     }
     return result;
@@ -130,6 +135,8 @@ win32_delete_directory_by_wide_path(wchar_t *dir_path)
             }
             else
             {
+                if(find_data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
+                    SetFileAttributesW(child, find_data.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY);
                 if(!DeleteFileW(child))
                     result = 0;
             }
