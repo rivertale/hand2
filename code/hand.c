@@ -283,7 +283,6 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
             ++submission_count;
             if(push_time[index] > deadline)
             {
-                ++late_submission_count;
                 delay = (int)((push_time[index] - deadline + 86399) / 86400);
                 assert(delay > 0);
                 if(is_weekends_one_day)
@@ -294,7 +293,6 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
                     delay -= (weekend_day_count / 2);
                 }
 
-                tm t = calendar_time(push_time[index]);
                 if(late_submission_count == 0)
                 {
                     write_output("");
@@ -302,6 +300,8 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
                     write_output("%3s  %12s  %-19s  %-24s  %-40s",
                                  "#", "delay (days)", "push_time", "repository", "hash");
                 }
+                ++late_submission_count;
+                tm t = calendar_time(push_time[index]);
                 write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s",
                              late_submission_count, delay,
                              t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
