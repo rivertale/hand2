@@ -42,7 +42,7 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
         worker->header_list = curl.curl_slist_append(0, header);
         if(is_post_like)
         {
-            if((curl.curl_easy_setopt(handle, CURLOPT_CAINFO, global_certificate_path) == 0) &&
+            if((curl.curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, worker->error) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, curl_write_func) == 0) &&
@@ -64,7 +64,7 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
         }
         else
         {
-            if((curl.curl_easy_setopt(handle, CURLOPT_CAINFO, global_certificate_path) == 0) &&
+            if((curl.curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, worker->error) == 0) &&
                (curl.curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, curl_write_func) == 0) &&

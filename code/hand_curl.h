@@ -606,4 +606,3 @@ typedef struct CurlCode
 } CurlCode;
 
 static CurlCode curl = {0};
-static char global_certificate_path[MAX_PATH_LEN];

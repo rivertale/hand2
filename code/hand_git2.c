@@ -22,6 +22,43 @@ git_reset_callback(git_checkout_notify_t why, const char *path,
 }
 
 static int
+git_certificate_no_check_callback(git_cert *cert, int valid, const char *host, void *payload)
+{
+    (void)cert;
+    (void)valid;
+    (void)host;
+    (void)payload;
+    return 0;
+}
+
+static int
+git_acquire_credential_callback(git_credential **out, const char *url, const char *username_from_url,
+                                unsigned int allowed_types, void *payload)
+{
+    (void)url;
+    (void)username_from_url;
+    char **ptr = (char **)payload;
+    char *username = ptr[0];
+    char *github_token = ptr[1];
+    if(allowed_types & GIT_CREDENTIAL_USERPASS_PLAINTEXT)
+    {
+        if(git2.git_credential_userpass_plaintext_new(out, username, github_token) == 0)
+            return 0;
+    }
+    else if(allowed_types & GIT_CREDENTIAL_DEFAULT)
+    {
+        if(git2.git_credential_default_new(out) == 0)
+            return 0;
+    }
+    else if(allowed_types & GIT_CREDENTIAL_USERNAME)
+    {
+        if(git2.git_credential_username_new(out, username) == 0)
+            return 0;
+    }
+    return GIT_PASSTHROUGH;
+}
+
+static int
 cache_repository(char *dir, size_t size,
                  char *username, char *github_token, char *organization, char *repo, GitCommitHash *req_hash)
 {
@@ -38,8 +75,10 @@ cache_repository(char *dir, size_t size,
             platform.delete_directory(g_git_temporary_dir);
 
             int clone_and_reset_success = 0;
+            git_clone_options clone_options = GIT_CLONE_OPTIONS_INIT;
+            clone_options.fetch_opts.callbacks.certificate_check = git_certificate_no_check_callback;
             git_repository *repository;
-            if(git2.git_clone(&repository, url, g_git_temporary_dir, 0) == 0)
+            if(git2.git_clone(&repository, url, g_git_temporary_dir, &clone_options) == 0)
             {
                 git_oid commit_oid;
                 git_commit *commit;
@@ -80,7 +119,7 @@ cache_repository(char *dir, size_t size,
 }
 
 static int
-push_to_remote(char *dir, char *commit_message, char *username, char *email)
+push_to_remote(char *dir, char *github_token, char *commit_message, char *username, char *email)
 {
     int success = 0;
     git_signature *author;
@@ -115,10 +154,17 @@ push_to_remote(char *dir, char *commit_message, char *username, char *email)
         if(git2.git_branch_remote_name(&remote_name, repository, upstream_name) == 0 &&
            git2.git_remote_lookup(&remote, repository, remote_name.ptr) == 0)
         {
+            char *payload[2];
+            payload[0] = username;
+            payload[1] = github_token;
+            git_push_options push_options = GIT_PUSH_OPTIONS_INIT;
+            push_options.callbacks.certificate_check = git_certificate_no_check_callback;
+            push_options.callbacks.credentials = git_acquire_credential_callback;
+            push_options.callbacks.payload = payload;
             git_strarray refspecs = {0};
             refspecs.count = 1;
             refspecs.strings = &branch_name;
-            if(git2.git_remote_push(remote, &refspecs, 0) == 0 &&
+            if(git2.git_remote_push(remote, &refspecs, &push_options) == 0 &&
                git2.git_reset(repository, (git_object *)parent_commit, GIT_RESET_SOFT, 0) == 0)
             {
                 success = 1;

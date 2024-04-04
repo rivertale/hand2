@@ -614,7 +614,7 @@ grade_homework(char *title, char *out_path,
         static char commit_message[64];
         if(format_string(commit_message, sizeof(commit_message), "update %s report", title))
         {
-            if(!push_to_remote(feedback_dir, commit_message, username, email))
+            if(!push_to_remote(feedback_dir, github_token, commit_message, username, email))
             {
                 write_error("Unable to push the reports");
             }

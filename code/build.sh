@@ -39,8 +39,4 @@ else
 fi
 echo "\n"
 
-echo "[copying data]"
-cp -v -f -t ./ ../data/* 2>/dev/null
-echo "\n"
-
 rm -f ./*.o 2>/dev/null

@@ -48,10 +48,6 @@ echo [copying library]
 copy ..\code\lib_win32\*.dll .\ 2>nul
 echo.
 
-echo [copying data]
-copy ..\data\* .\ 2>nul
-echo.
-
 del /q *.obj *.lib *.exp vc140.pdb 2>nul
 popd
 
