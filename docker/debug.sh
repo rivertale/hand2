@@ -29,5 +29,5 @@ docker run --rm --interactive --tty --security-opt seccomp=unconfined \
         groupadd --gid $(id -g) ghand
         useradd --uid $(id -u) --gid $(id -g) uhand
         chmod 666 /var/run/docker.sock
-        exec sudo --user=uhand gdb --args hand_gcc ${args}
+        exec sudo --user=uhand gdb --args hand ${args}
     "

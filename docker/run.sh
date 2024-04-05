@@ -29,5 +29,5 @@ docker run --rm \
         groupadd --gid $(id -g) ghand
         useradd --uid $(id -u) --gid $(id -g) uhand
         chmod 666 /var/run/docker.sock
-        exec sudo --user=uhand ./hand_gcc ${args}
+        exec sudo --user=uhand ./hand ${args}
     "
