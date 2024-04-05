@@ -18,7 +18,7 @@ do
     args="${args} \"${arg}\""
 done
 
-# release hand2
+# publish hand2
 cd $(dirname "$0")
 cd ..
 docker run --rm \
@@ -29,5 +29,5 @@ docker run --rm \
         groupadd --gid $(id -g) ghand
         useradd --uid $(id -u) --gid $(id -g) uhand
         chmod 666 /var/run/docker.sock
-        exec sudo --user=uhand ./release.sh ${args}
+        exec sudo --user=uhand ./publish.sh ${args}
     "

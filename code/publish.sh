@@ -1,12 +1,12 @@
 #!/bin/sh
-mkdir -p ../release
-cd ../release
+mkdir -p ../publish
+cd ../publish
 
 # usage
 version="$1"
 if [ -z ${version} ]
 then
-    echo "usage: release.sh version"
+    echo "usage: publish.sh version"
 else
     abort_archive=0
     rm -r ./hand2 2>/dev/null

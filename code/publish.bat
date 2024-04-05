@@ -1,13 +1,13 @@
 @echo off
 
-if not exist ..\release mkdir ..\release
-pushd ..\release
+if not exist ..\publish mkdir ..\publish
+pushd ..\publish
 
 REM usage
 set abort_archive=0
 set version=%1
 if "%version%" == "" (
-    echo usage: release.bat version
+    echo usage: publish.bat version
     goto ABORT
 )
 
