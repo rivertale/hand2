@@ -537,7 +537,7 @@ retrieve_latest_commit(char *github_token, char *organization, char *repo, char 
 }
 
 static StringArray
-retrieve_users_in_team(char *github_token, char *organization, char *team)
+retrieve_team_members(char *github_token, char *organization, char *team)
 {
     StringArray result = allocate_string_array();
     int page = 1;
@@ -993,7 +993,7 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *name)
             char *at = result.content.memory;
             for(int i = 0; i < width; ++i)
             {
-                result.keys[i] = at;
+                result.labels[i] = at;
                 at += string_len(at) + 1;
             }
 

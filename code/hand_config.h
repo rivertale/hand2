@@ -11,8 +11,8 @@ enum
     Config_grade_command        = 6,
     Config_feedback_repo        = 7,
     Config_spreadsheet          = 8,
-    Config_key_username         = 9,
-    Config_key_student_id       = 10,
+    Config_username_label       = 9,
+    Config_student_id_label     = 10,
     Config_grade_thread_count   = 11,
     Config_penalty_per_day      = 12,
     Config_score_relative_path  = 13,
@@ -30,12 +30,13 @@ static char *g_config_name[] =
     "grade_command",
     "feedback_repository",
     "spreadsheet",
-    "sheet_key_username",
-    "sheet_key_student_id",
+    "username_label",
+    "student_id_label",
     "grade_thread_count",
     "penalty_per_day",
     "score_relative_path",
 };
+
 static char g_default_config[] =
     "# Email use for commit"                                            "\n"
     "email = \"your@commit.email\""                                     "\n"
@@ -64,11 +65,11 @@ static char g_default_config[] =
     "# spreadsheet"                                                     "\n"
     "spreadsheet = \"spreadsheet-id\""                                  "\n"
                                                                         "\n"
-    "# sheet_key_username"                                              "\n"
-    "sheet_key_username = \"key-for-username-in-sheet\""                "\n"
+    "# sheet_label_username"                                            "\n"
+    "username_label = \"label-for-username-in-sheet\""                  "\n"
                                                                         "\n"
-    "# sheet_key_student_id"                                            "\n"
-    "sheet_key_student_id = \"key-for-student-id-in-sheet\""            "\n"
+    "# sheet_label_student_id"                                          "\n"
+    "student_id_label = \"label-for-student-id-in-sheet\""              "\n"
                                                                         "\n"
     "# penalty per day"                                                 "\n"
     "penalty_per_day = \"15\""                                          "\n"

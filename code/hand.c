@@ -24,8 +24,8 @@ config_check(Config *config)
     char *grade_command = config->value[Config_grade_command];
     char *feedback_repo = config->value[Config_feedback_repo];
     char *spreadsheet_id = config->value[Config_spreadsheet];
-    char *key_username = config->value[Config_key_username];
-    char *key_student_id = config->value[Config_key_student_id];
+    char *username_label = config->value[Config_username_label];
+    char *id_label = config->value[Config_student_id_label];
     char *email = config->value[Config_email];
     char *grade_thread_count = config->value[Config_grade_thread_count];
     char *penalty_per_day = config->value[Config_penalty_per_day];
@@ -89,12 +89,12 @@ config_check(Config *config)
             {
                 static char buffer[4096];
                 Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, spreadsheet.elem[i]);
-                int username_x = find_key_index(&sheet, key_username);
-                int id_x = find_key_index(&sheet, key_student_id);
+                int username_x = find_label(&sheet, username_label);
+                int id_x = find_label(&sheet, id_label);
                 if(format_string(buffer, sizeof(buffer), "    %s: %s=%d, %s=%d ... %s",
                                  spreadsheet.elem[i],
-                                 key_username, (username_x != -1) ? username_x + 1 : -1,
-                                 key_student_id, (id_x != -1) ? id_x + 1 : -1,
+                                 username_label, (username_x != -1) ? username_x + 1 : -1,
+                                 id_label, (id_x != -1) ? id_x + 1 : -1,
                                  (username_x != -1 && id_x != -1) ? "OK" : "Not a homework"))
                 {
                     write_output(buffer);
@@ -137,7 +137,7 @@ invite_students(char *path, char *github_token, char *organization, char *team)
     if(students.count > 0)
     {
         write_output("Retrieving existing members...");
-        StringArray existing_students = retrieve_users_in_team(github_token, organization, team);
+        StringArray existing_students = retrieve_team_members(github_token, organization, team);
         write_output("Retrieving existing invitations...");
         StringArray existing_invitations = retrieve_existing_invitations(github_token, organization, team);
 
@@ -223,7 +223,7 @@ invite_students(char *path, char *github_token, char *organization, char *team)
 
 static void
 collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, int penalty_per_day, int is_weekends_one_day,
-                 char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key)
+                 char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_label)
 {
     tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
@@ -240,7 +240,7 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
         return;
     }
 
-    write_output("Retrieving repos with prefix '%s'...", title);
+    write_output("Retrieving repositories with prefix '%s'...", title);
     StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
 
     write_output("Retrieving default branches...");
@@ -266,7 +266,7 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
     int start_weekday = (t0.tm_hour < 12) ? t0.tm_wday : (t0.tm_wday + 1) % 7;
 
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-    int student_x = find_key_index(&sheet, student_key);
+    int student_x = find_label(&sheet, student_label);
     for(int y = 0; y < sheet.height; ++y)
     {
         int index = -1;
@@ -409,19 +409,19 @@ grade_homework(char *title, char *out_path,
                time_t deadline, time_t cutoff, char *template_repo, char *template_branch, char *feedback_repo,
                char *command, char *score_relative_path, int dry, int thread_count, int should_match_title,
                char *github_token, char *organization, char *email,
-               char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
+               char *google_token, char *spreadsheet_id, char *student_label, char *id_label)
 {
     tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
     write_log("[grade homework] title='%s', out_path='%s', "
               "deadline='%d-%02d-%02d_%02d:%02d:%02d', cutoff='%d-%02d-%02d_%02d:%02d:%02d', "
               "template_repo='%s', feedback_repo='%s', command='%s', score_relative_path='%s', "
-              "thread_count='%d', should_match_title='%d', organization='%s', spreadsheet_id='%s', student_key='%s', id_key='%s'",
+              "thread_count='%d', should_match_title='%d', organization='%s', spreadsheet_id='%s', student_label='%s', id_label='%s'",
               title, out_path,
               t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
               t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec,
               template_repo, feedback_repo, command, score_relative_path, thread_count, should_match_title,
-              organization, spreadsheet_id, student_key, id_key);
+              organization, spreadsheet_id, student_label, id_label);
 
     static char username[MAX_URL_LEN];
     static char template_dir[MAX_PATH_LEN];
@@ -545,8 +545,8 @@ grade_homework(char *title, char *out_path,
 
     write_output("Generating report...");
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-    int student_x = find_key_index(&sheet, student_key);
-    int id_x = find_key_index(&sheet, id_key);
+    int student_x = find_label(&sheet, student_label);
+    int id_x = find_label(&sheet, id_label);
     for(int y = 0; y < sheet.height; ++y)
     {
         int index = -1;
@@ -670,7 +670,7 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
                 if(depth == 1)
                 {
                     *c = 0;
-                    int x = find_key_index(sheet, identifier);
+                    int x = find_label(sheet, identifier);
                     *c = '}';
                     if(x >= 0)
                     {
@@ -704,10 +704,10 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
 
 static void
 announce_grade(char *title, char *feedback_repo, int dry,
-               char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_key, char *id_key)
+               char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_label, char *id_label)
 {
-    write_log("[announce grade] title='%s', feedback_repo='%s', spreadsheet_id='%s', student_key='%s', organization='%s'",
-              title, feedback_repo, spreadsheet_id, student_key, organization);
+    write_log("[announce grade] title='%s', feedback_repo='%s', spreadsheet_id='%s', student_label='%s', organization='%s'",
+              title, feedback_repo, spreadsheet_id, student_label, organization);
 
     static char issue_title[256];
     static char username[MAX_URL_LEN];
@@ -745,8 +745,8 @@ announce_grade(char *title, char *feedback_repo, int dry,
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
     if(sheet.width && sheet.height)
     {
-        int student_x = find_key_index(&sheet, student_key);
-        int id_x = find_key_index(&sheet, id_key);
+        int student_x = find_label(&sheet, student_label);
+        int id_x = find_label(&sheet, id_label);
         if(student_x >= 0 && id_x >= 0)
         {
             StringArray reports = allocate_string_array();
@@ -823,9 +823,9 @@ announce_grade(char *title, char *feedback_repo, int dry,
         else
         {
             if(student_x < 0)
-                write_error("Key '%s' not found", student_key);
+                write_error("Label '%s' not found", student_label);
             if(id_x < 0)
-                write_error("Key '%s' not found", id_key);
+                write_error("Label '%s' not found", id_label);
         }
     }
     else
@@ -1039,12 +1039,12 @@ run_hand(int arg_count, char **args)
         char *organization = config.value[Config_organization];
         char *google_token = config.value[Config_google_token];
         char *spreadsheet_id = config.value[Config_spreadsheet];
-        char *student_key = config.value[Config_key_username];
+        char *student_label = config.value[Config_username_label];
         int penalty_per_day = atoi(config.value[Config_penalty_per_day]);
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
         collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day,
-                         github_token, organization, google_token, spreadsheet_id, student_key);
+                         github_token, organization, google_token, spreadsheet_id, student_label);
     }
     else if(compare_string(command, "grade-homework"))
     {
@@ -1097,8 +1097,8 @@ run_hand(int arg_count, char **args)
         char *email = config.value[Config_email];
         char *google_token = config.value[Config_google_token];
         char *spreadsheet_id = config.value[Config_spreadsheet];
-        char *student_key = config.value[Config_key_username];
-        char *id_key = config.value[Config_key_student_id];
+        char *student_label = config.value[Config_username_label];
+        char *id_label = config.value[Config_student_id_label];
         char *grade_command = config.value[Config_grade_command];
         char *feedback_repo = config.value[Config_feedback_repo];
         char *score_relative_path = config.value[Config_score_relative_path];
@@ -1107,7 +1107,7 @@ run_hand(int arg_count, char **args)
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
         grade_homework(title, out_path, deadline, cutoff, template_repo, template_branch, feedback_repo,
                        grade_command, score_relative_path, dry, thread_count, should_match_title,
-                       github_token, organization, email, google_token, spreadsheet_id, student_key, id_key);
+                       github_token, organization, email, google_token, spreadsheet_id, student_label, id_label);
     }
     else if(compare_string(command, "announce-grade"))
     {
@@ -1137,12 +1137,12 @@ run_hand(int arg_count, char **args)
         }
         char *feedback_repo = config.value[Config_feedback_repo];
         char *spreadsheet_id = config.value[Config_spreadsheet];
-        char *student_key = config.value[Config_key_username];
-        char *id_key = config.value[Config_key_student_id];
+        char *student_label = config.value[Config_username_label];
+        char *id_label = config.value[Config_student_id_label];
         char *google_token = config.value[Config_google_token];
         char *github_token = config.value[Config_github_token];
         char *organization = config.value[Config_organization];
-        announce_grade(title, feedback_repo, dry, github_token, organization, google_token, spreadsheet_id, student_key, id_key);
+        announce_grade(title, feedback_repo, dry, github_token, organization, google_token, spreadsheet_id, student_label, id_label);
     }
     else
     {

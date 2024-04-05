@@ -198,12 +198,12 @@ read_string_array_file(char *path)
 }
 
 static int
-find_key_index(Sheet *sheet, char *key)
+find_label(Sheet *sheet, char *label)
 {
     int result = -1;
     for(int i = 0; i < sheet->width; ++i)
     {
-        if(compare_string(sheet->keys[i], key))
+        if(compare_string(sheet->labels[i], label))
         {
             result = i;
             break;
@@ -227,7 +227,7 @@ get_value(Sheet *sheet, int x, int y)
 static void
 free_sheet(Sheet *sheet)
 {
-    free_memory(sheet->keys);
+    free_memory(sheet->labels);
     free_memory(sheet->values);
     free_growable_buffer(&sheet->content);
     clear_memory(sheet, sizeof(*sheet));
@@ -239,9 +239,9 @@ allocate_sheet(int width, int height)
     Sheet result = {0};
     result.width = width;
     result.height = height;
-    result.keys = (char **)allocate_memory(width * sizeof(*result.keys));
+    result.labels = (char **)allocate_memory(width * sizeof(*result.labels));
     result.values = (char **)allocate_memory(width * height * sizeof(*result.values));
-    clear_memory(result.keys, width * sizeof(*result.keys));
+    clear_memory(result.labels, width * sizeof(*result.labels));
     clear_memory(result.values, width * height * sizeof(*result.values));
     result.content = allocate_growable_buffer();
     return result;

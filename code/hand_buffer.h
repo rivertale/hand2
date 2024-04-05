@@ -17,7 +17,7 @@ typedef struct Sheet
 {
     int width;
     int height;
-    char **keys;
+    char **labels;
     char **values;
     GrowableBuffer content;
 } Sheet;
