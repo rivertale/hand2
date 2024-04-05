@@ -11,6 +11,13 @@ then
     if [ $? -eq 0 ]; then echo "Output docker image: ${image_name}"; fi
 fi
 
+# parse arguments
+args=""
+for arg in "$@"
+do
+    args="${args} \"${arg}\""
+done
+
 # build hand2
 cd $(dirname "$0")
 cd ..
@@ -22,5 +29,5 @@ docker run --rm \
         groupadd --gid $(id -g) ghand
         useradd --uid $(id -u) --gid $(id -g) uhand
         chmod 666 /var/run/docker.sock
-        exec sudo --user=uhand ./build.sh
+        exec sudo --user=uhand ./build.sh ${args}
     "
