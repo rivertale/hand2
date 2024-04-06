@@ -225,14 +225,15 @@ invite_students(char *path, char *github_token, char *organization, char *team)
 }
 
 static void
-collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, int penalty_per_day, int is_weekends_one_day,
+collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
+                 int penalty_per_day, int is_weekends_one_day, char *only_repo,
                  char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_label)
 {
     tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
-    write_log("title=%s, out_path=%s, org=%s, penalty=%d, is_weekends_one_day=%d, spreadsheet=%s, student_label=%s, "
+    write_log("title=%s, out_path=%s, org=%s, penalty=%d, is_weekends_one_day=%d, only_repo=%s, spreadsheet=%s, student_label=%s, "
               "deadline=%d-%02d-%02d_%02d:%02d:%02d, cutoff=%d-%02d-%02d_%02d:%02d:%02d",
-              title, out_path, organization, penalty_per_day, is_weekends_one_day, spreadsheet_id, student_label,
+              title, out_path, organization, penalty_per_day, is_weekends_one_day, only_repo, spreadsheet_id, student_label,
               t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
               t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
 
@@ -243,8 +244,17 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
         return;
     }
 
-    write_output("Retrieving repositories with prefix '%s'...", title);
-    StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
+    StringArray repos = {0};
+    if(only_repo)
+    {
+        repos = allocate_string_array();
+        append_string_array(&repos, only_repo);
+    }
+    else
+    {
+        write_output("Retrieving repositories with prefix '%s'...", title);
+        repos = retrieve_repos_by_prefix(github_token, organization, title);
+    }
 
     write_output("Retrieving default branches...");
     StringArray branches = retrieve_default_branches(&repos, github_token, organization);
@@ -311,7 +321,9 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
                              repos.elem[index], hash[index].trim);
             }
         }
-        fprintf(out_file, "%d%%\n", max(100 - penalty_per_day * delay, 0));
+
+        if(!only_repo || index != -1)
+            fprintf(out_file, "%d%%\n", max(100 - penalty_per_day * delay, 0));
     }
 
     write_output("");
@@ -410,17 +422,17 @@ grade_homework_on_complete(int index, int count, int exit_code, char *work_dir, 
 static void
 grade_homework(char *title, char *out_path,
                time_t deadline, time_t cutoff, char *template_repo, char *template_branch, char *feedback_repo,
-               char *command, char *score_relative_path, int dry, int thread_count, int should_match_title,
+               char *command, char *score_relative_path, int dry, int thread_count, char *only_repo,
                char *github_token, char *organization, char *email,
                char *google_token, char *spreadsheet_id, char *student_label, char *id_label)
 {
     tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
     write_log("title=%s, out_path=%s, template_repo=%s, template_branch=%s, feedback_repo=%s, command=%s, score_path=%s, "
-              "dry=%d, thread=%d, match_title=%d, org=%s, email=%s, spreadsheet=%s, student_label=%s, id_label=%s, "
+              "dry=%d, thread=%d, only_repo=%s, org=%s, email=%s, spreadsheet=%s, student_label=%s, id_label=%s, "
               "deadline=%d-%02d-%02d_%02d:%02d:%02d, cutoff=%d-%02d-%02d_%02d:%02d:%02d",
               title, out_path, template_repo, template_branch, feedback_repo, command, score_relative_path,
-              dry, thread_count, should_match_title, organization, email, spreadsheet_id, student_label, id_label,
+              dry, thread_count, only_repo, organization, email, spreadsheet_id, student_label, id_label,
               t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
               t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
 
@@ -470,17 +482,15 @@ grade_homework(char *title, char *out_path,
         return;
     }
 
-    // TODO: support should_match_title, now it will delete other reports when we push
-    platform.delete_directory(feedback_report_dir);
     platform.create_directory(feedback_homework_dir);
     platform.create_directory(feedback_report_dir);
     GrowableBuffer report_template = read_entire_file(report_template_path);
 
     StringArray repos = {0};
-    if(should_match_title)
+    if(only_repo)
     {
         repos = allocate_string_array();
-        append_string_array(&repos, title);
+        append_string_array(&repos, only_repo);
     }
     else
     {
@@ -571,6 +581,7 @@ grade_homework(char *title, char *out_path,
                format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
                format_string(score_path, MAX_PATH_LEN, "%s/%s", works[index].work_dir, score_relative_path))
             {
+                platform.delete_file(report_path);
                 GrowableBuffer score_content = read_entire_file(score_path);
                 for(char *c = score_content.memory; *c; ++c)
                 {
@@ -595,7 +606,9 @@ grade_homework(char *title, char *out_path,
                 }
             }
         }
-        fprintf(out_file, "%f\n", score);
+
+        if(!only_repo || index != -1)
+            fprintf(out_file, "%f\n", score);
     }
 
     if(dry)
@@ -699,13 +712,12 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
 }
 
 static void
-announce_grade(char *title, char *feedback_repo, int dry,
+announce_grade(char *title, char *feedback_repo, int dry, char *only_repo,
                char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_label, char *id_label)
 {
-    write_log("title=%s, feedback_repo=%s, org=%s, dry=%d, spreadsheet=%s, student_label=%s, id_label=%s",
-              title, feedback_repo, organization, dry, spreadsheet_id, student_label, id_label);
+    write_log("title=%s, feedback_repo=%s, org=%s, dry=%d, only_repo=%s, spreadsheet=%s, student_label=%s, id_label=%s",
+              title, feedback_repo, organization, dry, only_repo, spreadsheet_id, student_label, id_label);
 
-    // TODO: support should_match_title
     static char issue_title[256];
     static char username[MAX_URL_LEN];
     static char feedback_dir[MAX_PATH_LEN];
@@ -730,8 +742,17 @@ announce_grade(char *title, char *feedback_repo, int dry,
         return;
     }
 
-    write_output("Retrieving repos with prefix '%s'...", title);
-    StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
+    StringArray repos = {0};
+    if(only_repo)
+    {
+        repos = allocate_string_array();
+        append_string_array(&repos, only_repo);
+    }
+    else
+    {
+        write_output("Retrieving repos with prefix '%s'...", title);
+        repos = retrieve_repos_by_prefix(github_token, organization, title);
+    }
 
     write_output("Retrieving issue '%s'...", issue_title);
     int *issue_numbers = (int *)allocate_memory(repos.count * sizeof(*issue_numbers));
@@ -1015,10 +1036,13 @@ run_hand(int arg_count, char **args)
     {
         int show_command_usage = 0;
         int is_weekends_one_day = 1;
+        char *only_repo = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help"))
                 show_command_usage = 1;
+            else if(compare_string(option, "--only-repo"))
+                only_repo = next_arg(&parser);
             else if(compare_string(option, "--no-weekends"))
                 is_weekends_one_day = 0;
             else
@@ -1041,16 +1065,17 @@ run_hand(int arg_count, char **args)
         if(!title || !in_time || !cutoff_time || show_command_usage)
         {
             char *usage =
-                "usage: hand2 collect-homework [--command-option] ... title deadline cutoff_time out_path"  "\n"
-                                                                                                            "\n"
-                "[arguments]"                                                                               "\n"
-                "    title          title of the homework"                                                  "\n"
-                "    deadline       deadline of the homework in YYYY-MM-DD-hh-mm-ss"                        "\n"
-                "    cutoff_time    max late submission time after deadline (in days)"                      "\n"
-                "    out_path       output file that lists penalty for all students (in the same order of"  "\n"
-                "                   the spreadsheet)"                                                       "\n"
-                "[command-options]"                                                                         "\n"
-                "    --no-weekends  weekends are not considered as one day"                                 "\n";
+                "usage: hand2 collect-homework [--command-option] ... title deadline cutoff_time out_path"          "\n"
+                                                                                                                    "\n"
+                "[arguments]"                                                                                       "\n"
+                "    title                 title of the homework"                                                   "\n"
+                "    deadline              deadline of the homework in YYYY-MM-DD-hh-mm-ss"                         "\n"
+                "    cutoff_time           max late submission time after deadline (in days)"                       "\n"
+                "    out_path              output file that lists penalty for all students (in the same order of"   "\n"
+                "                          the spreadsheet)"                                                        "\n"
+                "[command-options]"                                                                                 "\n"
+                "    --only-repo <name>    only collect homework for the repository named <name>"                   "\n"
+                "    --no-weekends         weekends are not considered as one day"                                  "\n";
             write_output(usage);
             return;
         }
@@ -1062,22 +1087,22 @@ run_hand(int arg_count, char **args)
         int penalty_per_day = atoi(config.value[Config_penalty_per_day]);
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
-        collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day,
+        collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day, only_repo,
                          github_token, organization, google_token, spreadsheet_id, student_label);
     }
     else if(compare_string(command, "grade-homework"))
     {
         int show_command_usage = 0;
         int dry = 0;
-        int should_match_title = 0;
+        char *only_repo = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help"))
                 show_command_usage = 1;
-            else if(compare_string(option, "--match-title"))
-                should_match_title = 1;
             else if(compare_string(option, "--dry"))
                 dry = 1;
+            else if(compare_string(option, "--only-repo"))
+                only_repo = next_arg(&parser);
             else
             {
                 show_command_usage = 1;
@@ -1103,17 +1128,16 @@ run_hand(int arg_count, char **args)
                 "usage: hand2 grade-homework [--command-option] ... title template_repository template_branch deadline cutoff_day out_path" "\n"
                                                                                                                                             "\n"
                 "[arguments]"                                                                                                               "\n"
-                "    title              title of the homework"                                                                              "\n"
-                "    template_repo      homework template repository name"                                                                  "\n"
-                "    template_branch    the template_repo branch that contains all testcases"                                               "\n"
-                "    deadline           deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                                    "\n"
-                "    cutoff_time        max late submission time after deadline (in days)"                                                  "\n"
-                "    out_path           output file that lists score for all students (in the same order of the"                            "\n"
-                "                       spreadsheet)"                                                                                       "\n"
+                "    title                 title of the homework"                                                                           "\n"
+                "    template_repo         homework template repository name"                                                               "\n"
+                "    template_branch       the template_repo branch that contains all testcases"                                            "\n"
+                "    deadline              deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                                 "\n"
+                "    cutoff_time           max late submission time after deadline (in days)"                                               "\n"
+                "    out_path              output file that lists score for all students (in the same order of the"                         "\n"
+                "                          spreadsheet)"                                                                                    "\n"
                 "[command-options]"                                                                                                         "\n"
-                "    --dry              perform a trial run without making any remote changes"                                              "\n"
-                "    --match-title      only grade for repository named 'title', instead of using `title` as a prefix"                      "\n"
-                "                       to find repositories to grade"                                                                      "\n";
+                "    --dry                 perform a trial run without making any remote changes"                                           "\n"
+                "    --only-repo <name>    only grade homework for the repository named <name>"                                             "\n";
             write_output(usage);
             return;
         }
@@ -1131,19 +1155,22 @@ run_hand(int arg_count, char **args)
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
         grade_homework(title, out_path, deadline, cutoff, template_repo, template_branch, feedback_repo,
-                       grade_command, score_relative_path, dry, thread_count, should_match_title,
+                       grade_command, score_relative_path, dry, thread_count, only_repo,
                        github_token, organization, email, google_token, spreadsheet_id, student_label, id_label);
     }
     else if(compare_string(command, "announce-grade"))
     {
         int show_command_usage = 0;
         int dry = 0;
+        char *only_repo = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
             if(compare_string(option, "--help"))
                 show_command_usage = 1;
             else if(compare_string(option, "--dry"))
                 dry = 1;
+            else if(compare_string(option, "--only-repo"))
+                only_repo = next_arg(&parser);
             else
                 write_error("Unknown option '%s'", option);
         }
@@ -1158,12 +1185,13 @@ run_hand(int arg_count, char **args)
         if(!title || show_command_usage)
         {
             char *usage =
-                "usage: hand2 announce-grade [--command-option] ... title"              "\n"
-                                                                                        "\n"
-                "[arguments]"                                                           "\n"
-                "    title    title of the homework"                                    "\n"
-                "[command-options]"                                                     "\n"
-                "    --dry    perform a trial run without making any remote changes"    "\n";
+                "usage: hand2 announce-grade [--command-option] ... title"                          "\n"
+                                                                                                    "\n"
+                "[arguments]"                                                                       "\n"
+                "    title    title of the homework"                                                "\n"
+                "[command-options]"                                                                 "\n"
+                "    --dry                 perform a trial run without making any remote changes"   "\n"
+                "    --only-repo <name>    only announce grade for the repository named <name>"     "\n";
             write_output(usage);
             return;
         }
@@ -1174,7 +1202,8 @@ run_hand(int arg_count, char **args)
         char *google_token = config.value[Config_google_token];
         char *github_token = config.value[Config_github_token];
         char *organization = config.value[Config_organization];
-        announce_grade(title, feedback_repo, dry, github_token, organization, google_token, spreadsheet_id, student_label, id_label);
+        announce_grade(title, feedback_repo, dry, only_repo, github_token, organization,
+                       google_token, spreadsheet_id, student_label, id_label);
     }
     else
     {
