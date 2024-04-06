@@ -257,21 +257,6 @@ get_response(CurlGroup *group, int index)
 }
 
 static int
-github_user_exists(char *github_token, char *username)
-{
-    int result = 0;
-    static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/users/%s", username))
-    {
-        CurlGroup group = begin_curl_group(1);
-        assign_github_get(&group, 0, url, github_token);
-        complete_all_works(&group);
-        result = end_curl_group(&group);
-    }
-    return result;
-}
-
-static int
 github_organization_exists(char *github_token, char *organization)
 {
     int result = 0;
@@ -350,6 +335,34 @@ retrieve_username(char *out, size_t max_size, char *github_token)
         result = end_curl_group(&group);
     }
     return result;
+}
+
+static void
+github_users_exist(int *out, StringArray *users, char *github_token)
+{
+    clear_memory(out, users->count * sizeof(*out));
+#define MAX_WORKER 64
+    for(int at = 0; at < users->count; at += MAX_WORKER)
+    {
+        int worker_count = min(users->count - at, MAX_WORKER);
+        CurlGroup group = begin_curl_group(worker_count);
+        for(int i = 0; i < worker_count; ++i)
+        {
+            static char url[MAX_URL_LEN];
+            if(format_string(url, MAX_URL_LEN, "https://api.github.com/users/%s", users->elem[i]))
+            {
+                assign_github_get(&group, i, url, github_token);
+            }
+        }
+        complete_all_works(&group);
+
+        for(int i = 0; i < worker_count; ++i)
+        {
+            out[at + i] = (group.workers[i].status < 400);
+        }
+        end_curl_group(&group);
+    }
+#undef MAX_WORKER
 }
 
 static void

@@ -145,6 +145,9 @@ invite_students(char *path, char *github_token, char *organization, char *team)
         StringArray existing_students = retrieve_team_members(github_token, organization, team);
         write_output("Retrieving existing invitations...");
         StringArray existing_invitations = retrieve_existing_invitations(github_token, organization, team);
+        write_output("Checking for valid usernames...");
+        int *exist = (int *)allocate_memory(students.count * sizeof(*exist));
+        github_users_exist(exist, &students, github_token);
 
         int invalid_count = 0;
         for(int i = 0; i < students.count; ++i)
@@ -171,8 +174,7 @@ invite_students(char *path, char *github_token, char *organization, char *team)
 
             if(!students.elem[i])
                 continue;
-            // TODO: check all users at once
-            if(!github_user_exists(github_token, students.elem[i]))
+            if(!exist[i])
             {
                 write_error("GitHub user '%s' does not exist", students.elem[i]);
                 ++invalid_count;
@@ -214,6 +216,7 @@ invite_students(char *path, char *github_token, char *organization, char *team)
         {
             write_output("ABORT: some usernames are invalid");
         }
+        free_memory(exist);
         free_string_array(&existing_invitations);
         free_string_array(&existing_students);
     }
