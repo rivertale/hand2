@@ -41,7 +41,7 @@ win32_calender_time_to_time(tm *calender_time, int time_zone)
     else
     {
         tm *t = calender_time;
-        write_error("_mkgmtime: %d-%02d-%02d %02d:%02d:%02d, wday=%d, yday=%d, isdst=%d, gmtoff=%d",
+        write_error("_mkgmtime failed: %d-%02d-%02d %02d:%02d:%02d, wday=%d, yday=%d, isdst=%d, gmtoff=%d",
                     t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec,
                     t->tm_wday, t->tm_yday, t->tm_isdst);
     }
@@ -793,7 +793,7 @@ main(int arg_count, char **args)
     g_work_dir_lock = CreateMutexA(0, 0, 0);
     if(!g_work_dir_lock)
     {
-        write_error("CreateMutexA: %d", GetLastError());
+        write_error("CreateMutexA error=%d", GetLastError());
         return 0;
     }
 
@@ -801,7 +801,7 @@ main(int arg_count, char **args)
     g_work_dir = (wchar_t *)allocate_memory(work_dir_len * sizeof(wchar_t));
     if(!GetCurrentDirectoryW(work_dir_len, g_work_dir))
     {
-        write_error("GetCurrentDirectory: %d", GetLastError());
+        write_error("GetCurrentDirectory error=%d", GetLastError());
         return 0;
     }
 
