@@ -40,6 +40,7 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
     if(handle)
     {
         CURLcode err = 0;
+        CURLMcode merr = 0;
         CurlWorker *worker = group->workers + index;
         worker->header_list = curl.curl_slist_append(0, header);
         if(is_post_like)
@@ -54,13 +55,13 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
                (err = curl.curl_easy_setopt(handle, CURLOPT_URL, url)) == 0 &&
                (err = curl.curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, post_type)) == 0 &&
                (err = curl.curl_easy_setopt(handle, CURLOPT_POSTFIELDS, post_data)) == 0 &&
-               (err = curl.curl_multi_add_handle(group->handle, handle)) == 0)
+               (merr = curl.curl_multi_add_handle(group->handle, handle)) == 0)
             {
                 worker->handle = handle;
             }
             else
             {
-                write_error("%s", curl.curl_easy_strerror(err));
+                write_error("%s", merr ? curl.curl_multi_strerror(merr) : curl.curl_easy_strerror(err));
                 curl.curl_easy_cleanup(handle);
             }
         }
@@ -75,13 +76,13 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
                (err = curl.curl_easy_setopt(handle, CURLOPT_HTTPHEADER, worker->header_list)) == 0 &&
                (err = curl.curl_easy_setopt(handle, CURLOPT_URL, url)) == 0 &&
                (err = curl.curl_easy_setopt(handle, CURLOPT_HTTPGET, 1)) == 0 &&
-               (err = curl.curl_multi_add_handle(group->handle, handle)) == 0)
+               (merr = curl.curl_multi_add_handle(group->handle, handle)) == 0)
             {
                 worker->handle = handle;
             }
             else
             {
-                write_error("%s", curl.curl_easy_strerror(err));
+                write_error("%s", merr ? curl.curl_multi_strerror(merr) : curl.curl_easy_strerror(err));
                 curl.curl_easy_cleanup(handle);
             }
         }

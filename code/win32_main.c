@@ -616,6 +616,7 @@ win32_init_curl(void)
         curl.curl_multi_perform = (CurlMultiPerform *)GetProcAddress(module, "curl_multi_perform");
         curl.curl_multi_poll = (CurlMultiPoll *)GetProcAddress(module, "curl_multi_poll");
         curl.curl_multi_remove_handle = (CurlMultiRemoveHandle *)GetProcAddress(module, "curl_multi_remove_handle");
+        curl.curl_multi_strerror = (CurlMultiStrError *)GetProcAddress(module, "curl_multi_strerror");
         curl.curl_slist_append = (CurlSListAppend *)GetProcAddress(module, "curl_slist_append");
         curl.curl_slist_free_all = (CurlSListFreeAll *)GetProcAddress(module, "curl_slist_free_all");
 

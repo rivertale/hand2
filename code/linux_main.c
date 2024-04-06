@@ -479,6 +479,7 @@ linux_init_curl(void)
     curl.curl_multi_perform = curl_multi_perform;
     curl.curl_multi_poll = curl_multi_poll;
     curl.curl_multi_remove_handle = curl_multi_remove_handle;
+    curl.curl_multi_strerror = curl_multi_strerror;
     curl.curl_slist_append = curl_slist_append;
     curl.curl_slist_free_all = curl_slist_free_all;
 

@@ -12,5 +12,6 @@ extern CurlMultiInit curl_multi_init;
 extern CurlMultiPerform curl_multi_perform;
 extern CurlMultiPoll curl_multi_poll;
 extern CurlMultiRemoveHandle curl_multi_remove_handle;
+extern CurlMultiStrError curl_multi_strerror;
 extern CurlSListAppend curl_slist_append;
 extern CurlSListFreeAll curl_slist_free_all;

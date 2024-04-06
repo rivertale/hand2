@@ -553,6 +553,7 @@ typedef struct CURLMsg
 } CURLMsg;
 
 typedef const char *CurlEasyStrError(CURLcode errornum);
+typedef const char *CurlMultiStrError(CURLMcode errornum);
 typedef curl_slist *CurlSListAppend(curl_slist *list, const char *string);
 typedef CURL *CurlEasyInit(void);
 typedef CURLcode CurlEasyGetInfo(CURL *handle, CURLINFO info, ...);
@@ -603,6 +604,7 @@ typedef struct CurlCode
     CurlMultiPerform *curl_multi_perform;
     CurlMultiPoll *curl_multi_poll;
     CurlMultiRemoveHandle *curl_multi_remove_handle;
+    CurlMultiStrError *curl_multi_strerror;
     CurlSListAppend *curl_slist_append;
     CurlSListFreeAll *curl_slist_free_all;
 } CurlCode;
