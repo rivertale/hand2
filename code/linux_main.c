@@ -99,13 +99,12 @@ linux_delete_file(char *path)
     return result;
 }
 
-// TODO: rename dir_path to dir
 static int
-linux_delete_directory(char *dir_path)
+linux_delete_directory(char *dir)
 {
     int result = 0;
-    size_t dir_len = string_len(dir_path);
-    DIR *dir_handle = opendir(dir_path);
+    size_t dir_len = string_len(dir);
+    DIR *dir_handle = opendir(dir);
     if(dir_handle)
     {
         result = 1;
@@ -119,10 +118,10 @@ linux_delete_directory(char *dir_path)
 
             size_t name_len = string_len(name);
             char *child = allocate_memory(dir_len + 1 + name_len + 1);
-            copy_memory(child + 0,                      dir_path, dir_len);
-            copy_memory(child + dir_len,                "/",     1);
-            copy_memory(child + dir_len + 1,            name,     name_len);
-            copy_memory(child + dir_len + 1 + name_len, "\0",    1);
+            copy_memory(child + 0,                      dir,  dir_len);
+            copy_memory(child + dir_len,                "/",  1);
+            copy_memory(child + dir_len + 1,            name, name_len);
+            copy_memory(child + dir_len + 1 + name_len, "\0", 1);
 
             struct stat file_status;
             if(stat(child, &file_status) != 0)
@@ -142,10 +141,10 @@ linux_delete_directory(char *dir_path)
             free_memory(child);
         }
         closedir(dir_handle);
-        rmdir(dir_path);
+        rmdir(dir);
     }
     else
-        write_log("opendir errno=%d, path=%s", errno, dir_path);
+        write_log("opendir errno=%d, path=%s", errno, dir);
 
     return result;
 }

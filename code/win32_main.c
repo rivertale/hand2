@@ -138,16 +138,16 @@ win32_delete_file(char *path)
 }
 
 static int
-win32_delete_directory_by_wide_path(wchar_t *dir_path)
+win32_delete_directory_by_wide_path(wchar_t *dir)
 {
     int result = 0;
     static wchar_t wildcard[MAX_PATH_LEN];
 
-    size_t dir_len = win32_utf16_len(dir_path);
+    size_t dir_len = win32_utf16_len(dir);
     if(dir_len + 2 < MAX_PATH_LEN)
     {
-        copy_memory(wildcard + 0,       dir_path, sizeof(wchar_t) * dir_len);
-        copy_memory(wildcard + dir_len, L"/*",    sizeof(wchar_t) * 3);
+        copy_memory(wildcard + 0,       dir,   sizeof(wchar_t) * dir_len);
+        copy_memory(wildcard + dir_len, L"/*", sizeof(wchar_t) * 3);
 
         result = 1;
         WIN32_FIND_DATAW find_data;
@@ -162,10 +162,10 @@ win32_delete_directory_by_wide_path(wchar_t *dir_path)
 
             size_t name_len = win32_utf16_len(name);
             wchar_t *child = (wchar_t *)allocate_memory((dir_len + 1 + name_len + 1) * sizeof(wchar_t));
-            copy_memory(child + 0,                      dir_path, sizeof(wchar_t) * dir_len);
-            copy_memory(child + dir_len,                L"/",     sizeof(wchar_t));
-            copy_memory(child + dir_len + 1,            name,     sizeof(wchar_t) * name_len);
-            copy_memory(child + dir_len + 1 + name_len, L"\0",    sizeof(wchar_t));
+            copy_memory(child + 0,                      dir,   sizeof(wchar_t) * dir_len);
+            copy_memory(child + dir_len,                L"/",  sizeof(wchar_t));
+            copy_memory(child + dir_len + 1,            name,  sizeof(wchar_t) * name_len);
+            copy_memory(child + dir_len + 1 + name_len, L"\0", sizeof(wchar_t));
             if(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
                 if(!win32_delete_directory_by_wide_path(child))
@@ -193,7 +193,7 @@ win32_delete_directory_by_wide_path(wchar_t *dir_path)
         if(find_handle != INVALID_HANDLE_VALUE)
             FindClose(find_handle);
 
-        RemoveDirectoryW(dir_path);
+        RemoveDirectoryW(dir);
     }
     return result;
 }

@@ -102,8 +102,7 @@ reserve_string_array(StringArray *array, int count)
 static StringArray
 allocate_string_array(void)
 {
-    // TODO: use larger initial_count, this is for testing the growing feature for now
-    int initial_count = 16;
+    int initial_count = 128;
     StringArray result = {0};
     result.max = initial_count;
     result.elem = (char **)allocate_memory(initial_count * sizeof(*result.elem));

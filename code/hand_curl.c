@@ -360,10 +360,11 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
     for(int at = 0; at < repos->count; at += MAX_WORKER)
     {
         int worker_done[MAX_WORKER] = {0};
-        int prev_pages[MAX_WORKER] = {0};
+        int page = 0;
         int worker_count = min(repos->count - at, MAX_WORKER);
         while(!true_for_all(worker_done, worker_count))
         {
+            ++page;
             CurlGroup group = begin_curl_group(worker_count);
             for(int i = 0; i < worker_count; ++i)
             {
@@ -371,9 +372,8 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
                     continue;
 
                 static char url[MAX_URL_LEN];
-                // TODO: aren't prev_pages always the same for all workers?
                 if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues?state=all&per_page=100&page=%d",
-                                 organization, repos->elem[at + i], ++prev_pages[i]))
+                                 organization, repos->elem[at + i], page))
                 {
                     assign_github_get(&group, i, url, github_token);
                 }

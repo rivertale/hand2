@@ -872,7 +872,6 @@ run_hand(int arg_count, char **args)
         write_output("");
     }
 
-    // TODO: check no extra argument after last argument
     char *command = next_arg(&parser);
     if(show_usage || ! command)
     {
@@ -923,6 +922,12 @@ run_hand(int arg_count, char **args)
             }
         }
 
+        if(next_arg(&parser))
+        {
+            show_command_usage = 1;
+            write_error("Too many arguments");
+        }
+
         if(show_command_usage)
         {
             char *usage =
@@ -948,6 +953,12 @@ run_hand(int arg_count, char **args)
                 show_command_usage = 1;
                 write_error("Unknown option '%s'", option);
             }
+        }
+
+        if(next_arg(&parser))
+        {
+            show_command_usage = 1;
+            write_error("Too many arguments");
         }
 
         if(show_command_usage)
@@ -978,6 +989,12 @@ run_hand(int arg_count, char **args)
         }
 
         char *input_path = next_arg(&parser);
+        if(next_arg(&parser))
+        {
+            show_command_usage = 1;
+            write_error("Too many arguments");
+        }
+
         if(!input_path || show_command_usage)
         {
             char *usage =
@@ -1015,6 +1032,12 @@ run_hand(int arg_count, char **args)
         char *in_time = next_arg(&parser);
         char *cutoff_time = next_arg(&parser);
         char *out_path = next_arg(&parser);
+        if(next_arg(&parser))
+        {
+            show_command_usage = 1;
+            write_error("Too many arguments");
+        }
+
         if(!title || !in_time || !cutoff_time || show_command_usage)
         {
             char *usage =
@@ -1068,6 +1091,12 @@ run_hand(int arg_count, char **args)
         char *in_time = next_arg(&parser);
         char *cutoff_time = next_arg(&parser);
         char *out_path = next_arg(&parser);
+        if(next_arg(&parser))
+        {
+            show_command_usage = 1;
+            write_error("Too many arguments");
+        }
+
         if(!title || !template_repo || !in_time || !cutoff_time || !out_path || show_command_usage)
         {
             char *usage =
@@ -1120,6 +1149,12 @@ run_hand(int arg_count, char **args)
         }
 
         char *title = next_arg(&parser);
+        if(next_arg(&parser))
+        {
+            show_command_usage = 1;
+            write_error("Too many arguments");
+        }
+
         if(!title || show_command_usage)
         {
             char *usage =
