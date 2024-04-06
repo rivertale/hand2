@@ -642,6 +642,9 @@ grade_homework(char *title, char *out_path,
     write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
                  t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
     free_sheet(&sheet);
+    free_memory(works);
+    free_memory(hash);
+    free_memory(push_time);
     free_string_array(&branches);
     free_string_array(&repos);
     free_growable_buffer(&report_template);
@@ -852,32 +855,13 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo,
         write_error("Sheet '%s' is empty under spreadsheet id '%s'", title, spreadsheet_id);
     }
     free_sheet(&sheet);
+    free_memory(issue_numbers);
     free_string_array(&repos);
 }
 
 static void
 run_hand(int arg_count, char **args)
 {
-    ArgParser parser = init_arg_parser(arg_count, args);
-    int show_usage = 0;
-    int should_log = 0;
-    for(;;)
-    {
-        char *option = next_option(&parser);
-        if(!option)
-            break;
-
-        if(compare_string(option, "--help"))
-            show_usage = 1;
-        else if(compare_string(option, "--log"))
-            should_log = 1;
-        else
-        {
-            show_usage = 1;
-            write_error("Unknown option '%s'", option);
-        }
-    }
-
     static char log_path[MAX_PATH_LEN];
     static char config_path[MAX_PATH_LEN];
     struct tm time = current_calendar_time();
@@ -889,6 +873,32 @@ run_hand(int arg_count, char **args)
         return;
     }
 
+    // NOTE: parse options
+    int show_usage = 0;
+    ArgParser parser = init_arg_parser(arg_count, args);
+    for(;;)
+    {
+        char *option = next_option(&parser);
+        if(!option)
+            break;
+
+        if(compare_string(option, "--help"))
+        {
+            show_usage = 1;
+        }
+        else if(compare_string(option, "--log"))
+        {
+            platform.create_directory(g_log_dir);
+            g_log_file = fopen(log_path, "wb");
+        }
+        else
+        {
+            show_usage = 1;
+            write_error("Unknown option '%s'", option);
+        }
+    }
+
+    // NOTE: if config does not exist, show usage and quit
     if(!ensure_config_exists(config_path))
     {
         show_usage = 1;
@@ -914,24 +924,17 @@ run_hand(int arg_count, char **args)
             "[common-command-options]"                                                  "\n"
             "    --help             show the help message regards to the command"       "\n";
         write_output(usage);
-        return;
+        goto CLEANUP;
     }
 
     Config config;
     if(!load_config(&config, config_path))
     {
         write_error("Unable to load config '%s'", config_path);
-        return;
+        goto CLEANUP;
     }
 
-    // NOTE: no early return afterwards, open the log file here to ensure it's properly closed
-    if(should_log)
-    {
-        platform.create_directory(g_log_dir);
-        g_log_file = fopen(log_path, "wb");
-    }
-
-    // NOTE: we have checked the command is not null
+    // NOTE: parse command
     if(compare_string(command, "clean"))
     {
         int show_command_usage = 0;
@@ -961,7 +964,7 @@ run_hand(int arg_count, char **args)
                 ""                      "\n"
                 "[command-options]"     "\n";
             write_output(usage);
-            return;
+            goto CLEANUP;
         }
         delete_cache_and_log();
     }
@@ -994,7 +997,7 @@ run_hand(int arg_count, char **args)
                 ""                          "\n"
                 "[command-options]"         "\n";
             write_output(usage);
-            return;
+            goto CLEANUP;
         }
         config_check(&config);
     }
@@ -1028,7 +1031,7 @@ run_hand(int arg_count, char **args)
                 "    path    file path of listed github handle to invite"   "\n"
                 "[command-options]"                                         "\n";
             write_output(usage);
-            return;
+            goto CLEANUP;
         }
         char *github_token = config.value[Config_github_token];
         char *organization = config.value[Config_organization];
@@ -1080,7 +1083,7 @@ run_hand(int arg_count, char **args)
                 "    --only-repo <name>    only collect homework for the repository named <name>"                   "\n"
                 "    --no-weekends         weekends are not considered as one day"                                  "\n";
             write_output(usage);
-            return;
+            goto CLEANUP;
         }
         char *github_token = config.value[Config_github_token];
         char *organization = config.value[Config_organization];
@@ -1142,7 +1145,7 @@ run_hand(int arg_count, char **args)
                 "    --dry                 perform a trial run without making any remote changes"                                           "\n"
                 "    --only-repo <name>    only grade homework for the repository named <name>"                                             "\n";
             write_output(usage);
-            return;
+            goto CLEANUP;
         }
         char *github_token = config.value[Config_github_token];
         char *organization = config.value[Config_organization];
@@ -1196,7 +1199,7 @@ run_hand(int arg_count, char **args)
                 "    --dry                 perform a trial run without making any remote changes"   "\n"
                 "    --only-repo <name>    only announce grade for the repository named <name>"     "\n";
             write_output(usage);
-            return;
+            goto CLEANUP;
         }
         char *feedback_repo = config.value[Config_feedback_repo];
         char *spreadsheet_id = config.value[Config_spreadsheet];
@@ -1213,6 +1216,8 @@ run_hand(int arg_count, char **args)
         write_error("Unknown command %s", command);
     }
 
+CLEANUP:
+    free_config(&config);
     if(g_log_file)
         fclose(g_log_file);
 }

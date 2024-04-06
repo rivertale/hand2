@@ -183,12 +183,23 @@ allocate_and_copy_string(char *string, size_t size)
     return result;
 }
 
-static void
-init_config_parser(ConfigParser *parser, char *content, size_t size)
+static ConfigParser
+init_config_parser(char *content, size_t size)
 {
-    clear_memory(parser, sizeof(*parser));
-    parser->content = content;
-    parser->content_size = size;
+    ConfigParser result = {0};
+    result.content = content;
+    result.content_size = size;
+    return result;
+}
+
+static void
+free_config(Config *config)
+{
+    for(int i = 0; i < Config_one_past_last; ++i)
+    {
+        free_memory(config->value[i]);
+    }
+    clear_memory(config, sizeof(config));
 }
 
 static int
@@ -207,8 +218,7 @@ load_config(Config *config, char *path)
         char *file_content = allocate_memory(file_size);
         if(fread(file_content, file_size, 1, file))
         {
-            ConfigParser parser;
-            init_config_parser(&parser, file_content, file_size);
+            ConfigParser parser = init_config_parser(file_content, file_size);
             for(;;)
             {
                 int key_len, value_len;
@@ -230,7 +240,7 @@ load_config(Config *config, char *path)
                 if(!key_found)
                 {
                     char unrecognized_key[256];
-                    int out_key_len = (key_len < 256) ? key_len : 255;
+                    int out_key_len = min(key_len, 255);
                     copy_memory(unrecognized_key, key, out_key_len);
                     unrecognized_key[out_key_len] = 0;
                     write_error("Unrecognized config '%s'", unrecognized_key);
@@ -241,6 +251,7 @@ load_config(Config *config, char *path)
         {
             write_error("Read file '%s' failed", path);
         }
+        free_memory(file_content);
         fclose(file);
     }
 

@@ -483,7 +483,7 @@ linux_init_curl(void)
     curl.curl_slist_append = curl_slist_append;
     curl.curl_slist_free_all = curl_slist_free_all;
 
-    CURLcode error = curl_global_init(CURL_GLOBAL_SSL);
+    CURLcode error = curl.curl_global_init(CURL_GLOBAL_SSL);
     if(error == 0)
         success = 1;
     else
@@ -495,7 +495,7 @@ linux_init_curl(void)
 static void
 linux_cleanup_curl(void)
 {
-    curl_global_cleanup();
+    curl.curl_global_cleanup();
 }
 
 static int

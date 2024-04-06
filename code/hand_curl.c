@@ -861,6 +861,8 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
             ++page;
         }
     }
+    free_memory(last_resort_hashes);
+    free_memory(last_resort_push_times);
 #undef MAX_WORKER
 }
 
