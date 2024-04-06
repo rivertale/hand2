@@ -552,6 +552,7 @@ typedef struct CURLMsg
     } data;
 } CURLMsg;
 
+typedef const char *CurlEasyStrError(CURLcode errornum);
 typedef curl_slist *CurlSListAppend(curl_slist *list, const char *string);
 typedef CURL *CurlEasyInit(void);
 typedef CURLcode CurlEasyGetInfo(CURL *handle, CURLINFO info, ...);
@@ -592,6 +593,7 @@ typedef struct CurlCode
     CurlEasyGetInfo *curl_easy_getinfo;
     CurlEasyInit *curl_easy_init;
     CurlEasySetOpt *curl_easy_setopt;
+    CurlEasyStrError *curl_easy_strerror;
     CurlGlobalCleanup *curl_global_cleanup;
     CurlGlobalInit *curl_global_init;
     CurlMultiAddHandle *curl_multi_add_handle;

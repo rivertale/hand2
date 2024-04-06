@@ -7,6 +7,7 @@
 static void
 delete_cache_and_log(void)
 {
+    write_log("cache_dir=%s, log_dir=%s", g_cache_dir, g_log_dir);
     write_output("Deleting cache from '%s'...", g_cache_dir);
     platform.delete_directory(g_cache_dir);
     write_output("Deleting log from '%s'...", g_log_dir);
@@ -30,6 +31,10 @@ config_check(Config *config)
     char *grade_thread_count = config->value[Config_grade_thread_count];
     char *penalty_per_day = config->value[Config_penalty_per_day];
     char *score_relative_path = config->value[Config_score_relative_path];
+    write_log("org=%s, ta_team=%s, student_team=%s, grade_command=%s, feedback_repo=%s, "
+              "spreadsheet_id=%s, username_label=%s, id_label=%s, email=%s, thread_count=%s, penalty=%s, score_path=%s",
+              organization, ta_team, student_team, grade_command, feedback_repo,
+              spreadsheet_id, username_label, id_label, email, grade_thread_count, penalty_per_day, score_relative_path);
 
     int penalty_is_int = 1;
     for(char *c = penalty_per_day; *c; ++c)
@@ -131,7 +136,7 @@ config_check(Config *config)
 static void
 invite_students(char *path, char *github_token, char *organization, char *team)
 {
-    write_log("[invite students] path='%s', org='%s', team='%s'", path, organization, team);
+    write_log("path=%s, org=%s, team=%s", path, organization, team);
 
     StringArray students = read_string_array_file(path);
     if(students.count > 0)
@@ -140,9 +145,6 @@ invite_students(char *path, char *github_token, char *organization, char *team)
         StringArray existing_students = retrieve_team_members(github_token, organization, team);
         write_output("Retrieving existing invitations...");
         StringArray existing_invitations = retrieve_existing_invitations(github_token, organization, team);
-
-        write_log("existing member count: %d", existing_students.count);
-        write_log("existing invitation count: %d", existing_invitations.count);
 
         int invalid_count = 0;
         for(int i = 0; i < students.count; ++i)
@@ -169,9 +171,10 @@ invite_students(char *path, char *github_token, char *organization, char *team)
 
             if(!students.elem[i])
                 continue;
+            // TODO: check all users at once
             if(!github_user_exists(github_token, students.elem[i]))
             {
-                write_error("github user '%s' does not exist", students.elem[i]);
+                write_error("GitHub user '%s' does not exist", students.elem[i]);
                 ++invalid_count;
                 students.elem[i] = 0;
                 break;
@@ -216,7 +219,7 @@ invite_students(char *path, char *github_token, char *organization, char *team)
     }
     else
     {
-        write_error("input file '%s' is empty", path);
+        write_error("Input file '%s' is empty", path);
     }
     free_string_array(&students);
 }
@@ -227,16 +230,16 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff, in
 {
     tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
-    write_log("[collect homework] title='%s', organization='%s', "
-              "deadline='%d-%02d-%02d_%02d:%02d:%02d', cutoff='%d-%02d-%02d_%02d:%02d:%02d'",
-              title, organization,
+    write_log("title=%s, out_path=%s, org=%s, penalty=%d, is_weekends_one_day=%d, spreadsheet=%s, student_label=%s, "
+              "deadline=%d-%02d-%02d_%02d:%02d:%02d, cutoff=%d-%02d-%02d_%02d:%02d:%02d",
+              title, out_path, organization, penalty_per_day, is_weekends_one_day, spreadsheet_id, student_label,
               t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
               t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
 
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
     {
-        write_error("unable to create '%s'", out_path);
+        write_error("Unable to create '%s'", out_path);
         return;
     }
 
@@ -413,15 +416,13 @@ grade_homework(char *title, char *out_path,
 {
     tm t0 = calendar_time(deadline);
     tm t1 = calendar_time(cutoff);
-    write_log("[grade homework] title='%s', out_path='%s', "
-              "deadline='%d-%02d-%02d_%02d:%02d:%02d', cutoff='%d-%02d-%02d_%02d:%02d:%02d', "
-              "template_repo='%s', feedback_repo='%s', command='%s', score_relative_path='%s', "
-              "thread_count='%d', should_match_title='%d', organization='%s', spreadsheet_id='%s', student_label='%s', id_label='%s'",
-              title, out_path,
+    write_log("title=%s, out_path=%s, template_repo=%s, template_branch=%s, feedback_repo=%s, command=%s, score_path=%s, "
+              "dry=%d, thread=%d, match_title=%d, org=%s, email=%s, spreadsheet=%s, student_label=%s, id_label=%s, "
+              "deadline=%d-%02d-%02d_%02d:%02d:%02d, cutoff=%d-%02d-%02d_%02d:%02d:%02d",
+              title, out_path, template_repo, template_branch, feedback_repo, command, score_relative_path,
+              dry, thread_count, should_match_title, organization, email, spreadsheet_id, student_label, id_label,
               t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
-              t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec,
-              template_repo, feedback_repo, command, score_relative_path, thread_count, should_match_title,
-              organization, spreadsheet_id, student_label, id_label);
+              t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
 
     static char username[MAX_URL_LEN];
     static char template_dir[MAX_PATH_LEN];
@@ -434,7 +435,7 @@ grade_homework(char *title, char *out_path,
 
     if(!retrieve_username(username, MAX_URL_LEN, github_token))
     {
-        write_error("unable to retrieve username");
+        write_error("Unable to retrieve username");
         return;
     }
 
@@ -465,10 +466,11 @@ grade_homework(char *title, char *out_path,
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
     {
-        write_error("unable to create '%s'", out_path);
+        write_error("Unable to create '%s'", out_path);
         return;
     }
 
+    // TODO: support should_match_title, now it will delete other reports when we push
     platform.delete_directory(feedback_report_dir);
     platform.create_directory(feedback_homework_dir);
     platform.create_directory(feedback_report_dir);
@@ -531,10 +533,6 @@ grade_homework(char *title, char *out_path,
             format_string(work->stderr_path, sizeof(work->stderr_path),
                           "%s/%s_%s_stderr.log", g_log_dir, repos.elem[i], hash[i].trim);
         }
-        else
-        {
-            // TODO: error
-        }
     }
 
     int submission_count = 0;
@@ -595,10 +593,6 @@ grade_homework(char *title, char *out_path,
                     }
                     free_growable_buffer(&report);
                 }
-                else
-                {
-                    // TODO: error
-                }
             }
         }
         fprintf(out_file, "%f\n", score);
@@ -650,7 +644,7 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
     {
         clear_growable_buffer(&buffer);
         int depth = 0;
-        char *identifier = 0;
+        char *label = 0;
         for(char *c = format->elem[y]; *c; ++c)
         {
             if(c[0] == '$' && c[1] == '$')
@@ -661,7 +655,7 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
             else if(c[0] == '$' && c[1] == '{')
             {
                 if(depth++ == 0)
-                    identifier = c + 2;
+                    label = c + 2;
 
                 ++c;
             }
@@ -670,7 +664,7 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
                 if(depth == 1)
                 {
                     *c = 0;
-                    int x = find_label(sheet, identifier);
+                    int x = find_label(sheet, label);
                     *c = '}';
                     if(x >= 0)
                     {
@@ -679,8 +673,11 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
                     }
                     else
                     {
-                        // TODO: error
                         success = 0;
+                        // NOTE: we assume every report has the same labels, only reports label not found for
+                        // the first report
+                        if(y == 0)
+                            write_error("Label not found: %s", label);
                     }
                 }
                 depth = max(depth - 1, 0);
@@ -696,9 +693,8 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
 
     assert(out->count == sheet->height);
     if(!success)
-    {
         free_string_array(out);
-    }
+
     return success;
 }
 
@@ -706,9 +702,10 @@ static void
 announce_grade(char *title, char *feedback_repo, int dry,
                char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_label, char *id_label)
 {
-    write_log("[announce grade] title='%s', feedback_repo='%s', spreadsheet_id='%s', student_label='%s', organization='%s'",
-              title, feedback_repo, spreadsheet_id, student_label, organization);
+    write_log("title=%s, feedback_repo=%s, org=%s, dry=%d, spreadsheet=%s, student_label=%s, id_label=%s",
+              title, feedback_repo, organization, dry, spreadsheet_id, student_label, id_label);
 
+    // TODO: support should_match_title
     static char issue_title[256];
     static char username[MAX_URL_LEN];
     static char feedback_dir[MAX_PATH_LEN];
@@ -716,7 +713,7 @@ announce_grade(char *title, char *feedback_repo, int dry,
 
     if(!retrieve_username(username, MAX_URL_LEN, github_token))
     {
-        write_error("unable to retrieve username");
+        write_error("Unable to retrieve username");
         return;
     }
 
@@ -783,6 +780,7 @@ announce_grade(char *title, char *feedback_repo, int dry,
                             {
                                 write_output("DRY RUN: attempt to edit issue '%s #%d' to:", issue_title, issue_numbers[index]);
                                 write_output("%s", issue_bodies.elem[y]);
+                                write_output("----------------------------------------------------------------");
                             }
                             else if(!edit_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y], issue_numbers[index]))
                             {
@@ -795,22 +793,19 @@ announce_grade(char *title, char *feedback_repo, int dry,
                             {
                                 write_output("DRY RUN: attempt to create issue '%s #%d' with content:", issue_title, issue_numbers[index]);
                                 write_output("%s", issue_bodies.elem[y]);
+                                write_output("----------------------------------------------------------------");
                             }
                             else if(!create_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y]))
                             {
                                 ++failure_count;
                             }
                         }
-                        // NOTE: to bypass the github rate limit
+                        // NOTE: sleep to bypass the github rate limit
                         // TODO: need further investigation on the error messages github returns
                         platform.sleep(1000);
                     }
                 }
                 free_string_array(&issue_bodies);
-            }
-            else
-            {
-                // TODO: log
             }
             free_string_array(&reports);
 
@@ -855,7 +850,7 @@ run_hand(int arg_count, char **args)
         else
         {
             show_usage = 1;
-            write_error("unknown option '%s'", option);
+            write_error("Unknown option '%s'", option);
         }
     }
 
@@ -877,6 +872,7 @@ run_hand(int arg_count, char **args)
         write_output("");
     }
 
+    // TODO: check no extra argument after last argument
     char *command = next_arg(&parser);
     if(show_usage || ! command)
     {
@@ -901,7 +897,7 @@ run_hand(int arg_count, char **args)
     Config config;
     if(!load_config(&config, config_path))
     {
-        write_error("unable to load config '%s'", config_path);
+        write_error("Unable to load config '%s'", config_path);
         return;
     }
 
@@ -923,7 +919,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("unknown option '%s'", option);
+                write_error("Unknown option '%s'", option);
             }
         }
 
@@ -950,7 +946,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("unknown option '%s'", option);
+                write_error("Unknown option '%s'", option);
             }
         }
 
@@ -977,7 +973,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("unknown option '%s'", option);
+                write_error("Unknown option '%s'", option);
             }
         }
 
@@ -1011,7 +1007,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("unknown option '%s'", option);
+                write_error("Unknown option '%s'", option);
             }
         }
 
@@ -1062,7 +1058,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("unknown option '%s'", option);
+                write_error("Unknown option '%s'", option);
             }
         }
 
@@ -1075,20 +1071,20 @@ run_hand(int arg_count, char **args)
         if(!title || !template_repo || !in_time || !cutoff_time || !out_path || show_command_usage)
         {
             char *usage =
-                "usage: hand2 grade-homework [--command-option] ... title template_repo template_branch deadline cutoff_time out_path"  "\n"
-                                                                                                                                        "\n"
-                "[arguments]"                                                                                                           "\n"
-                "    title              title of the homework"                                                                          "\n"
-                "    template_repo      homework template repository name"                                                              "\n"
-                "    template_branch    the template_repo branch that contains all testcases"                                           "\n"
-                "    deadline           deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                                "\n"
-                "    cutoff_time        max late submission time after deadline (in days)"                                              "\n"
-                "    out_path           output file that lists score for all students (in the same order of the"                        "\n"
-                "                       spreadsheet)"                                                                                   "\n"
-                "[command-options]"                                                                                                     "\n"
-                "    --dry              perform a trial run without making any remote changes"                                          "\n"
-                "    --match-title      only grade for repository named 'title', instead of using `title` as a prefix"                  "\n"
-                "                       to find repositories to grade"                                                                  "\n";
+                "usage: hand2 grade-homework [--command-option] ... title template_repository template_branch deadline cutoff_day out_path" "\n"
+                                                                                                                                            "\n"
+                "[arguments]"                                                                                                               "\n"
+                "    title              title of the homework"                                                                              "\n"
+                "    template_repo      homework template repository name"                                                                  "\n"
+                "    template_branch    the template_repo branch that contains all testcases"                                               "\n"
+                "    deadline           deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                                    "\n"
+                "    cutoff_time        max late submission time after deadline (in days)"                                                  "\n"
+                "    out_path           output file that lists score for all students (in the same order of the"                            "\n"
+                "                       spreadsheet)"                                                                                       "\n"
+                "[command-options]"                                                                                                         "\n"
+                "    --dry              perform a trial run without making any remote changes"                                              "\n"
+                "    --match-title      only grade for repository named 'title', instead of using `title` as a prefix"                      "\n"
+                "                       to find repositories to grade"                                                                      "\n";
             write_output(usage);
             return;
         }
@@ -1120,18 +1116,19 @@ run_hand(int arg_count, char **args)
             else if(compare_string(option, "--dry"))
                 dry = 1;
             else
-                write_error("unknown option '%s'", option);
+                write_error("Unknown option '%s'", option);
         }
 
         char *title = next_arg(&parser);
         if(!title || show_command_usage)
         {
             char *usage =
-                "usage: hand2 announce-grade [--command-option] ... title"  "\n"
-                                                                            "\n"
-                "[arguments]"                                               "\n"
-                "    title    title of the homework"                        "\n"
-                "[command-options]"                                         "\n";
+                "usage: hand2 announce-grade [--command-option] ... title"              "\n"
+                                                                                        "\n"
+                "[arguments]"                                                           "\n"
+                "    title    title of the homework"                                    "\n"
+                "[command-options]"                                                     "\n"
+                "    --dry    perform a trial run without making any remote changes"    "\n";
             write_output(usage);
             return;
         }
@@ -1146,7 +1143,7 @@ run_hand(int arg_count, char **args)
     }
     else
     {
-        write_error("unknown command %s", command);
+        write_error("Unknown command %s", command);
     }
 
     if(g_log_file)

@@ -10,26 +10,27 @@ curl_write_func(char *data, size_t elem_size, size_t elem_count, void *userdata)
 static CurlGroup
 begin_curl_group(int worker_count)
 {
+    write_log("worker=%d", worker_count);
     CurlGroup result = {0};
     result.handle = curl.curl_multi_init();
     result.worker_count = worker_count;
     result.workers = (CurlWorker *)allocate_memory(worker_count * sizeof(*result.workers));
     clear_memory(result.workers, worker_count * sizeof(*result.workers));
     for(int i = 0; i < result.worker_count; ++i)
-    {
         result.workers[i].response = allocate_growable_buffer();
-    }
 
     if(!result.handle)
-    {
-        write_error("curl_multi_init failed");
-    }
+        write_log("curl_multi_init failed");
+
     return result;
 }
 
 static void
 assign_work(CurlGroup *group, int index, char *url, char *header, char *post_type, char *post_data)
 {
+    write_log("url=%s, type=%s", url, post_type);
+    write_log("header=%s", header);
+    write_log("data=%s", post_data);
     assert(index < group->worker_count);
     if(!group->handle)
         return;
@@ -38,55 +39,56 @@ assign_work(CurlGroup *group, int index, char *url, char *header, char *post_typ
     CURL *handle = curl.curl_easy_init();
     if(handle)
     {
+        CURLcode err = 0;
         CurlWorker *worker = group->workers + index;
         worker->header_list = curl.curl_slist_append(0, header);
         if(is_post_like)
         {
-            if((curl.curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, worker->error) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, curl_write_func) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_WRITEDATA, &worker->response) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 60000) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_HTTPHEADER, worker->header_list) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_URL, url) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, post_type) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_POSTFIELDS, post_data) == 0) &&
-               (curl.curl_multi_add_handle(group->handle, handle) == 0))
+            if((err = curl.curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, worker->error)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, curl_write_func)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_WRITEDATA, &worker->response)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 60000)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_HTTPHEADER, worker->header_list)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_URL, url)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, post_type)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_POSTFIELDS, post_data)) == 0 &&
+               (err = curl.curl_multi_add_handle(group->handle, handle)) == 0)
             {
                 worker->handle = handle;
             }
             else
             {
-                // TODO: log
+                write_error("%s", curl.curl_easy_strerror(err));
                 curl.curl_easy_cleanup(handle);
             }
         }
         else
         {
-            if((curl.curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, worker->error) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, curl_write_func) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_WRITEDATA, &worker->response) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 60000) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_HTTPHEADER, worker->header_list) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_URL, url) == 0) &&
-               (curl.curl_easy_setopt(handle, CURLOPT_HTTPGET, 1) == 0) &&
-               (curl.curl_multi_add_handle(group->handle, handle) == 0))
+            if((err = curl.curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, worker->error)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, curl_write_func)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_WRITEDATA, &worker->response)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 60000)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_HTTPHEADER, worker->header_list)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_URL, url)) == 0 &&
+               (err = curl.curl_easy_setopt(handle, CURLOPT_HTTPGET, 1)) == 0 &&
+               (err = curl.curl_multi_add_handle(group->handle, handle)) == 0)
             {
                 worker->handle = handle;
             }
             else
             {
-                // TODO: log
+                write_error("%s", curl.curl_easy_strerror(err));
                 curl.curl_easy_cleanup(handle);
             }
         }
     }
     else
     {
-        // TODO: log
+        write_error("curl_easy_init failed");
     }
 }
 
@@ -109,15 +111,22 @@ complete_all_works(CurlGroup *group)
 
     for(int i = 0; i < group->worker_count; ++i)
     {
-        curl.curl_easy_getinfo(group->workers[i].handle, CURLINFO_RESPONSE_CODE, (long *)&group->workers[i].status);
-        null_terminate(&group->workers[i].response);
+        CurlWorker *worker = group->workers + i;
+        curl.curl_easy_getinfo(worker->handle, CURLINFO_RESPONSE_CODE, (long *)&worker->status);
+        null_terminate(&worker->response);
+
+        char *url = 0;
+        curl.curl_easy_getinfo(worker->handle, CURLINFO_EFFECTIVE_URL, &url);
+        write_log("[%d]: status=%d, url=%s", i, worker->status, url);
+        if(worker->status >= 400)
+            write_log("status %d: %s", worker->status, worker->error);
     }
 }
 
 static int
 end_curl_group(CurlGroup *group)
 {
-    int no_error = 1;
+    int success = 1;
     if(group->handle)
     {
         for(;;)
@@ -129,7 +138,7 @@ end_curl_group(CurlGroup *group)
 
             if(message->msg != CURLMSG_DONE || message->data.result != 0)
             {
-                no_error = 0;
+                success = 0;
                 break;
             }
         }
@@ -144,7 +153,7 @@ end_curl_group(CurlGroup *group)
             }
             else
             {
-                no_error = 0;
+                success = 0;
             }
 
             if(worker->header_list)
@@ -161,7 +170,7 @@ end_curl_group(CurlGroup *group)
     }
     free_memory(group->workers);
     clear_memory(group, sizeof(*group));
-    return no_error;
+    return success;
 }
 
 static int
@@ -323,7 +332,11 @@ retrieve_username(char *out, size_t max_size, char *github_token)
         assign_github_get(&group, 0, url, github_token);
         complete_all_works(&group);
 
-        cJSON *json = cJSON_Parse(get_response(&group, 0));
+        char *response = get_response(&group, 0);
+        cJSON *json = cJSON_Parse(response);
+        if(!json)
+            write_error("JSON corrupted: %s", response);
+
         cJSON *username = cJSON_GetObjectItemCaseSensitive(json, "login");
         if(cJSON_IsString(username))
         {
@@ -372,9 +385,13 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
                 if(worker_done[i])
                     continue;
 
+                char *response = get_response(&group, i);
+                cJSON *json = cJSON_Parse(response);
+                if(!json)
+                    write_error("JSON corrupted: %s", response);
+
                 int issue_count_in_page = 0;
                 cJSON *issue_json = 0;
-                cJSON *json = cJSON_Parse(get_response(&group, i));
                 cJSON_ArrayForEach(issue_json, json)
                 {
                     cJSON *id_json = cJSON_GetObjectItemCaseSensitive(issue_json, "number");
@@ -419,7 +436,11 @@ retrieve_creation_times(time_t *out_times, StringArray *repos, char *github_toke
 
         for(int i = 0; i < worker_count; ++i)
         {
-            cJSON *json = cJSON_Parse(get_response(&group, i));
+            char *response = get_response(&group, i);
+            cJSON *json = cJSON_Parse(response);
+            if(!json)
+                write_error("JSON corrupted: %s", response);
+
             cJSON *creation_time = cJSON_GetObjectItemCaseSensitive(json, "created_at");
             if(cJSON_IsString(creation_time))
             {
@@ -452,7 +473,11 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
 
         for(int i = 0; i < worker_count; ++i)
         {
-            cJSON *json = cJSON_Parse(get_response(&group, i));
+            char *response = get_response(&group, i);
+            cJSON *json = cJSON_Parse(response);
+            if(!json)
+                write_error("JSON corrupted: %s", response);
+
             cJSON *default_branch = cJSON_GetObjectItemCaseSensitive(json, "default_branch");
             if(cJSON_IsString(default_branch))
             {
@@ -463,7 +488,7 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
                 // NOTE: must align to the number of repository, so we write a empty string even when we can't find the
                 // default branch name
                 append_string_array(&result, "");
-                write_error("default branch can't be found for '%s/%s'", organization, repos->elem[i]);
+                write_error("Default branch can't be found for '%s/%s'", organization, repos->elem[i]);
             }
             cJSON_Delete(json);
         }
@@ -498,7 +523,11 @@ retrieve_latest_commits(GitCommitHash *out_hash, StringArray *repos, StringArray
 
         for(int i = 0; i < worker_count; ++i)
         {
-            cJSON *json = cJSON_Parse(get_response(&group, i));
+            char *response = get_response(&group, i);
+            cJSON *json = cJSON_Parse(response);
+            if(!json)
+                write_error("JSON corrupted: %s", response);
+
             cJSON *commit = cJSON_GetObjectItemCaseSensitive(json, "commit");
             cJSON *hash = cJSON_GetObjectItemCaseSensitive(commit, "sha");
             if(cJSON_IsString(hash))
@@ -545,36 +574,34 @@ retrieve_team_members(char *github_token, char *organization, char *team)
     {
         int worker_count = 4;
         CurlGroup group = begin_curl_group(worker_count);
-        for(int index = 0; index < worker_count; ++index)
+        for(int i = 0; i < worker_count; ++i)
         {
             char url[MAX_URL_LEN];
             if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/members?page=%d&per_page=100",
                              organization, team, page))
             {
-                assign_github_get(&group, index, url, github_token);
+                assign_github_get(&group, i, url, github_token);
             }
             ++page;
         }
         complete_all_works(&group);
 
         int count_in_page = 0;
-        for(int index = 0; index < worker_count; ++index)
+        for(int i = 0; i < worker_count; ++i)
         {
+            char *response = get_response(&group, i);
+            cJSON *json = cJSON_Parse(response);
+            if(!json)
+                write_error("JSON corrupted: %s", response);
+
             count_in_page = 0;
-            cJSON *json = cJSON_Parse(get_response(&group, index));
             cJSON *member = 0;
             cJSON_ArrayForEach(member, json)
             {
                 ++count_in_page;
                 cJSON *username = cJSON_GetObjectItemCaseSensitive(member, "login");
                 if(cJSON_IsString(username))
-                {
                     append_string_array(&result, username->valuestring);
-                }
-                else
-                {
-                    write_error("json corrupted");
-                }
             }
             cJSON_Delete(json);
             if(count_in_page == 0)
@@ -596,23 +623,27 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
     {
         int worker_count = 4;
         CurlGroup group = begin_curl_group(worker_count);
-        for(int index = 0; index < worker_count; ++index)
+        for(int i = 0; i < worker_count; ++i)
         {
             char url[MAX_URL_LEN];
             if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/invitations?page=%d&per_page=100",
                              organization, team, page))
             {
-                assign_github_get(&group, index, url, github_token);
+                assign_github_get(&group, i, url, github_token);
             }
             ++page;
         }
         complete_all_works(&group);
 
         int count_in_page = 0;
-        for(int index = 0; index < worker_count; ++index)
+        for(int i = 0; i < worker_count; ++i)
         {
+            char *response = get_response(&group, i);
+            cJSON *json = cJSON_Parse(response);
+            if(!json)
+                write_error("JSON corrupted: %s", response);
+
             count_in_page = 0;
-            cJSON *json = cJSON_Parse(get_response(&group, index));
             cJSON *member = 0;
             cJSON_ArrayForEach(member, json)
             {
@@ -624,7 +655,7 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
                 }
                 else
                 {
-                    write_error("json corrupted");
+                    write_error("JSON corrupted: %s", get_response(&group, i));
                 }
             }
             cJSON_Delete(json);
@@ -647,23 +678,27 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
     {
         int worker_count = 8;
         CurlGroup group = begin_curl_group(worker_count);
-        for(int index = 0; index < worker_count; ++index)
+        for(int i = 0; i < worker_count; ++i)
         {
             char url[MAX_URL_LEN];
             if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/repos?page=%d&per_page=100",
                              organization, page))
             {
-                assign_github_get(&group, index, url, github_token);
+                assign_github_get(&group, i, url, github_token);
             }
             ++page;
         }
         complete_all_works(&group);
 
         int count_in_page = 0;
-        for(int index = 0; index < worker_count; ++index)
+        for(int i = 0; i < worker_count; ++i)
         {
+            char *response = get_response(&group, i);
+            cJSON *json = cJSON_Parse(response);
+            if(!json)
+                write_error("JSON corrupted: %s", response);
+
             count_in_page = 0;
-            cJSON *json = cJSON_Parse(get_response(&group, index));
             cJSON *repo = 0;
             cJSON_ArrayForEach(repo, json)
             {
@@ -736,7 +771,11 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                 static char req_ref[256];
                 if(format_string(req_ref, sizeof(req_ref), "refs/heads/%s", req_branches->elem[at + i]))
                 {
-                    cJSON *json = cJSON_Parse(get_response(&group, i));
+                    char *response = get_response(&group, i);
+                    cJSON *json = cJSON_Parse(response);
+                    if(!json)
+                        write_error("JSON corrupted: %s", response);
+
                     cJSON *event = 0;
                     cJSON_ArrayForEach(event, json)
                     {
@@ -852,10 +891,6 @@ create_issue(char *github_token, char *organization, char *repo, char *title, ch
         free_growable_buffer(&post_data);
         free_growable_buffer(&escaped_body);
     }
-    else
-    {
-        // TODO: log
-    }
     return result;
 }
 
@@ -884,10 +919,6 @@ edit_issue(char *github_token, char *organization, char *repo, char *title, char
         free_growable_buffer(&post_data);
         free_growable_buffer(&escaped_body);
     }
-    else
-    {
-        // TODO: log
-    }
     return result;
 }
 
@@ -914,7 +945,12 @@ retrieve_spreadsheet(StringArray *out, char *google_token, char *spreadsheet_id)
         CurlGroup group = begin_curl_group(1);
         assign_sheet_get(&group, 0, url, google_token);
         complete_all_works(&group);
-        cJSON *json = cJSON_Parse(get_response(&group, 0));
+
+        char *response = get_response(&group, 0);
+        cJSON *json = cJSON_Parse(response);
+        if(!json)
+            write_error("JSON corrupted: %s", response);
+
         cJSON *sheets = cJSON_GetObjectItemCaseSensitive(json, "sheets");
         cJSON *sheet = 0;
         cJSON_ArrayForEach(sheet, sheets)
@@ -959,7 +995,11 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *name)
         assign_sheet_get(&group, 0, url, google_token);
         complete_all_works(&group);
 
-        cJSON *json = cJSON_Parse(get_response(&group, 0));
+        char *response = get_response(&group, 0);
+        cJSON *json = cJSON_Parse(response);
+        if(!json)
+            write_error("JSON corrupted: %s", response);
+
         cJSON *row = 0;
         cJSON *rows = cJSON_GetObjectItemCaseSensitive(json, "values");
         int width = 0;
@@ -976,7 +1016,6 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *name)
             // NOTE: fill all string first to make sure the pointers don't change
             cJSON_ArrayForEach(row, rows)
             {
-                int row_width = cJSON_GetArraySize(row);
                 cJSON *cell = 0;
                 cJSON_ArrayForEach(cell, row)
                 {
@@ -986,7 +1025,7 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *name)
                     write_constant_string(&result.content, "\0");
                 }
 
-                for(int x = row_width; x < width; ++x)
+                for(int x = cJSON_GetArraySize(row); x < width; ++x)
                     write_constant_string(&result.content, "\0");
             }
 
@@ -1005,7 +1044,7 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *name)
         }
         else
         {
-            // TODO: log
+            write_log("sheet '%s:%s' is empty", spreadsheet, name);
         }
         end_curl_group(&group);
     }

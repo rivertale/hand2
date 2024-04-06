@@ -77,7 +77,7 @@ lex_token(ConfigParser *parser)
             int string_len = token.len < 255 ? token.len : 255;
             copy_memory(string, token.identifier, string_len);
             string[string_len] = 0;
-            write_error("config: string not terminated: '%s'", string);
+            write_error("Config: string not terminated: '%s'", string);
         }
         else
         {
@@ -99,7 +99,7 @@ lex_token(ConfigParser *parser)
     else
     {
         eat_char(parser);
-        write_error("config: unrecognized char '%c'", c0);
+        write_error("Config: unrecognized char '%c'", c0);
     }
     return token;
 }
@@ -167,7 +167,7 @@ parse_key_value_pair(ConfigParser *parser,
             size_t token_len = min(t.len, sizeof(token_content) - 1);
             copy_memory(token_content, t.identifier, token_len);
             copy_memory(token_content + token_len, "\0", 1);
-            write_error("unexpected token: '%s'", token_content);
+            write_error("Unexpected token: '%s'", token_content);
             eat_token(parser);
         }
     }
@@ -233,13 +233,13 @@ load_config(Config *config, char *path)
                     int out_key_len = (key_len < 256) ? key_len : 255;
                     copy_memory(unrecognized_key, key, out_key_len);
                     unrecognized_key[out_key_len] = 0;
-                    write_error("unrecognized config '%s'", unrecognized_key);
+                    write_error("Unrecognized config '%s'", unrecognized_key);
                 }
             }
         }
         else
         {
-            write_error("read file '%s' failed", path);
+            write_error("Read file '%s' failed", path);
         }
         fclose(file);
     }
@@ -249,7 +249,7 @@ load_config(Config *config, char *path)
         if(!config->value[i])
         {
             success = 0;
-            write_error("config: incomplete config because key '%s' not found", g_config_name[i]);
+            write_error("Config: incomplete config because key '%s' not found", g_config_name[i]);
         }
     }
     return success;

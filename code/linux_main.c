@@ -24,6 +24,13 @@ linux_calender_time_to_time(tm *calender_time, int time_zone)
     {
         result = time_plus_time_zone - time_zone * 3600;
     }
+    else
+    {
+        tm *t = calender_time;
+        write_error("timegm failed: %d-%02d-%02d %02d:%02d:%02d, wday=%d, yday=%d, isdst=%d, gmtoff=%d, timezone=%s",
+                    t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec,
+                    t->tm_wday, t->tm_yday, t->tm_isdst, t->tm_gmtoff, t->tm_zone);
+    }
     return result;
 }
 
@@ -34,6 +41,8 @@ linux_directory_exists(char *path)
     struct stat file_status;
     if(stat(path, &file_status) == 0)
         result = S_ISDIR(file_status.st_mode);
+    else
+        write_log("stat errno=%d, path=%s", errno, path);
     return result;
 }
 
@@ -43,6 +52,8 @@ linux_rename_directory(char *target_path, char *source_path)
     int result = 0;
     if(rename(source_path, target_path) == 0)
         result = 1;
+    else
+        write_log("rename errno=%d, source=%s, target=%s", errno, source_path, target_path);
     return result;
 }
 
@@ -52,6 +63,11 @@ linux_copy_file(char *target_path, char *source_path)
     int result = 0;
     FILE *source_file = fopen(source_path, "rb");
     FILE *target_file = fopen(target_path, "wb");
+    if(!source_file)
+        write_log("fopen failed: %s", source_path);
+    if(!target_file)
+        write_log("fopen failed: %s", target_path);
+
     if(source_file && target_file)
     {
         fseek(source_file, 0, SEEK_END);
@@ -75,10 +91,15 @@ linux_copy_file(char *target_path, char *source_path)
 static int
 linux_delete_file(char *path)
 {
-    int result = (unlink(path) == 0);
+    int result = 0;
+    if(unlink(path) == 0)
+        result = 1;
+    else
+        write_log("unlink errno=%d, path=%s", errno, path);
     return result;
 }
 
+// TODO: rename dir_path to dir
 static int
 linux_delete_directory(char *dir_path)
 {
@@ -123,6 +144,9 @@ linux_delete_directory(char *dir_path)
         closedir(dir_handle);
         rmdir(dir_path);
     }
+    else
+        write_log("opendir errno=%d, path=%s", errno, dir_path);
+
     return result;
 }
 
@@ -176,30 +200,41 @@ linux_copy_directory(char *target_dir, char *source_dir)
             }
             closedir(dir_handle);
         }
+        else
+            write_log("opendir errno=%d, path=%s", errno, source_dir);
     }
+    else
+        write_log("mkdir errno=%d", errno, target_dir);
+
     return result;
 }
 
 static int
 linux_create_directory(char *path)
 {
-    int result = (mkdir(path, 0777) == 0);
+    int result = 0;
+    if(mkdir(path, 0777) == 0)
+        result = 1;
+    else
+        write_log("mkdir errno=%d, path=%s", errno, path);
     return result;
 }
 
 static void
 linux_sleep(unsigned int milliseconds)
 {
-    usleep(milliseconds * 1000);
+    if(usleep(milliseconds * 1000) == -1)
+        write_log("usleep errno=%d, ms=%d", errno, milliseconds * 1000);
 }
 
 static int
 linux_get_root_dir(char *out_buffer, size_t size)
 {
     int result = 0;
+    char *proc_path = "/proc/self/exe";
     static char full_path[MAX_PATH_LEN];
-    ssize_t len = readlink("/proc/self/exe", full_path, MAX_PATH_LEN);
-    if(len < MAX_PATH_LEN)
+    ssize_t len = readlink(proc_path, full_path, MAX_PATH_LEN);
+    if(0 <= len && len < MAX_PATH_LEN)
     {
         size_t dir_len = len;
         while(dir_len > 0)
@@ -216,41 +251,14 @@ linux_get_root_dir(char *out_buffer, size_t size)
             copy_memory(out_buffer, full_path, dir_len + 1);
         }
     }
-    return result;
-}
-static int
-linux_init_curl(void)
-{
-    int success = 0;
-    curl.curl_easy_cleanup = curl_easy_cleanup;
-    curl.curl_easy_getinfo = curl_easy_getinfo;
-    curl.curl_easy_init = curl_easy_init;
-    curl.curl_easy_setopt = curl_easy_setopt;
-    curl.curl_global_cleanup = curl_global_cleanup;
-    curl.curl_global_init = curl_global_init;
-    curl.curl_multi_add_handle = curl_multi_add_handle;
-    curl.curl_multi_cleanup = curl_multi_cleanup;
-    curl.curl_multi_info_read = curl_multi_info_read;
-    curl.curl_multi_init = curl_multi_init;
-    curl.curl_multi_perform = curl_multi_perform;
-    curl.curl_multi_poll = curl_multi_poll;
-    curl.curl_multi_remove_handle = curl_multi_remove_handle;
-    curl.curl_slist_append = curl_slist_append;
-    curl.curl_slist_free_all = curl_slist_free_all;
-
-    CURLcode error = curl_global_init(CURL_GLOBAL_SSL);
-    if(error == 0)
-        success = 1;
     else
-        write_error("curl_global_init error: %d", error);
-
-    return success;
-}
-
-static void
-linux_cleanup_curl(void)
-{
-    curl_global_cleanup();
+    {
+        if(len == -1)
+            write_log("readlink errno=%d, path=%s", errno, proc_path);
+        else
+            write_log("readlink buffer too short, path=%s", proc_path);
+    }
+    return result;
 }
 
 static int
@@ -455,6 +463,42 @@ linux_wait_for_completion(int thread_count, int work_count, Work *works,
 }
 
 static int
+linux_init_curl(void)
+{
+    int success = 0;
+    curl.curl_easy_cleanup = curl_easy_cleanup;
+    curl.curl_easy_getinfo = curl_easy_getinfo;
+    curl.curl_easy_init = curl_easy_init;
+    curl.curl_easy_setopt = curl_easy_setopt;
+    curl.curl_easy_strerror = curl_easy_strerror;
+    curl.curl_global_cleanup = curl_global_cleanup;
+    curl.curl_global_init = curl_global_init;
+    curl.curl_multi_add_handle = curl_multi_add_handle;
+    curl.curl_multi_cleanup = curl_multi_cleanup;
+    curl.curl_multi_info_read = curl_multi_info_read;
+    curl.curl_multi_init = curl_multi_init;
+    curl.curl_multi_perform = curl_multi_perform;
+    curl.curl_multi_poll = curl_multi_poll;
+    curl.curl_multi_remove_handle = curl_multi_remove_handle;
+    curl.curl_slist_append = curl_slist_append;
+    curl.curl_slist_free_all = curl_slist_free_all;
+
+    CURLcode error = curl_global_init(CURL_GLOBAL_SSL);
+    if(error == 0)
+        success = 1;
+    else
+        write_error("curl_global_init error: %d", error);
+
+    return success;
+}
+
+static void
+linux_cleanup_curl(void)
+{
+    curl_global_cleanup();
+}
+
+static int
 linux_init_git(void)
 {
     int success = 0;
@@ -540,19 +584,19 @@ linux_init_git(void)
         if(git2.git_libgit2_init() > 0)
         {
             if(git2.git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 0) == 0)
+            {
                 success = 1;
+            }
             else
+            {
+                write_error("git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION): %s", git2.git_error_last()->message);
                 git2.git_libgit2_shutdown();
+            }
         }
         else
         {
-            const git_error *error = git2.git_error_last();
-            write_error("git_libgit2_init error: %s", error->message);
+            write_error("git_libgit2_init: %s", git2.git_error_last()->message);
         }
-    }
-    else
-    {
-        // TODO: log
     }
     return success;
 }
@@ -560,7 +604,8 @@ linux_init_git(void)
 static void
 linux_cleanup_git(void)
 {
-    git2.git_libgit2_shutdown();
+    if(git2.git_libgit2_shutdown() < 0)
+        write_error("git_libgit2_shutdown: %s", git2.git_error_last()->message);
 }
 
 static int
@@ -584,10 +629,6 @@ linux_init_platform(Platform *linux_code)
             linux_code->rename_directory = linux_rename_directory;
             linux_code->sleep = linux_sleep;
         }
-    }
-    else
-    {
-        write_error("unable to get root directory");
     }
     return success;
 }

@@ -3,6 +3,8 @@
 #define TIME_ZONE_UTC8 (+8)
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #define max(a, b) (((a) > (b)) ? (a) : (b))
+#define write_error(...) write_error_internal((char *)__func__, (int)__LINE__, __VA_ARGS__)
+#define write_log(...) write_log_internal((char *)__func__, (int)__LINE__, __VA_ARGS__)
 
 static FILE *g_log_file = {0};
 
@@ -124,10 +126,11 @@ current_calendar_time(void)
 }
 
 static void
-write_log_with_args(char *format, va_list arg_list)
+write_log_with_args(char *function, int line, char *format, va_list arg_list)
 {
     if(g_log_file)
     {
+        fprintf(g_log_file, "%s(%d): ", function, line);
         vfprintf(g_log_file, format, arg_list);
         fprintf(g_log_file, "\n");
         fflush(g_log_file);
@@ -135,11 +138,11 @@ write_log_with_args(char *format, va_list arg_list)
 }
 
 static void
-write_log(char *format, ...)
+write_log_internal(char *function, int line, char *format, ...)
 {
     va_list arg_list;
     va_start(arg_list, format);
-    write_log_with_args(format, arg_list);
+    write_log_with_args(function, line, format, arg_list);
     va_end(arg_list);
 }
 
@@ -155,7 +158,7 @@ write_output(char *format, ...)
 }
 
 static void
-write_error(char *format, ...)
+write_error_internal(char *function, int line, char *format, ...)
 {
     va_list arg_list;
     va_start(arg_list, format);
@@ -163,7 +166,7 @@ write_error(char *format, ...)
     vprintf(format, arg_list);
     printf("\n");
     fflush(stdout);
-    write_log_with_args(format, arg_list);
+    write_log_with_args(function, line, format, arg_list);
     va_end(arg_list);
 }
 
@@ -173,7 +176,7 @@ allocate_memory(size_t size)
     char *result = (char *)malloc(size);
     if(!result)
     {
-        write_error("fatal: out of memory");
+        write_error("Fatal: out of memory");
         exit(0);
     }
     return result;

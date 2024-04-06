@@ -3,6 +3,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 typedef struct tm tm;
 
 #include "cjson/cJSON.c"

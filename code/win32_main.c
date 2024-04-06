@@ -38,6 +38,13 @@ win32_calender_time_to_time(tm *calender_time, int time_zone)
     {
         result = time_plus_time_zone - time_zone * 3600;
     }
+    else
+    {
+        tm *t = calender_time;
+        write_error("_mkgmtime: %d-%02d-%02d %02d:%02d:%02d, wday=%d, yday=%d, isdst=%d, gmtoff=%d",
+                    t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec,
+                    t->tm_wday, t->tm_yday, t->tm_isdst);
+    }
     return result;
 }
 
@@ -50,6 +57,10 @@ win32_directory_exists(char *path)
     {
         DWORD attrib = GetFileAttributesW(wide_path);
         result = (attrib != INVALID_FILE_ATTRIBUTES) && (attrib & FILE_ATTRIBUTE_DIRECTORY);
+    }
+    else
+    {
+        write_log("MultiByteToWideChar error=%d, path=%s", GetLastError(), path);
     }
     return result;
 }
@@ -65,6 +76,10 @@ win32_rename_directory(char *target_path, char *source_path)
     {
         result = MoveFileW(wide_source_path, wide_target_path);
     }
+    else
+    {
+        write_log("MultiByteToWideChar error=%d, source=%s, target=%s", GetLastError(), source_path, target_path);
+    }
     return result;
 }
 
@@ -77,7 +92,14 @@ win32_copy_file(char *target_path, char *source_path)
     if(MultiByteToWideChar(CP_UTF8, 0, source_path, -1, wide_source_path, MAX_PATH_LEN) &&
        MultiByteToWideChar(CP_UTF8, 0, target_path, -1, wide_target_path, MAX_PATH_LEN))
     {
-        result = CopyFileW(wide_source_path, wide_target_path, 0);
+        if(CopyFileW(wide_source_path, wide_target_path, 0))
+            result = 1;
+        else
+            write_log("CopyFileW error=%d, source=%s, target=%s", GetLastError(), source_path, target_path);
+    }
+    else
+    {
+        write_log("MultiByteToWideChar error=%d, source=%s, target=%s", GetLastError(), source_path, target_path);
     }
     return result;
 }
@@ -90,11 +112,27 @@ win32_delete_file(char *path)
     if(MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, MAX_PATH_LEN))
     {
         DWORD attrib = GetFileAttributesW(wide_path);
-        if(attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_READONLY))
+        if(attrib != INVALID_FILE_ATTRIBUTES)
         {
-            SetFileAttributesW(wide_path, attrib & ~FILE_ATTRIBUTE_READONLY);
+            if(attrib & FILE_ATTRIBUTE_READONLY)
+            {
+                if(!SetFileAttributesW(wide_path, attrib & ~FILE_ATTRIBUTE_READONLY))
+                    write_log("SetFileAttributesW error=%d", GetLastError());
+            }
         }
-        result = DeleteFileW(wide_path);
+        else
+        {
+            write_log("GetFileAttributesW error=%d", GetLastError());
+        }
+
+        if(DeleteFileW(wide_path))
+            result = 1;
+        else
+            write_log("DeleteFileW error=%d, path=%s", GetLastError(), path);
+    }
+    else
+    {
+        write_log("MultiByteToWideChar error=%d, path=%s", GetLastError(), path);
     }
     return result;
 }
@@ -138,7 +176,13 @@ win32_delete_directory_by_wide_path(wchar_t *dir_path)
                 if(find_data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
                     SetFileAttributesW(child, find_data.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY);
                 if(!DeleteFileW(child))
+                {
                     result = 0;
+                    static char utf8_child[MAX_PATH_LEN];
+                    utf8_child[0] = 0;
+                    WideCharToMultiByte(CP_UTF8, 0, child, -1, utf8_child, MAX_PATH_LEN, 0, 0);
+                    write_log("DeleteFileW error=%d, path=%s", GetLastError(), utf8_child);
+                }
             }
             free_memory(child);
         }
@@ -162,6 +206,10 @@ win32_delete_directory(char *path)
     if(MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, MAX_PATH_LEN))
     {
         result = win32_delete_directory_by_wide_path(wide_path);
+    }
+    else
+    {
+        write_log("MultiByteToWideChar error=%d, path=%s", GetLastError(), path);
     }
     return result;
 }
@@ -209,7 +257,15 @@ win32_copy_directory_by_wide_path(wchar_t *target_dir, wchar_t *source_dir)
             else
             {
                 if(!CopyFileW(source_child, target_child, 0))
+                {
                     result = 0;
+                    static char utf8_source[MAX_PATH_LEN];
+                    static char utf8_target[MAX_PATH_LEN];
+                    utf8_source[0] = utf8_target[0] = 0;
+                    WideCharToMultiByte(CP_UTF8, 0, source_child, -1, utf8_source, MAX_PATH_LEN, 0, 0);
+                    WideCharToMultiByte(CP_UTF8, 0, target_child, -1, utf8_target, MAX_PATH_LEN, 0, 0);
+                    write_log("CopyFileW error=%d, source=%s, target=%s", GetLastError(), utf8_source, utf8_target);
+                }
             }
             free_memory(source_child);
             free_memory(target_child);
@@ -220,6 +276,11 @@ win32_copy_directory_by_wide_path(wchar_t *target_dir, wchar_t *source_dir)
 
         if(find_handle != INVALID_HANDLE_VALUE)
             FindClose(find_handle);
+    }
+    else
+    {
+        if(source_len + 2 < MAX_PATH_LEN)
+            write_log("CreateDirectoryW error=%d, path=%s", GetLastError(), target_dir);
     }
     return result;
 }
@@ -235,6 +296,10 @@ win32_copy_directory(char *target_path, char *source_path)
     {
         result = win32_copy_directory_by_wide_path(wide_target_path, wide_source_path);
     }
+    else
+    {
+        write_log("MultiByteToWideChar error=%d, source=%s, target=%s", GetLastError(), source_path, target_path);
+    }
     return result;
 }
 
@@ -246,6 +311,10 @@ win32_create_directory(char *path)
     if(MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, MAX_PATH_LEN))
     {
         result = CreateDirectoryW(wide_path, 0);
+    }
+    else
+    {
+        write_log("MultiByteToWideChar error=%d, path=%s", GetLastError(), path);
     }
     return result;
 }
@@ -279,6 +348,10 @@ win32_get_root_dir(char *out_buffer, size_t size)
             result = 1;
         }
     }
+
+    if(len == 0)
+        write_error("GetModuleFileNameW error=%d", GetLastError());
+
     return result;
 }
 
@@ -517,7 +590,7 @@ win32_wait_for_completion(int thread_count, int work_count, Work *works,
     }
     else
     {
-        // TODO: error
+        write_error("CreateMutexA error=%d", GetLastError());
     }
 }
 
@@ -533,6 +606,7 @@ win32_init_curl(void)
         curl.curl_easy_getinfo = (CurlEasyGetInfo *)GetProcAddress(module, "curl_easy_getinfo");
         curl.curl_easy_init = (CurlEasyInit *)GetProcAddress(module, "curl_easy_init");
         curl.curl_easy_setopt = (CurlEasySetOpt *)GetProcAddress(module, "curl_easy_setopt");
+        curl.curl_easy_strerror = (CurlEasyStrError *)GetProcAddress(module, "curl_easy_strerror");
         curl.curl_global_cleanup = (CurlGlobalCleanup *)GetProcAddress(module, "curl_global_cleanup");
         curl.curl_global_init = (CurlGlobalInit *)GetProcAddress(module, "curl_global_init");
         curl.curl_multi_add_handle = (CurlMultiAddHandle *)GetProcAddress(module, "curl_multi_add_handle");
@@ -553,7 +627,7 @@ win32_init_curl(void)
     }
     else
     {
-        write_error("unable to load '%s'", dll_path);
+        write_error("LoadLibraryA error=%d, path=%s", GetLastError(), dll_path);
     }
     return success;
 }
@@ -654,24 +728,24 @@ win32_init_git(void)
             if(git2.git_libgit2_init() > 0)
             {
                 if(git2.git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 0) == 0)
+                {
                     success = 1;
+                }
                 else
+                {
+                    write_error("git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION) error: %s", git2.git_error_last()->message);
                     git2.git_libgit2_shutdown();
+                }
             }
             else
             {
-                const git_error *error = git2.git_error_last();
-                write_error("git_libgit2_init error: %s", error->message);
+                write_error("git_libgit2_init error: %s", git2.git_error_last()->message);
             }
-        }
-        else
-        {
-            // TODO: log
         }
     }
     else
     {
-        write_error("unable to load '%s'", dll_path);
+        write_error("LoadLibraryA error=%d, path=%s", GetLastError(), dll_path);
     }
     return success;
 }
@@ -679,7 +753,8 @@ win32_init_git(void)
 static void
 win32_cleanup_git(void)
 {
-    git2.git_libgit2_shutdown();
+    if(git2.git_libgit2_shutdown() < 0)
+        write_error("git_libgit2_shutdown: %s", git2.git_error_last()->message);
 }
 
 static int
@@ -703,10 +778,6 @@ win32_init_platform(Platform *win32_code)
             win32_code->rename_directory = win32_rename_directory;
             win32_code->sleep = win32_sleep;
         }
-    }
-    else
-    {
-        write_error("unable to get root directory");
     }
     return success;
 }

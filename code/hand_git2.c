@@ -14,10 +14,6 @@ git_reset_callback(git_checkout_notify_t why, const char *path,
     {
         // NOTE: remove successfully
     }
-    else
-    {
-        //TODO: log
-    }
     return 0;
 }
 
@@ -93,17 +89,21 @@ cache_repository(char *dir, size_t size,
                     {
                         clone_and_reset_success = 1;
                     }
+                    else
+                    {
+                        write_error("git_reset: %s", git2.git_error_last()->message);
+                    }
                     git2.git_commit_free(commit);
                 }
                 else
                 {
-                    // TODO: log
+                    write_error("libgit2: %s", git2.git_error_last()->message);
                 }
                 git2.git_repository_free(repository);
             }
             else
             {
-                // TODO: log
+                write_error("git_clone: %s", git2.git_error_last()->message);
             }
 
             // NOTE: can only rename after we close the git_repository that refers to the directory
@@ -169,7 +169,19 @@ push_to_remote(char *dir, char *github_token, char *commit_message, char *userna
             {
                 success = 1;
             }
+            else
+            {
+                write_error("libgit2: %s", git2.git_error_last()->message);
+            }
         }
+        else
+        {
+            write_error("libgit2: %s", git2.git_error_last()->message);
+        }
+    }
+    else
+    {
+        write_error("libgit2: %s", git2.git_error_last()->message);
     }
     return success;
 }
