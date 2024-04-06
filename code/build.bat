@@ -4,7 +4,7 @@ setlocal
 set program_name=hand
 set win32_entry_file=..\code\win32_main.c
 
-set msvc_compiler_flags=/nologo /Zi /MT /Wall /wd4668 /wd4710 /wd4996 /wd5045 /I ..\code\include_win32
+set msvc_compiler_flags=/nologo /Zi /MT /Wall /wd4255 /wd4668 /wd4710 /wd4820 /wd4996 /wd5045 /I ..\code\include_win32
 set msvc_linker_flags=/IGNORE:4217,4049 /incremental:no /LIBPATH:..\code\lib_win32
 set gcc_compiler_flags=-Wall -g -I ..\code\include_win32
 set gcc_linker_flags=-static -L ..\code\lib_win32
