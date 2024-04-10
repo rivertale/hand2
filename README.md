@@ -1,4 +1,7 @@
 ## hand2
+> [!note]
+> The docs is not up-to-date currently.
+
 > hand2 is modified from [invisible_hand](https://github.com/ianchen-tw/invisible-hand),
 > and is intended to integrate the functionality of invisible_hand and other tools into a single program.
 
@@ -55,25 +58,17 @@ x64 prebuilt binaries can be downloaded from [release](https://github.com/Compil
 ## Features and TODOs
 ❌: TODO, ⚠️: Implemented, ✔: Tested
 
-- ❌ config-check: check if the config is filled in correctly
+- ✔ clean: delete cache and log folder
+- ✔ config-check: check if the config is filled in correctly
 - ✔ invite-students: invite students to organization.
-    - TODO: Get the student list from the spreadsheet, currently it needs to be copied and sent to program as a file.
-- ⚠️ collect-homework: output late submissions.
-    - TODO: Get the student list from the spreadsheet, and output in a spreadsheet-friendly format (direct copy-pasta).
-- ⚠️ grade-homework: replacing HW-manager, grade students' homework
-    - TODO: Get the student list from the spreadsheet, and output in a spreadsheet-friendly format (direct copy-pasta).
-- ⚠️ announce-grade: retrieve grade from the spreadsheet, and announce it in students' issue.
-    - TODO: Support HW-manager format
+- ✔ collect-homework: output late submissions.
+- ✔ grade-homework: replacing HW-manager, grade students' homework
+- ✔ announce-grade: retrieve grade from the spreadsheet, and announce it in students' issue.
     - TODO: Provide detailed description on the feedback format (or use old HW-manager format)
-- ⚠️ patch-homework: create pull request to sync repo's default branch to a branch of tmpl-hw
-    - TODO: Does Fork situation change anything?
 - TODOs
     - More log!
-    - Memory leak: now they are all over the place!
-    - Update certificate: how are certificates outdated? try to find it in current system? tell user to download a new one?
-    - Support ARM
-    - Support mac-os (maybe never)
-    - Support x86 (maybe never)
+    - format_string() panic on failed!
+    - Write actual docs
 
 
 
