@@ -579,24 +579,22 @@ linux_init_git(void)
     git2.git_blob_rawsize = git_blob_rawsize;
     git2.git_tree_entry_type = git_tree_entry_type;
 
-    if(format_string(g_git_temporary_dir, sizeof(g_git_temporary_dir), "%s/tmp", g_cache_dir))
+    format_string(g_git_temporary_dir, sizeof(g_git_temporary_dir), "%s/tmp", g_cache_dir);
+    if(git2.git_libgit2_init() > 0)
     {
-        if(git2.git_libgit2_init() > 0)
+        if(git2.git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 0) == 0)
         {
-            if(git2.git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 0) == 0)
-            {
-                success = 1;
-            }
-            else
-            {
-                write_error("git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION): %s", git2.git_error_last()->message);
-                git2.git_libgit2_shutdown();
-            }
+            success = 1;
         }
         else
         {
-            write_error("git_libgit2_init: %s", git2.git_error_last()->message);
+            write_error("git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION): %s", git2.git_error_last()->message);
+            git2.git_libgit2_shutdown();
         }
+    }
+    else
+    {
+        write_error("git_libgit2_init: %s", git2.git_error_last()->message);
     }
     return success;
 }
@@ -614,21 +612,19 @@ linux_init_platform(Platform *linux_code)
     int success = 0;
     if(linux_get_root_dir(g_root_dir, MAX_PATH_LEN))
     {
-        if(format_string(g_cache_dir, MAX_PATH_LEN, "%s/cache", g_root_dir) &&
-           format_string(g_log_dir, MAX_PATH_LEN, "%s/log", g_root_dir))
-        {
-            success = 1;
-            linux_code->wait_for_completion = linux_wait_for_completion;
-            linux_code->calender_time_to_time = linux_calender_time_to_time;
-            linux_code->copy_directory = linux_copy_directory;
-            linux_code->create_directory = linux_create_directory;
-            linux_code->delete_directory = linux_delete_directory;
-            linux_code->copy_file = linux_copy_file;
-            linux_code->delete_file = linux_delete_file;
-            linux_code->directory_exists = linux_directory_exists;
-            linux_code->rename_directory = linux_rename_directory;
-            linux_code->sleep = linux_sleep;
-        }
+        success = 1;
+        format_string(g_cache_dir, MAX_PATH_LEN, "%s/cache", g_root_dir);
+        format_string(g_log_dir, MAX_PATH_LEN, "%s/log", g_root_dir);
+        linux_code->wait_for_completion = linux_wait_for_completion;
+        linux_code->calender_time_to_time = linux_calender_time_to_time;
+        linux_code->copy_directory = linux_copy_directory;
+        linux_code->create_directory = linux_create_directory;
+        linux_code->delete_directory = linux_delete_directory;
+        linux_code->copy_file = linux_copy_file;
+        linux_code->delete_file = linux_delete_file;
+        linux_code->directory_exists = linux_directory_exists;
+        linux_code->rename_directory = linux_rename_directory;
+        linux_code->sleep = linux_sleep;
     }
     return success;
 }

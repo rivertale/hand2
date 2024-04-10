@@ -96,14 +96,12 @@ config_check(Config *config)
                 Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, spreadsheet.elem[i]);
                 int username_x = find_label(&sheet, username_label);
                 int id_x = find_label(&sheet, id_label);
-                if(format_string(buffer, sizeof(buffer), "    %s: %s=%d, %s=%d ... %s",
-                                 spreadsheet.elem[i],
-                                 username_label, (username_x != -1) ? username_x + 1 : -1,
-                                 id_label, (id_x != -1) ? id_x + 1 : -1,
-                                 (username_x != -1 && id_x != -1) ? "OK" : "Not a homework"))
-                {
-                    write_output(buffer);
-                }
+                format_string(buffer, sizeof(buffer), "    %s: %s=%d, %s=%d ... %s",
+                              spreadsheet.elem[i],
+                              username_label, (username_x != -1) ? username_x + 1 : -1,
+                              id_label, (id_x != -1) ? id_x + 1 : -1,
+                              (username_x != -1 && id_x != -1) ? "OK" : "Not a homework");
+                write_output(buffer);
                 free_sheet(&sheet);
             }
         }
@@ -285,15 +283,12 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
     int student_x = find_label(&sheet, student_label);
     for(int y = 0; y < sheet.height; ++y)
     {
-        int index = -1;
         static char req_repo[256];
         char *student = get_value(&sheet, student_x, y);
-        if(format_string(req_repo, sizeof(req_repo), "%s-%s", title, student))
-        {
-            index = find_index_case_insensitive(&repos, req_repo);
-        }
+        format_string(req_repo, sizeof(req_repo), "%s-%s", title, student);
 
         int delay = 0;
+        int index = find_index_case_insensitive(&repos, req_repo);
         if(index != -1)
         {
             ++submission_count;
@@ -346,12 +341,11 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
     free_string_array(&repos);
 }
 
-static int
-format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *format, char *dir)
+static GrowableBuffer
+format_report_by_file_replacement(GrowableBuffer *format, char *dir)
 {
-    *out = allocate_growable_buffer();
+    GrowableBuffer result = allocate_growable_buffer();
 
-    int success = 1;
     int depth = 0;
     char *identifier = 0;
     for(size_t i = 0; i < format->used; ++i)
@@ -359,7 +353,7 @@ format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *format, c
         char *c = format->memory + i;
         if(c[0] == '$' && c[1] == '$')
         {
-            write_constant_string(out, "$$");
+            write_constant_string(&result, "$$");
             ++i;
         }
         else if(c[0] == '$' && c[1] == '{')
@@ -378,32 +372,27 @@ format_report_by_file_replacement(GrowableBuffer *out, GrowableBuffer *format, c
                 if(identifier[0] == '.' && identifier[1] == '/')
                 {
                     static char path[MAX_PATH_LEN];
-                    if(format_string(path, MAX_PATH_LEN, "%s/%s", dir, identifier))
-                    {
-                        GrowableBuffer replacement = read_entire_file(path);
-                        write_growable_buffer(out, replacement.memory, replacement.used);
-                        free_growable_buffer(&replacement);
-                    }
-                    else
-                    {
-                        success = 0;
-                    }
+                    format_string(path, MAX_PATH_LEN, "%s/%s", dir, identifier);
+
+                    GrowableBuffer replacement = read_entire_file(path);
+                    write_growable_buffer(&result, replacement.memory, replacement.used);
+                    free_growable_buffer(&replacement);
                 }
                 else
                 {
-                    write_constant_string(out, "${");
-                    write_growable_buffer(out, identifier, string_len(identifier));
-                    write_constant_string(out, "}");
+                    write_constant_string(&result, "${");
+                    write_growable_buffer(&result, identifier, string_len(identifier));
+                    write_constant_string(&result, "}");
                 }
                 *c = '}';
             }
         }
         else if(depth == 0)
         {
-            write_growable_buffer(out, c, 1);
+            write_growable_buffer(&result, c, 1);
         }
     }
-    return success;
+    return result;
 }
 
 static void
@@ -469,14 +458,11 @@ grade_homework(char *title, char *out_path,
         return;
     }
 
-    if(!format_string(template_test_dir, MAX_PATH_LEN, "%s/test", template_dir) ||
-       !format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir) ||
-       !format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s",feedback_dir, title) ||
-       !format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports",feedback_dir, title) ||
-       !format_string(report_template_path, MAX_PATH_LEN, "%s/report_template_%s.md", feedback_dir, title))
-    {
-        return;
-    }
+    format_string(template_test_dir, MAX_PATH_LEN, "%s/test", template_dir);
+    format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir);
+    format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s",feedback_dir, title);
+    format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports",feedback_dir, title);
+    format_string(report_template_path, MAX_PATH_LEN, "%s/report_template_%s.md", feedback_dir, title);
 
     FILE *out_file = fopen(out_path, "wb");
     if(!out_file)
@@ -520,10 +506,10 @@ grade_homework(char *title, char *out_path,
         static char test_dir[MAX_PATH_LEN];
         static char docker_dir[MAX_PATH_LEN];
         write_output("Retrieving homework from '%s'", repos.elem[i]);
-        if(cache_repository(dir, MAX_PATH_LEN, username, github_token, organization, repos.elem[i], &hash[i]) &&
-           format_string(test_dir, MAX_PATH_LEN, "%s/test", dir) &&
-           format_string(docker_dir, MAX_PATH_LEN, "%s/docker", dir))
+        if(cache_repository(dir, MAX_PATH_LEN, username, github_token, organization, repos.elem[i], &hash[i]))
         {
+            format_string(test_dir, MAX_PATH_LEN, "%s/test", dir);
+            format_string(docker_dir, MAX_PATH_LEN, "%s/docker", dir);
             // IMPORTANT: After mounting a volume for the first time on wsl with "docker run -v", change the
             // volume's content seems to mess up the ".." inode that navigates to /mnt
             //
@@ -560,16 +546,13 @@ grade_homework(char *title, char *out_path,
     int id_x = find_label(&sheet, id_label);
     for(int y = 0; y < sheet.height; ++y)
     {
-        int index = -1;
         static char req_name[256];
         char *student = get_value(&sheet, student_x, y);
         char *student_id = get_value(&sheet, id_x, y);
-        if(format_string(req_name, sizeof(req_name), "%s-%s", title, student))
-        {
-            index = find_index_case_insensitive(&repos, req_name);
-        }
+        format_string(req_name, sizeof(req_name), "%s-%s", title, student);
 
         double score = 0;
+        int index = find_index_case_insensitive(&repos, req_name);
         if(index != -1)
         {
             ++submission_count;
@@ -578,12 +561,13 @@ grade_homework(char *title, char *out_path,
             if(works[index].exit_code != 0)
                 ++failure_count;
 
-            static char report_path[MAX_PATH_LEN];
-            static char score_path[MAX_PATH_LEN];
-            if(works[index].exit_code == 0 &&
-               format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id) &&
-               format_string(score_path, MAX_PATH_LEN, "%s/%s", works[index].work_dir, score_relative_path))
+            if(works[index].exit_code == 0)
             {
+                static char report_path[MAX_PATH_LEN];
+                static char score_path[MAX_PATH_LEN];
+                format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id);
+                format_string(score_path, MAX_PATH_LEN, "%s/%s", works[index].work_dir, score_relative_path);
+
                 platform.delete_file(report_path);
                 GrowableBuffer score_content = read_entire_file(score_path);
                 for(char *c = score_content.memory; *c; ++c)
@@ -596,17 +580,14 @@ grade_homework(char *title, char *out_path,
                 }
                 free_growable_buffer(&score_content);
 
-                GrowableBuffer report;
-                if(format_report_by_file_replacement(&report, &report_template, works[index].work_dir))
+                GrowableBuffer report = format_report_by_file_replacement(&report_template, works[index].work_dir);
+                FILE *report_file = fopen(report_path, "wb");
+                if(report_file)
                 {
-                    FILE *report_file = fopen(report_path, "wb");
-                    if(report_file)
-                    {
-                        fwrite(report.memory, report.used, 1, report_file);
-                        fclose(report_file);
-                    }
-                    free_growable_buffer(&report);
+                    fwrite(report.memory, report.used, 1, report_file);
+                    fclose(report_file);
                 }
+                free_growable_buffer(&report);
             }
         }
 
@@ -622,12 +603,10 @@ grade_homework(char *title, char *out_path,
     {
         write_output("Pushing reports...");
         static char commit_message[64];
-        if(format_string(commit_message, sizeof(commit_message), "update %s report", title))
+        format_string(commit_message, sizeof(commit_message), "update %s report", title);
+        if(!push_to_remote(feedback_dir, github_token, commit_message, username, email))
         {
-            if(!push_to_remote(feedback_dir, github_token, commit_message, username, email))
-            {
-                write_error("Unable to push the reports");
-            }
+            write_error("Unable to push the reports");
         }
     }
 
@@ -742,11 +721,8 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo,
         return;
     }
 
-    if(!format_string(issue_title, sizeof(issue_title), "Grade for %s", title) ||
-       !format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports", feedback_dir, title))
-    {
-        return;
-    }
+    format_string(issue_title, sizeof(issue_title), "Grade for %s", title);
+    format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports", feedback_dir, title);
 
     StringArray repos = {0};
     if(only_repo)
@@ -789,48 +765,44 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo,
             {
                 for(int y = 0; y < sheet.height; ++y)
                 {
-                    int index = -1;
                     static char req_repo[256];
                     char *student = get_value(&sheet, student_x, y);
-                    if(format_string(req_repo, sizeof(req_repo), "%s-%s", title, student))
-                    {
-                        index = find_index_case_insensitive(&repos, req_repo);
-                    }
+                    format_string(req_repo, sizeof(req_repo), "%s-%s", title, student);
 
-                    if(index != -1)
+                    int index = find_index_case_insensitive(&repos, req_repo);
+                    if(index == -1) continue;
+
+                    write_output("Announce grade for '%s'", repos.elem[index]);
+                    ++announcement_count;
+                    if(issue_numbers[index])
                     {
-                        write_output("Announce grade for '%s'", repos.elem[index]);
-                        ++announcement_count;
-                        if(issue_numbers[index])
+                        if(dry)
                         {
-                            if(dry)
-                            {
-                                write_output("DRY RUN: attempt to edit issue '%s #%d' to:", issue_title, issue_numbers[index]);
-                                write_output("%s", issue_bodies.elem[y]);
-                                write_output("----------------------------------------------------------------");
-                            }
-                            else if(!edit_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y], issue_numbers[index]))
-                            {
-                                ++failure_count;
-                            }
+                            write_output("DRY RUN: attempt to edit issue '%s #%d' to:", issue_title, issue_numbers[index]);
+                            write_output("%s", issue_bodies.elem[y]);
+                            write_output("----------------------------------------------------------------");
                         }
-                        else
+                        else if(!edit_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y], issue_numbers[index]))
                         {
-                            if(dry)
-                            {
-                                write_output("DRY RUN: attempt to create issue '%s #%d' with content:", issue_title, issue_numbers[index]);
-                                write_output("%s", issue_bodies.elem[y]);
-                                write_output("----------------------------------------------------------------");
-                            }
-                            else if(!create_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y]))
-                            {
-                                ++failure_count;
-                            }
+                            ++failure_count;
                         }
-                        // NOTE: sleep to bypass the github rate limit
-                        // TODO: need further investigation on the error messages github returns
-                        platform.sleep(1000);
                     }
+                    else
+                    {
+                        if(dry)
+                        {
+                            write_output("DRY RUN: attempt to create issue '%s #%d' with content:", issue_title, issue_numbers[index]);
+                            write_output("%s", issue_bodies.elem[y]);
+                            write_output("----------------------------------------------------------------");
+                        }
+                        else if(!create_issue(github_token, organization, repos.elem[index], issue_title, issue_bodies.elem[y]))
+                        {
+                            ++failure_count;
+                        }
+                    }
+                    // NOTE: sleep to bypass the github rate limit
+                    // TODO: need further investigation on the error messages github returns
+                    platform.sleep(1000);
                 }
                 free_string_array(&issue_bodies);
             }
@@ -865,13 +837,10 @@ run_hand(int arg_count, char **args)
     static char log_path[MAX_PATH_LEN];
     static char config_path[MAX_PATH_LEN];
     struct tm time = current_calendar_time();
-    if(!format_string(config_path, MAX_PATH_LEN, "%s/config.txt", g_root_dir) ||
-       !format_string(log_path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
-                      g_log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                      time.tm_hour, time.tm_min, time.tm_sec))
-    {
-        return;
-    }
+    format_string(config_path, MAX_PATH_LEN, "%s/config.txt", g_root_dir);
+    format_string(log_path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
+                  g_log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                  time.tm_hour, time.tm_min, time.tm_sec);
 
     // NOTE: parse options
     int show_usage = 0;

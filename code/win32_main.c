@@ -724,24 +724,22 @@ win32_init_git(void)
         git2.git_blob_rawsize = (GitBlobRawSize *)GetProcAddress(module, "git_blob_rawsize");
         git2.git_tree_entry_type = (GitTreeEntryType *)GetProcAddress(module, "git_tree_entry_type");
 
-        if(format_string(g_git_temporary_dir, sizeof(g_git_temporary_dir), "%s/tmp", g_cache_dir))
+        format_string(g_git_temporary_dir, sizeof(g_git_temporary_dir), "%s/tmp", g_cache_dir);
+        if(git2.git_libgit2_init() > 0)
         {
-            if(git2.git_libgit2_init() > 0)
+            if(git2.git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 0) == 0)
             {
-                if(git2.git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 0) == 0)
-                {
-                    success = 1;
-                }
-                else
-                {
-                    write_error("git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION) error: %s", git2.git_error_last()->message);
-                    git2.git_libgit2_shutdown();
-                }
+                success = 1;
             }
             else
             {
-                write_error("git_libgit2_init error: %s", git2.git_error_last()->message);
+                write_error("git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION) error: %s", git2.git_error_last()->message);
+                git2.git_libgit2_shutdown();
             }
+        }
+        else
+        {
+            write_error("git_libgit2_init error: %s", git2.git_error_last()->message);
         }
     }
     else
@@ -764,21 +762,20 @@ win32_init_platform(Platform *win32_code)
     int success = 0;
     if(win32_get_root_dir(g_root_dir, MAX_PATH_LEN))
     {
-        if(format_string(g_cache_dir, MAX_PATH_LEN, "%s/cache", g_root_dir) &&
-           format_string(g_log_dir, MAX_PATH_LEN, "%s/log", g_root_dir))
-        {
-            success = 1;
-            win32_code->wait_for_completion = win32_wait_for_completion;
-            win32_code->calender_time_to_time = win32_calender_time_to_time;
-            win32_code->copy_directory = win32_copy_directory;
-            win32_code->create_directory = win32_create_directory;
-            win32_code->delete_directory = win32_delete_directory;
-            win32_code->copy_file = win32_copy_file;
-            win32_code->delete_file = win32_delete_file;
-            win32_code->directory_exists = win32_directory_exists;
-            win32_code->rename_directory = win32_rename_directory;
-            win32_code->sleep = win32_sleep;
-        }
+        success = 1;
+        format_string(g_cache_dir, MAX_PATH_LEN, "%s/cache", g_root_dir);
+        format_string(g_log_dir, MAX_PATH_LEN, "%s/log", g_root_dir);
+
+        win32_code->wait_for_completion = win32_wait_for_completion;
+        win32_code->calender_time_to_time = win32_calender_time_to_time;
+        win32_code->copy_directory = win32_copy_directory;
+        win32_code->create_directory = win32_create_directory;
+        win32_code->delete_directory = win32_delete_directory;
+        win32_code->copy_file = win32_copy_file;
+        win32_code->delete_file = win32_delete_file;
+        win32_code->directory_exists = win32_directory_exists;
+        win32_code->rename_directory = win32_rename_directory;
+        win32_code->sleep = win32_sleep;
     }
     return success;
 }

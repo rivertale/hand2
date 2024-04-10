@@ -174,26 +174,23 @@ end_curl_group(CurlGroup *group)
     return success;
 }
 
-static int
+static void
 format_github_header(char *buffer, size_t max_len, char *github_token)
 {
-    int result = format_string(buffer, max_len,
-                               "Accept: application/vnd.github+json"   "\r\n"
-                               "Authorization: Bearer %s"              "\r\n"
-                               "X-GitHub-Api-Version: 2022-11-28"      "\r\n"
-                               "User-Agent: hand",
-                               github_token);
-    return result;
+    format_string(buffer, max_len,
+                  "Accept: application/vnd.github+json"   "\r\n"
+                  "Authorization: Bearer %s"              "\r\n"
+                  "X-GitHub-Api-Version: 2022-11-28"      "\r\n"
+                  "User-Agent: hand",
+                  github_token);
 }
 
 static void
 assign_github_get(CurlGroup *group, int index, char *url, char *github_token)
 {
     static char header[MAX_REST_HEADER_LEN];
-    if(format_github_header(header, MAX_REST_HEADER_LEN, github_token))
-    {
-        assign_work(group, index, url, header, 0, 0);
-    }
+    format_github_header(header, MAX_REST_HEADER_LEN, github_token);
+    assign_work(group, index, url, header, 0, 0);
 }
 
 static void
@@ -202,10 +199,8 @@ assign_github_post_like(CurlGroup *group, int index, char *url, char *github_tok
 {
     assert(post_type);
     static char header[MAX_REST_HEADER_LEN];
-    if(format_github_header(header, MAX_REST_HEADER_LEN, github_token))
-    {
-        assign_work(group, index, url, header, post_type, post_data);
-    }
+    format_github_header(header, MAX_REST_HEADER_LEN, github_token);
+    assign_work(group, index, url, header, post_type, post_data);
 }
 
 static char *
@@ -216,39 +211,25 @@ get_sheet_header(void)
     return result;
 }
 
-static int
+static void
 format_sheet_url(char *buffer, size_t max_len, char *url, char *google_token)
 {
-    int result = 0;
     // NOTE: we do not escape the url
-    size_t url_len = string_len(url);
-    size_t prefix_len = 5; // NOTE: "?key=" or "&key="
-    size_t token_len = string_len(google_token);
-    if(url_len + prefix_len + token_len < max_len)
+    int has_query = 0;
+    for(char *c = url; *c; ++c)
     {
-        result = 1;
-        int has_query = 0;
-        for(char *c = url; *c; ++c)
-        {
-            if(*c == '?')
-                has_query = 1;
-        }
-        copy_memory(buffer,                                    url,                           url_len);
-        copy_memory(buffer + url_len,                          has_query ? "&key=" : "?key=", prefix_len);
-        copy_memory(buffer + url_len + prefix_len,             google_token,                  token_len);
-        copy_memory(buffer + url_len + prefix_len + token_len, "\0",                          1);
+        if(*c == '?')
+            has_query = 1;
     }
-    return result;
+    format_string(buffer, max_len, "%s%ckey=%s", url, has_query ? '&' : '?', google_token);
 }
 
 static void
 assign_sheet_get(CurlGroup *group, int index, char *url, char *google_token)
 {
     static char full_url[MAX_URL_LEN];
-    if(format_sheet_url(full_url, MAX_URL_LEN, url, google_token))
-    {
-        assign_work(group, index, full_url, get_sheet_header(), 0, 0);
-    }
+    format_sheet_url(full_url, MAX_URL_LEN, url, google_token);
+    assign_work(group, index, full_url, get_sheet_header(), 0, 0);
 }
 
 static char *
@@ -262,13 +243,12 @@ github_organization_exists(char *github_token, char *organization)
 {
     int result = 0;
     static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s", organization))
-    {
-        CurlGroup group = begin_curl_group(1);
-        assign_github_get(&group, 0, url, github_token);
-        complete_all_works(&group);
-        result = end_curl_group(&group);
-    }
+    format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s", organization);
+
+    CurlGroup group = begin_curl_group(1);
+    assign_github_get(&group, 0, url, github_token);
+    complete_all_works(&group);
+    result = end_curl_group(&group);
     return result;
 }
 
@@ -277,13 +257,12 @@ github_team_exists(char *github_token, char *organization, char *team)
 {
     int result = 0;
     static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s", organization, team))
-    {
-        CurlGroup group = begin_curl_group(1);
-        assign_github_get(&group, 0, url, github_token);
-        complete_all_works(&group);
-        result = end_curl_group(&group);
-    }
+    format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s", organization, team);
+
+    CurlGroup group = begin_curl_group(1);
+    assign_github_get(&group, 0, url, github_token);
+    complete_all_works(&group);
+    result = end_curl_group(&group);
     return result;
 }
 
@@ -292,13 +271,12 @@ github_repository_exists(char *github_token, char *organization, char *repo)
 {
     int result = 0;
     static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s", organization, repo))
-    {
-        CurlGroup group = begin_curl_group(1);
-        assign_github_get(&group, 0, url, github_token);
-        complete_all_works(&group);
-        result = end_curl_group(&group);
-    }
+    format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s", organization, repo);
+
+    CurlGroup group = begin_curl_group(1);
+    assign_github_get(&group, 0, url, github_token);
+    complete_all_works(&group);
+    result = end_curl_group(&group);
     return result;
 }
 
@@ -312,29 +290,28 @@ retrieve_username(char *out, size_t max_size, char *github_token)
 
     int result = 0;
     static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/user"))
+    format_string(url, MAX_URL_LEN, "https://api.github.com/user");
+
+    CurlGroup group = begin_curl_group(1);
+    assign_github_get(&group, 0, url, github_token);
+    complete_all_works(&group);
+
+    char *response = get_response(&group, 0);
+    cJSON *json = cJSON_Parse(response);
+    if(!json)
+        write_error("JSON corrupted: %s", response);
+
+    cJSON *username = cJSON_GetObjectItemCaseSensitive(json, "login");
+    if(cJSON_IsString(username))
     {
-        CurlGroup group = begin_curl_group(1);
-        assign_github_get(&group, 0, url, github_token);
-        complete_all_works(&group);
-
-        char *response = get_response(&group, 0);
-        cJSON *json = cJSON_Parse(response);
-        if(!json)
-            write_error("JSON corrupted: %s", response);
-
-        cJSON *username = cJSON_GetObjectItemCaseSensitive(json, "login");
-        if(cJSON_IsString(username))
+        size_t len = min(string_len(username->valuestring), max_size - 1);
+        if(out)
         {
-            size_t len = min(string_len(username->valuestring), max_size - 1);
-            if(out)
-            {
-                copy_memory(out, username->valuestring, len);
-                out[len] = 0;
-            }
+            copy_memory(out, username->valuestring, len);
+            out[len] = 0;
         }
-        result = end_curl_group(&group);
     }
+    result = end_curl_group(&group);
     return result;
 }
 
@@ -350,10 +327,8 @@ github_users_exist(int *out, StringArray *users, char *github_token)
         for(int i = 0; i < worker_count; ++i)
         {
             static char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/users/%s", users->elem[i]))
-            {
-                assign_github_get(&group, i, url, github_token);
-            }
+            format_string(url, MAX_URL_LEN, "https://api.github.com/users/%s", users->elem[i]);
+            assign_github_get(&group, i, url, github_token);
         }
         complete_all_works(&group);
 
@@ -386,11 +361,9 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
                     continue;
 
                 static char url[MAX_URL_LEN];
-                if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues?state=all&per_page=100&page=%d",
-                                 organization, repos->elem[at + i], page))
-                {
-                    assign_github_get(&group, i, url, github_token);
-                }
+                format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues?state=all&per_page=100&page=%d",
+                              organization, repos->elem[at + i], page);
+                assign_github_get(&group, i, url, github_token);
             }
             complete_all_works(&group);
 
@@ -441,10 +414,8 @@ retrieve_creation_times(time_t *out_times, StringArray *repos, char *github_toke
         for(int i = 0; i < worker_count; ++i)
         {
             static char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s", organization, repos->elem[at + i]))
-            {
-                assign_github_get(&group, i, url, github_token);
-            }
+            format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s", organization, repos->elem[at + i]);
+            assign_github_get(&group, i, url, github_token);
         }
         complete_all_works(&group);
 
@@ -478,10 +449,8 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
         for(int i = 0; i < worker_count; ++i)
         {
             static char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s", organization, repos->elem[at + i]))
-            {
-                assign_github_get(&group, i, url, github_token);
-            }
+            format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s", organization, repos->elem[at + i]);
+            assign_github_get(&group, i, url, github_token);
         }
         complete_all_works(&group);
 
@@ -527,11 +496,9 @@ retrieve_latest_commits(GitCommitHash *out_hash, StringArray *repos, StringArray
         for(int i = 0; i < worker_count; ++i)
         {
             static char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/branches/%s",
-                             organization, repos->elem[at + i], branches->elem[at + i]))
-            {
-                assign_github_get(&group, i, url, github_token);
-            }
+            format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/branches/%s",
+                          organization, repos->elem[at + i], branches->elem[at + i]);
+            assign_github_get(&group, i, url, github_token);
         }
         complete_all_works(&group);
 
@@ -590,12 +557,10 @@ retrieve_team_members(char *github_token, char *organization, char *team)
         CurlGroup group = begin_curl_group(worker_count);
         for(int i = 0; i < worker_count; ++i)
         {
-            char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/members?page=%d&per_page=100",
-                             organization, team, page))
-            {
-                assign_github_get(&group, i, url, github_token);
-            }
+            static char url[MAX_URL_LEN];
+            format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/members?page=%d&per_page=100",
+                          organization, team, page);
+            assign_github_get(&group, i, url, github_token);
             ++page;
         }
         complete_all_works(&group);
@@ -639,12 +604,10 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
         CurlGroup group = begin_curl_group(worker_count);
         for(int i = 0; i < worker_count; ++i)
         {
-            char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/invitations?page=%d&per_page=100",
-                             organization, team, page))
-            {
-                assign_github_get(&group, i, url, github_token);
-            }
+            static char url[MAX_URL_LEN];
+            format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/invitations?page=%d&per_page=100",
+                          organization, team, page);
+            assign_github_get(&group, i, url, github_token);
             ++page;
         }
         complete_all_works(&group);
@@ -694,12 +657,10 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
         CurlGroup group = begin_curl_group(worker_count);
         for(int i = 0; i < worker_count; ++i)
         {
-            char url[MAX_URL_LEN];
-            if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/repos?page=%d&per_page=100",
-                             organization, page))
-            {
-                assign_github_get(&group, i, url, github_token);
-            }
+            static char url[MAX_URL_LEN];
+            format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/repos?page=%d&per_page=100",
+                          organization, page);
+            assign_github_get(&group, i, url, github_token);
             ++page;
         }
         complete_all_works(&group);
@@ -768,11 +729,9 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                     continue;
 
                 static char url[MAX_URL_LEN];
-                if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/events?page=%d&per_page=100",
-                                 organization, repos->elem[at + i], page))
-                {
-                    assign_github_get(&group, i, url, github_token);
-                }
+                format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/events?page=%d&per_page=100",
+                              organization, repos->elem[at + i], page);
+                assign_github_get(&group, i, url, github_token);
             }
             complete_all_works(&group);
 
@@ -783,67 +742,66 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
 
                 int event_count_in_page = 0;
                 static char req_ref[256];
-                if(format_string(req_ref, sizeof(req_ref), "refs/heads/%s", req_branches->elem[at + i]))
-                {
-                    char *response = get_response(&group, i);
-                    cJSON *json = cJSON_Parse(response);
-                    if(!json)
-                        write_error("JSON corrupted: %s", response);
+                format_string(req_ref, sizeof(req_ref), "refs/heads/%s", req_branches->elem[at + i]);
 
-                    cJSON *event = 0;
-                    cJSON_ArrayForEach(event, json)
+                char *response = get_response(&group, i);
+                cJSON *json = cJSON_Parse(response);
+                if(!json)
+                    write_error("JSON corrupted: %s", response);
+
+                cJSON *event = 0;
+                cJSON_ArrayForEach(event, json)
+                {
+                    ++event_count_in_page;
+                    cJSON *event_type = cJSON_GetObjectItemCaseSensitive(event, "type");
+                    cJSON *created_at = cJSON_GetObjectItemCaseSensitive(event, "created_at");
+                    cJSON *payload = cJSON_GetObjectItemCaseSensitive(event, "payload");
+                    cJSON *push_hash = cJSON_GetObjectItemCaseSensitive(payload, "head");
+                    cJSON *ref_type = cJSON_GetObjectItemCaseSensitive(payload, "ref_type");
+                    cJSON *ref = cJSON_GetObjectItemCaseSensitive(payload, "ref");
+                    cJSON *default_branch = cJSON_GetObjectItemCaseSensitive(payload, "master_branch");
+                    if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "PushEvent") &&
+                       cJSON_IsString(created_at) && cJSON_IsString(push_hash) &&
+                       cJSON_IsString(ref) && compare_string(ref->valuestring, req_ref))
                     {
-                        ++event_count_in_page;
-                        cJSON *event_type = cJSON_GetObjectItemCaseSensitive(event, "type");
-                        cJSON *created_at = cJSON_GetObjectItemCaseSensitive(event, "created_at");
-                        cJSON *payload = cJSON_GetObjectItemCaseSensitive(event, "payload");
-                        cJSON *push_hash = cJSON_GetObjectItemCaseSensitive(payload, "head");
-                        cJSON *ref_type = cJSON_GetObjectItemCaseSensitive(payload, "ref_type");
-                        cJSON *ref = cJSON_GetObjectItemCaseSensitive(payload, "ref");
-                        cJSON *default_branch = cJSON_GetObjectItemCaseSensitive(payload, "master_branch");
-                        if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "PushEvent") &&
-                           cJSON_IsString(created_at) && cJSON_IsString(push_hash) &&
-                           cJSON_IsString(ref) && compare_string(ref->valuestring, req_ref))
+                        time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
+                        if(push_time < cutoff)
                         {
-                            time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
-                            if(push_time < cutoff)
-                            {
-                                worker_done[i] = 1;
-                                out_push_time[at + i] = push_time;
-                                out_hash[at + i] = init_git_commit_hash(push_hash->valuestring);
-                                break;
-                            }
+                            worker_done[i] = 1;
+                            out_push_time[at + i] = push_time;
+                            out_hash[at + i] = init_git_commit_hash(push_hash->valuestring);
+                            break;
                         }
-                        else if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "CreateEvent") &&
-                                cJSON_IsString(created_at) &&
-                                cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "branch") &&
-                                // NOTE: weird github api, create event's ref is 'branch',
-                                // while push event's ref is 'refs/heads/branch'
-                                cJSON_IsString(ref) && compare_string(ref->valuestring, req_branches->elem[at + i]))
+                    }
+                    else if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "CreateEvent") &&
+                            cJSON_IsString(created_at) &&
+                            cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "branch") &&
+                            // NOTE: weird github api, create event's ref is 'branch',
+                            // while push event's ref is 'refs/heads/branch'
+                            cJSON_IsString(ref) && compare_string(ref->valuestring, req_branches->elem[at + i]))
+                    {
+                        time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
+                        if(push_time < cutoff)
                         {
-                            time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
-                            if(push_time < cutoff)
-                            {
-                                worker_done[i] = 1;
-                                out_push_time[at + i] = push_time;
-                                out_hash[at + i] = last_resort_hashes[at + i];
-                                break;
-                            }
+                            worker_done[i] = 1;
+                            out_push_time[at + i] = push_time;
+                            out_hash[at + i] = last_resort_hashes[at + i];
+                            break;
                         }
-                        else if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "CreateEvent") &&
-                                cJSON_IsString(created_at) &&
-                                cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "repository") &&
-                                cJSON_IsString(default_branch) &&
-                                compare_string(default_branch->valuestring, req_branches->elem[at + i]))
+                    }
+                    else if(cJSON_IsString(event_type) && compare_string(event_type->valuestring, "CreateEvent") &&
+                            cJSON_IsString(created_at) &&
+                            cJSON_IsString(ref_type) && compare_string(ref_type->valuestring, "repository") &&
+                            cJSON_IsString(default_branch) &&
+                            compare_string(default_branch->valuestring, req_branches->elem[at + i]))
+                    {
+                        time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
+                        if(push_time < cutoff)
                         {
-                            time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
-                            if(push_time < cutoff)
-                            {
-                                worker_done[i] = 1;
-                                out_push_time[at + i] = push_time;
-                                out_hash[at + i] = last_resort_hashes[at + i];
-                                break;
-                            }
+                            worker_done[i] = 1;
+                            out_push_time[at + i] = push_time;
+                            out_hash[at + i] = last_resort_hashes[at + i];
+                            break;
                         }
                     }
                 }
@@ -870,15 +828,14 @@ static int
 invite_user_to_team(char *github_token, char *username, char *organization, char *team)
 {
     int result = 0;
-    char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/memberships/%s",
-                     organization, team, username))
-    {
-        CurlGroup group = begin_curl_group(1);
-        assign_github_post_like(&group, 0, url, github_token, "PUT", "{\"role\":\"member\"}");
-        complete_all_works(&group);
-        result = end_curl_group(&group);
-    }
+    static char url[MAX_URL_LEN];
+    format_string(url, MAX_URL_LEN, "https://api.github.com/orgs/%s/teams/%s/memberships/%s",
+                  organization, team, username);
+
+    CurlGroup group = begin_curl_group(1);
+    assign_github_post_like(&group, 0, url, github_token, "PUT", "{\"role\":\"member\"}");
+    complete_all_works(&group);
+    result = end_curl_group(&group);
     return result;
 }
 
@@ -887,26 +844,23 @@ create_issue(char *github_token, char *organization, char *repo, char *title, ch
 {
     int result = 0;
     static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues", organization, repo))
-    {
-        GrowableBuffer escaped_body = escape_string(body);
-        GrowableBuffer post_data = allocate_growable_buffer();
-        write_constant_string(&post_data, "{\"title\":\"");
-        write_growable_buffer(&post_data, title, string_len(title));
-        write_constant_string(&post_data, "\",\"body\":\"");
-        write_growable_buffer(&post_data, escaped_body.memory, escaped_body.used);
-        write_constant_string(&post_data, "\",\"state\":\"open\"}");
+    format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues", organization, repo);
 
-        CurlGroup group = begin_curl_group(1);
-        assign_github_post_like(&group, 0, url, github_token, "POST", post_data.memory);
-        complete_all_works(&group);
-        if(end_curl_group(&group))
-        {
-            result = 1;
-        }
-        free_growable_buffer(&post_data);
-        free_growable_buffer(&escaped_body);
-    }
+    GrowableBuffer escaped_body = escape_string(body);
+    GrowableBuffer post_data = allocate_growable_buffer();
+    write_constant_string(&post_data, "{\"title\":\"");
+    write_growable_buffer(&post_data, title, string_len(title));
+    write_constant_string(&post_data, "\",\"body\":\"");
+    write_growable_buffer(&post_data, escaped_body.memory, escaped_body.used);
+    write_constant_string(&post_data, "\",\"state\":\"open\"}");
+
+    CurlGroup group = begin_curl_group(1);
+    assign_github_post_like(&group, 0, url, github_token, "POST", post_data.memory);
+    complete_all_works(&group);
+    result = end_curl_group(&group);
+
+    free_growable_buffer(&post_data);
+    free_growable_buffer(&escaped_body);
     return result;
 }
 
@@ -915,26 +869,23 @@ edit_issue(char *github_token, char *organization, char *repo, char *title, char
 {
     int result = 0;
     static char url[MAX_URL_LEN];
-    if(format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues/%d", organization, repo, issue_number))
-    {
-        GrowableBuffer escaped_body = escape_string(body);
-        GrowableBuffer post_data = allocate_growable_buffer();
-        write_constant_string(&post_data, "{\"title\":\"");
-        write_growable_buffer(&post_data, title, string_len(title));
-        write_constant_string(&post_data, "\",\"body\":\"");
-        write_growable_buffer(&post_data, escaped_body.memory, escaped_body.used);
-        write_constant_string(&post_data, "\",\"state\":\"open\"}");
+    format_string(url, MAX_URL_LEN, "https://api.github.com/repos/%s/%s/issues/%d", organization, repo, issue_number);
 
-        CurlGroup group = begin_curl_group(1);
-        assign_github_post_like(&group, 0, url, github_token, "PATCH", post_data.memory);
-        complete_all_works(&group);
-        if(end_curl_group(&group))
-        {
-            result = 1;
-        }
-        free_growable_buffer(&post_data);
-        free_growable_buffer(&escaped_body);
-    }
+    GrowableBuffer escaped_body = escape_string(body);
+    GrowableBuffer post_data = allocate_growable_buffer();
+    write_constant_string(&post_data, "{\"title\":\"");
+    write_growable_buffer(&post_data, title, string_len(title));
+    write_constant_string(&post_data, "\",\"body\":\"");
+    write_growable_buffer(&post_data, escaped_body.memory, escaped_body.used);
+    write_constant_string(&post_data, "\",\"state\":\"open\"}");
+
+    CurlGroup group = begin_curl_group(1);
+    assign_github_post_like(&group, 0, url, github_token, "PATCH", post_data.memory);
+    complete_all_works(&group);
+    result = end_curl_group(&group);
+
+    free_growable_buffer(&post_data);
+    free_growable_buffer(&escaped_body);
     return result;
 }
 
@@ -956,28 +907,27 @@ retrieve_spreadsheet(StringArray *out, char *google_token, char *spreadsheet_id)
     int result = 0;
     static char url[MAX_URL_LEN];
     *out = allocate_string_array();
-    if(format_string(url, MAX_URL_LEN, "https://sheets.googleapis.com/v4/spreadsheets/%s", spreadsheet_id))
+    format_string(url, MAX_URL_LEN, "https://sheets.googleapis.com/v4/spreadsheets/%s", spreadsheet_id);
+
+    CurlGroup group = begin_curl_group(1);
+    assign_sheet_get(&group, 0, url, google_token);
+    complete_all_works(&group);
+
+    char *response = get_response(&group, 0);
+    cJSON *json = cJSON_Parse(response);
+    if(!json)
+        write_error("JSON corrupted: %s", response);
+
+    cJSON *sheets = cJSON_GetObjectItemCaseSensitive(json, "sheets");
+    cJSON *sheet = 0;
+    cJSON_ArrayForEach(sheet, sheets)
     {
-        CurlGroup group = begin_curl_group(1);
-        assign_sheet_get(&group, 0, url, google_token);
-        complete_all_works(&group);
-
-        char *response = get_response(&group, 0);
-        cJSON *json = cJSON_Parse(response);
-        if(!json)
-            write_error("JSON corrupted: %s", response);
-
-        cJSON *sheets = cJSON_GetObjectItemCaseSensitive(json, "sheets");
-        cJSON *sheet = 0;
-        cJSON_ArrayForEach(sheet, sheets)
-        {
-            cJSON *properties = cJSON_GetObjectItemCaseSensitive(sheet, "properties");
-            cJSON *title = cJSON_GetObjectItemCaseSensitive(properties, "title");
-            if(cJSON_IsString(title))
-                append_string_array(out, title->valuestring);
-        }
-        result = end_curl_group(&group);
+        cJSON *properties = cJSON_GetObjectItemCaseSensitive(sheet, "properties");
+        cJSON *title = cJSON_GetObjectItemCaseSensitive(properties, "title");
+        if(cJSON_IsString(title))
+            append_string_array(out, title->valuestring);
     }
+    result = end_curl_group(&group);
     return result;
 }
 
@@ -1004,66 +954,66 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *name)
         }
     }
 
-    if(format_string(url, MAX_URL_LEN,
-                     "https://sheets.googleapis.com/v4/spreadsheets/%s/values/'%s'", spreadsheet, escaped_name.memory))
+    format_string(url, MAX_URL_LEN, "https://sheets.googleapis.com/v4/spreadsheets/%s/values/'%s'",
+                  spreadsheet, escaped_name.memory);
+
+    CurlGroup group = begin_curl_group(1);
+    assign_sheet_get(&group, 0, url, google_token);
+    complete_all_works(&group);
+
+    char *response = get_response(&group, 0);
+    cJSON *json = cJSON_Parse(response);
+    if(!json)
+        write_error("JSON corrupted: %s", response);
+
+    cJSON *row = 0;
+    cJSON *rows = cJSON_GetObjectItemCaseSensitive(json, "values");
+    int width = 0;
+    int height = cJSON_GetArraySize(rows) - 1;
+    cJSON_ArrayForEach(row, rows)
     {
-        CurlGroup group = begin_curl_group(1);
-        assign_sheet_get(&group, 0, url, google_token);
-        complete_all_works(&group);
+        int row_width = cJSON_GetArraySize(row);
+        width = max(width, row_width);
+    }
 
-        char *response = get_response(&group, 0);
-        cJSON *json = cJSON_Parse(response);
-        if(!json)
-            write_error("JSON corrupted: %s", response);
-
-        cJSON *row = 0;
-        cJSON *rows = cJSON_GetObjectItemCaseSensitive(json, "values");
-        int width = 0;
-        int height = cJSON_GetArraySize(rows) - 1;
+    if(width > 0 && height > 0)
+    {
+        result = allocate_sheet(width, height);
+        // NOTE: fill all string first to make sure the pointers don't change
         cJSON_ArrayForEach(row, rows)
         {
-            int row_width = cJSON_GetArraySize(row);
-            width = max(width, row_width);
+            cJSON *cell = 0;
+            cJSON_ArrayForEach(cell, row)
+            {
+                if(cJSON_IsString(cell))
+                    write_growable_buffer(&result.content, cell->valuestring, string_len(cell->valuestring));
+
+                write_constant_string(&result.content, "\0");
+            }
+
+            for(int x = cJSON_GetArraySize(row); x < width; ++x)
+                write_constant_string(&result.content, "\0");
         }
 
-        if(width > 0 && height > 0)
+        char *at = result.content.memory;
+        for(int i = 0; i < width; ++i)
         {
-            result = allocate_sheet(width, height);
-            // NOTE: fill all string first to make sure the pointers don't change
-            cJSON_ArrayForEach(row, rows)
-            {
-                cJSON *cell = 0;
-                cJSON_ArrayForEach(cell, row)
-                {
-                    if(cJSON_IsString(cell))
-                        write_growable_buffer(&result.content, cell->valuestring, string_len(cell->valuestring));
-
-                    write_constant_string(&result.content, "\0");
-                }
-
-                for(int x = cJSON_GetArraySize(row); x < width; ++x)
-                    write_constant_string(&result.content, "\0");
-            }
-
-            char *at = result.content.memory;
-            for(int i = 0; i < width; ++i)
-            {
-                result.labels[i] = at;
-                at += string_len(at) + 1;
-            }
-
-            for(int i = 0; i < width * height; ++i)
-            {
-                result.values[i] = at;
-                at += string_len(at) + 1;
-            }
+            result.labels[i] = at;
+            at += string_len(at) + 1;
         }
-        else
+
+        for(int i = 0; i < width * height; ++i)
         {
-            write_log("sheet '%s:%s' is empty", spreadsheet, name);
+            result.values[i] = at;
+            at += string_len(at) + 1;
         }
-        end_curl_group(&group);
     }
+    else
+    {
+        write_log("sheet '%s:%s' is empty", spreadsheet, name);
+    }
+    end_curl_group(&group);
+
     free_growable_buffer(&escaped_name);
     return result;
 }

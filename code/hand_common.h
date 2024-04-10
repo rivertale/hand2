@@ -189,11 +189,9 @@ free_memory(void *ptr)
         free(ptr);
 }
 
-static int
+static void
 format_string(char *buffer, size_t size, char *format, ...)
 {
-    int result = 0;
-
     va_list arg_list;
     va_start(arg_list, format);
     int required_size = vsnprintf(buffer, size, format, arg_list);
@@ -201,15 +199,12 @@ format_string(char *buffer, size_t size, char *format, ...)
     {
         if(size >= 1)
             *buffer = 0;
-        write_log("vsnprintf error: %d", required_size);
+        write_error("Fatal: vsnprintf error: %d", required_size);
+        exit(0);
     }
     else if((size_t)required_size >= size)
     {
-        write_log("buffer too short: %s", buffer);
+        write_log("Fatal: buffer too short: %s", buffer);
+        exit(0);
     }
-    else
-    {
-        result = 1;
-    }
-    return result;
 }
