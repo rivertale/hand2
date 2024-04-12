@@ -91,4 +91,11 @@ then
     echo "\n"
 fi
 
+# docker script
+echo "[copying docker script]"
+mkdir -p ./docker
+cp -v -f -t ./docker ../docker/Dockerfile 2>/dev/null
+cp -v -f -t ./docker ../docker/run.sh 2>/dev/null
+echo "\n"
+
 rm -f ./*.o 2>/dev/null

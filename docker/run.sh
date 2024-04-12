@@ -18,13 +18,20 @@ do
     args="${args} \"${arg}\""
 done
 
-# run hand2
+# set working directory
 cd $(dirname "$0")
-cd ..
+if [ -d "../build" ];
+then
+    cd ../build
+else
+    cd ..
+fi
+
+# run hand2
 docker run --rm \
     --volume $(pwd):$(pwd) \
     --volume /var/run/docker.sock:/var/run/docker.sock \
-    --workdir $(pwd)/build \
+    --workdir $(pwd) \
     ${image_name} sh -c "
         groupadd --gid $(id -g) ghand
         useradd --uid $(id -u) --gid $(id -g) uhand
