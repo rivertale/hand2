@@ -5,7 +5,7 @@ set use_curl=false
 set use_tar=false
 set all_dependency_exist=true
 
-if not exist %~dp0deps mkdir %~dp0deps
+if not exist "%~dp0deps" mkdir "%~dp0deps"
 set cmake_dir=%~dp0deps\cmake-3.29.0-rc1-windows-x86_64
 set nasm_dir=%~dp0deps\nasm-2.16.01
 set perl_dir=%~dp0deps\strawberry-perl-5.38.0.1-64bit-portable
@@ -238,7 +238,7 @@ set CFLAGS=/nologo /utf-8 /DCURL_CA_FALLBACK=1
 cd "%curl_dir%\winbuild"                                                    1>"%~dp0log\curl-1.log" 2>&1 && ^
 REM the first clean without previous build will fail
 nmake /f Makefile.vc mode=dll clean                                         1>"%~dp0log\curl-2.log" 2>&1
-nmake /f Makefile.vc mode=dll WITH_PREFIX="%~dp0deps\curl" WITH_SSL=static SSL_PATH="%~dp0deps\ssl" GEN_PDB=no DEBUG=no MACHINE=x64 RTLIBCFG=static 1>"%~dp0log\curl-3.log" 2>&1
+nmake /f Makefile.vc mode=dll WITH_PREFIX=".\deps\curl" WITH_SSL=static SSL_PATH="%~dp0deps\ssl" GEN_PDB=no DEBUG=no MACHINE=x64 RTLIBCFG=static 1>"%~dp0log\curl-3.log" 2>&1
 endlocal
 
 if %ERRORLEVEL% neq 0 (
@@ -252,8 +252,8 @@ echo Compiling libgit2...
 ( if exist "%git2_dir%\build" rmdir /S /Q "%git2_dir%\build" )              1>"%~dp0log\git-1.log" 2>&1 && ^
 mkdir "%git2_dir%\build"                                                    1>"%~dp0log\git-2.log" 2>&1 && ^
 cd "%git2_dir%\build"                                                       1>"%~dp0log\git-3.log" 2>&1 && ^
-cmake -A x64 -DLIBGIT2_SYSTEM_LIBS=secur32.lib;crypt32.lib -DCMAKE_C_FLAGS="/utf-8 /I \"%~dp0deps\ssl\include\"" -DCMAKE_INSTALL_PREFIX="%~dp0deps\git" -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DSTATIC_CRT=ON -DBUILD_TESTS=OFF -DBUILD_CLI=OFF -DUSE_HTTPS="OpenSSL" -DOPENSSL_ROOT_DIR="%~dp0deps\ssl" -DOPENSSL_INCLUDE_DIR="%~dp0deps\ssl\include" %git2_dir% 1>"%~dp0log\git-4.log" 2>&1 && ^
-cmake --build %git2_dir%\build --config Release --target install -- -v:n    1>"%~dp0log\git-5.log" 2>&1
+cmake -A x64 -DLIBGIT2_SYSTEM_LIBS=secur32.lib;crypt32.lib -DCMAKE_C_FLAGS="/utf-8 /I \"%~dp0deps\ssl\include\"" -DCMAKE_INSTALL_PREFIX="%~dp0deps\git" -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DSTATIC_CRT=ON -DBUILD_TESTS=OFF -DBUILD_CLI=OFF -DUSE_HTTPS="OpenSSL" -DOPENSSL_ROOT_DIR="%~dp0deps\ssl" -DOPENSSL_INCLUDE_DIR="%~dp0deps\ssl\include" "%git2_dir%" 1>"%~dp0log\git-4.log" 2>&1 && ^
+cmake --build "%git2_dir%\build" --config Release --target install -- -v:n  1>"%~dp0log\git-5.log" 2>&1
 
 if %ERRORLEVEL% neq 0 (
     echo failed

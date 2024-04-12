@@ -5,14 +5,14 @@ library_dir="hand/code/lib_linux"
 log_dir="hand/linux_external/log"
 
 # build docker
-cd $(dirname "$0")
-docker build --no-cache -t ${image_name} .
+cd "$(dirname "$0")"
+docker build --no-cache -t "${image_name}" .
 if [ $? -eq 0 ]; then echo "Output docker image: ${image_name}"; fi
 
 # build external library
-cd $(dirname "$0")
+cd "$(dirname "$0")"
 cd ..
-docker run --rm -u $(id -u):$(id -g) -v $(pwd):/hand ${image_name} sh -c "
+docker run --rm --user $(id -u):$(id -g) --volume "$(pwd):/hand" "${image_name}" sh -c "
     echo \"[Copying enviroment logs]\"
     mkdir -p /${log_dir}
     rm -f /${log_dir}/*.log
@@ -63,4 +63,4 @@ docker run --rm -u $(id -u):$(id -g) -v $(pwd):/hand ${image_name} sh -c "
 "
 
 echo "[Removing docker image]"
-docker image rm ${image_name}
+docker image rm "${image_name}"

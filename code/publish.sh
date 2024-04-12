@@ -4,13 +4,13 @@ cd ../publish
 
 # usage
 version="$1"
-if [ -z ${version} ]
+if [ -z "${version}" ]
 then
     echo "usage: publish.sh version"
 else
     abort_archive=0
     rm -r ./hand2 2>/dev/null
-    rm -f ./hand2-v${version}.zip 2>/dev/null
+    rm -f "./hand2-v${version}.zip" 2>/dev/null
     mkdir -p hand2
     cp ../build/hand.exe hand2/
     if [ $? -ne 0 ]
@@ -40,9 +40,9 @@ else
     which zip 1>/dev/null 2>/dev/null
     if [ $? -eq 0 ]
     then
-        zip -r hand2-v${version}.zip hand2
+        zip -r "hand2-v${version}.zip" hand2
     else
-        tar -cf hand2-v${version}.zip hand2
+        tar -cf "hand2-v${version}.zip" hand2
     fi
     
     if [ $? -eq 0 ]; then echo "Output file: hand2-v${version}.zip"; fi
