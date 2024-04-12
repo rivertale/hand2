@@ -53,12 +53,12 @@ then
     echo "[no compiler found]"
     echo "Available compilers are: any, all, msvc, gcc, clang"
     echo "Default compiler is: any"
-    echo "\n"
+    echo ""
 else
     echo "[unknown compiler ${compiler}]"
     echo "Available compilers are: any, all, msvc, gcc, clang"
     echo "Default compiler is: any"
-    echo "\n"
+    echo ""
 fi
 
 # gcc
@@ -73,7 +73,7 @@ then
         gcc ${gcc_compiler_flags} -o ${program_name}${gcc_suffix} ${linux_entry_file} ${musl_obj_files} ${gcc_linker_flags}
         if [ $? -eq 0 ]; then echo "Output binary: ${program_name}${gcc_suffix}"; fi
     fi
-    echo "\n"
+    echo ""
 fi
 
 # clang
@@ -88,7 +88,7 @@ then
         clang ${clang_compiler_flags} -o ${program_name}${clang_suffix} ${linux_entry_file} ${musl_obj_files} ${clang_linker_flags}
         if [ $? -eq 0 ]; then echo "Output binary: ${program_name}${clang_suffix}"; fi
     fi
-    echo "\n"
+    echo ""
 fi
 
 # docker script
@@ -96,6 +96,6 @@ echo "[copying docker script]"
 mkdir -p ./docker
 cp -v -f -t ./docker ../docker/Dockerfile 2>/dev/null
 cp -v -f -t ./docker ../docker/run.sh 2>/dev/null
-echo "\n"
+echo ""
 
 rm -f ./*.o 2>/dev/null
