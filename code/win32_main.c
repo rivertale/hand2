@@ -325,6 +325,22 @@ win32_sleep(unsigned int milliseconds)
     Sleep(milliseconds);
 }
 
+static FILE *
+win32_fopen(char *path, char *mode)
+{
+    FILE *file = 0;
+    static wchar_t wide_mode[32];
+    static wchar_t wide_path[MAX_PATH_LEN];
+    if(MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, MAX_PATH_LEN) &&
+       MultiByteToWideChar(CP_UTF8, 0, mode, -1, wide_mode, sizeof(wide_mode) / sizeof(*wide_mode)))
+    {
+        file = _wfopen(wide_path, wide_mode);
+        if(!file)
+            write_log("_wfopen failed: path=%s, mode=%s", path);
+    }
+    return file;
+}
+
 static int
 win32_get_root_dir(char *out_buffer, size_t size)
 {
@@ -507,7 +523,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
 
     if(stdout_path)
     {
-        FILE *file = fopen(stdout_path, "wb");
+        FILE *file = platform.fopen(stdout_path, "wb");
         if(file)
         {
             fwrite(stdout_content.memory, stdout_content.used, 1, file);
@@ -516,7 +532,7 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
     }
     if(stderr_path)
     {
-        FILE *file = fopen(stderr_path, "wb");
+        FILE *file = platform.fopen(stderr_path, "wb");
         if(file)
         {
             fwrite(stderr_content.memory, stderr_content.used, 1, file);
@@ -776,6 +792,7 @@ win32_init_platform(Platform *win32_code)
         win32_code->directory_exists = win32_directory_exists;
         win32_code->rename_directory = win32_rename_directory;
         win32_code->sleep = win32_sleep;
+        win32_code->fopen = win32_fopen;
     }
     return success;
 }

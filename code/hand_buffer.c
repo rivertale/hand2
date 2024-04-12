@@ -61,7 +61,7 @@ static GrowableBuffer
 read_entire_file(char *path)
 {
     GrowableBuffer result = allocate_growable_buffer();
-    FILE *file = fopen(path, "rb");
+    FILE *file = platform.fopen(path, "rb");
     if(file)
     {
         fseek(file, 0, SEEK_END);

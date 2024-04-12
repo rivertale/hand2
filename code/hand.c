@@ -238,7 +238,7 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
               t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
               t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
 
-    FILE *out_file = fopen(out_path, "wb");
+    FILE *out_file = platform.fopen(out_path, "wb");
     if(!out_file)
     {
         write_error("Unable to create '%s'", out_path);
@@ -464,7 +464,7 @@ grade_homework(char *title, char *out_path,
     format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports",feedback_dir, title);
     format_string(report_template_path, MAX_PATH_LEN, "%s/report_template_%s.md", feedback_dir, title);
 
-    FILE *out_file = fopen(out_path, "wb");
+    FILE *out_file = platform.fopen(out_path, "wb");
     if(!out_file)
     {
         write_error("Unable to create '%s'", out_path);
@@ -581,7 +581,7 @@ grade_homework(char *title, char *out_path,
                 free_growable_buffer(&score_content);
 
                 GrowableBuffer report = format_report_by_file_replacement(&report_template, works[index].work_dir);
-                FILE *report_file = fopen(report_path, "wb");
+                FILE *report_file = platform.fopen(report_path, "wb");
                 if(report_file)
                 {
                     fwrite(report.memory, report.used, 1, report_file);
@@ -858,7 +858,7 @@ run_hand(int arg_count, char **args)
         else if(compare_string(option, "--log"))
         {
             platform.create_directory(g_log_dir);
-            g_log_file = fopen(log_path, "wb");
+            g_log_file = platform.fopen(log_path, "wb");
         }
         else
         {

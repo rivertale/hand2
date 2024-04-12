@@ -208,7 +208,7 @@ load_config(Config *config, char *path)
     clear_memory(config, sizeof(*config));
 
     int success = 1;
-    FILE *file = fopen(path, "rb");
+    FILE *file = platform.fopen(path, "rb");
     if(file)
     {
         fseek(file, 0, SEEK_END);
@@ -271,15 +271,15 @@ ensure_config_exists(char *path)
 {
     int config_exists = 0;
 
-    FILE *config_file = fopen(path, "rb");
-    if(config_file)
+    FILE *file = platform.fopen(path, "rb");
+    if(file)
     {
         config_exists = 1;
-        fclose(config_file);
+        fclose(file);
     }
     else
     {
-        FILE *file = fopen(path, "wb");
+        file = platform.fopen(path, "wb");
         if(file)
         {
             size_t size = sizeof(g_default_config) - 1;

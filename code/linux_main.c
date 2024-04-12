@@ -61,13 +61,8 @@ static int
 linux_copy_file(char *target_path, char *source_path)
 {
     int result = 0;
-    FILE *source_file = fopen(source_path, "rb");
-    FILE *target_file = fopen(target_path, "wb");
-    if(!source_file)
-        write_log("fopen failed: %s", source_path);
-    if(!target_file)
-        write_log("fopen failed: %s", target_path);
-
+    FILE *source_file = platform.fopen(source_path, "rb");
+    FILE *target_file = platform.fopen(target_path, "wb");
     if(source_file && target_file)
     {
         fseek(source_file, 0, SEEK_END);
@@ -226,6 +221,15 @@ linux_sleep(unsigned int milliseconds)
         write_log("usleep errno=%d, ms=%d", errno, milliseconds * 1000);
 }
 
+static FILE *
+linux_fopen(char *path, char *mode)
+{
+    FILE *file = fopen(path, mode);
+    if(!file)
+        write_log("fopen failed: path=%s, mode=%s", path, mode);
+    return file;
+}
+
 static int
 linux_get_root_dir(char *out_buffer, size_t size)
 {
@@ -377,7 +381,7 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
 
     if(stdout_path)
     {
-        FILE *file = fopen(stdout_path, "wb");
+        FILE *file = platform.fopen(stdout_path, "wb");
         if(file)
         {
             fwrite(stdout_content.memory, stdout_content.used, 1, file);
@@ -386,7 +390,7 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
     }
     if(stderr_path)
     {
-        FILE *file = fopen(stderr_path, "wb");
+        FILE *file = platform.fopen(stderr_path, "wb");
         if(file)
         {
             fwrite(stderr_content.memory, stderr_content.used, 1, file);
@@ -625,6 +629,7 @@ linux_init_platform(Platform *linux_code)
         linux_code->directory_exists = linux_directory_exists;
         linux_code->rename_directory = linux_rename_directory;
         linux_code->sleep = linux_sleep;
+        linux_code->fopen = linux_fopen;
     }
     return success;
 }

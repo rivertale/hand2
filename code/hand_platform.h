@@ -40,6 +40,7 @@ typedef struct Platform
     int (*delete_file)(char *path);
     int (*directory_exists)(char *path);
     void (*sleep)(unsigned int milliseconds);
+    FILE *(*fopen)(char *path, char *mode);
 } Platform;
 
 static Platform platform = {0};
