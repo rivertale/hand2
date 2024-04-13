@@ -1062,6 +1062,11 @@ run_hand(int arg_count, char **args)
         int penalty_per_day = atoi(config.value[Config_penalty_per_day]);
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
+        if(!deadline)
+        {
+            write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_time);
+            goto CLEANUP;
+        }
         collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day, only_repo,
                          github_token, organization, google_token, spreadsheet_id, student_label);
     }
@@ -1129,6 +1134,11 @@ run_hand(int arg_count, char **args)
         int thread_count = atoi(config.value[Config_grade_thread_count]);
         time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
         time_t cutoff = deadline + atoi(cutoff_time) * 86400;
+        if(!deadline)
+        {
+            write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_time);
+            goto CLEANUP;
+        }
         grade_homework(title, out_path, deadline, cutoff, template_repo, template_branch, feedback_repo,
                        grade_command, score_relative_path, dry, thread_count, only_repo,
                        github_token, organization, email, google_token, spreadsheet_id, student_label, id_label);
