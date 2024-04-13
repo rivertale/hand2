@@ -81,7 +81,7 @@ static char g_default_config[] =
     "email = \"your@commit.email\""                                                 "\n"
                                                                                     "\n"
     "# The command exectued under the homework directory for grading"               "\n"
-    "grade_command = \"command executed for grading\""                              "\n"
+    "grade_command = 'make activate ARGS=\"make autograde\"'"                       "\n"
                                                                                     "\n"
     "# The number of threads used for parallel grading"                             "\n"
     "grade_thread = \"8\""                                                          "\n"
