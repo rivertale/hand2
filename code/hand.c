@@ -435,10 +435,12 @@ grade_homework(char *title, char *out_path,
     static char username[MAX_URL_LEN];
     static char template_dir[MAX_PATH_LEN];
     static char feedback_dir[MAX_PATH_LEN];
+    static char dry_feedback_dir[MAX_PATH_LEN];
     static char template_test_dir[MAX_PATH_LEN];
     static char template_docker_dir[MAX_PATH_LEN];
     static char feedback_report_dir[MAX_PATH_LEN];
     static char feedback_homework_dir[MAX_PATH_LEN];
+    static char dry_feedback_report_dir[MAX_PATH_LEN];
     static char report_template_path[MAX_PATH_LEN];
 
     if(!retrieve_username(username, MAX_URL_LEN, github_token))
@@ -466,6 +468,8 @@ grade_homework(char *title, char *out_path,
     format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir);
     format_string(feedback_homework_dir, MAX_PATH_LEN, "%s/%s",feedback_dir, title);
     format_string(feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports",feedback_dir, title);
+    format_string(dry_feedback_dir, MAX_PATH_LEN, "%s/%s", g_cache_dir, feedback_repo);
+    format_string(dry_feedback_report_dir, MAX_PATH_LEN, "%s/%s/reports", dry_feedback_dir, title);
     format_string(report_template_path, MAX_PATH_LEN, "%s/report_template_%s.md", feedback_dir, title);
 
     FILE *out_file = platform.fopen(out_path, "wb");
@@ -601,7 +605,8 @@ grade_homework(char *title, char *out_path,
 
     if(dry)
     {
-        write_output("DRY RUN: reports are not pushed, you can view the generated reports at '%s'", feedback_report_dir);
+        platform.rename_directory(dry_feedback_dir, feedback_dir);
+        write_output("DRY RUN: reports are not pushed, you can view the generated reports at '%s'", dry_feedback_report_dir);
     }
     else
     {
