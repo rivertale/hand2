@@ -209,8 +209,8 @@ invite_students(char *path, char *github_token, char *organization, char *team)
             write_output("");
             write_output("[Summary]");
             write_output("    Total students: %d", students.count);
-            write_output("    New invitation (success): %d", success_count);
-            write_output("    New invitation (failure): %d", failure_count);
+            write_output("    New invitations (success): %d", success_count);
+            write_output("    New invitations (failure): %d", failure_count);
             write_output("    Existing members: %d", existing_count);
             write_output("    Existing invitations: %d", inviting_count);
         }
@@ -330,9 +330,9 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
 
     write_output("");
     write_output("[Summary]");
-    write_output("    Total student: %d", sheet.height);
-    write_output("    Total submission: %d", submission_count);
-    write_output("    Late submission: %d", late_submission_count);
+    write_output("    Total students: %d", sheet.height);
+    write_output("    Total submissions: %d", submission_count);
+    write_output("    Late submissions: %d", late_submission_count);
     write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
     write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
@@ -621,10 +621,10 @@ grade_homework(char *title, char *out_path,
 
     write_output("");
     write_output("[Summary]");
-    write_output("    Total student: %d", sheet.height);
-    write_output("    Total submission: %d", submission_count);
-    write_output("    Late submission: %d", late_submission_count);
-    write_output("    Failed submission: %d", failure_count);
+    write_output("    Total students: %d", sheet.height);
+    write_output("    Total submissions: %d", submission_count);
+    write_output("    Late submissions: %d", late_submission_count);
+    write_output("    Failed submissions: %d", failure_count);
     write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
     write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
@@ -813,15 +813,19 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo,
                     // TODO: need further investigation on the error messages github returns
                     platform.sleep(1000);
                 }
+
+                write_output("");
+                write_output("[Summary]");
+                write_output("    Total students: %d", sheet.height);
+                write_output("    Total announcements: %d", announcement_count);
+                write_output("    Failed announcements: %d", failure_count);
                 free_string_array(&issue_bodies);
             }
+            else
+            {
+                write_output("ABORT: some issue formats are invalid");
+            }
             free_string_array(&reports);
-
-            write_output("");
-            write_output("[Summary]");
-            write_output("    Total students: %d", sheet.height);
-            write_output("    Total announcement: %d", announcement_count);
-            write_output("    Failed announcement: %d", failure_count);
         }
         else
         {
@@ -880,7 +884,7 @@ run_hand(int arg_count, char **args)
     if(!ensure_config_exists(config_path))
     {
         show_usage = 1;
-        write_output("config not found, default config created at '%s'", config_path);
+        write_output("Config not found, default config created at '%s'", config_path);
         write_output("");
     }
 
