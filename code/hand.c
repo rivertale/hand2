@@ -1041,7 +1041,7 @@ run_hand(int arg_count, char **args)
             write_error("Too many arguments");
         }
 
-        if(!title || !in_time || !cutoff_time || show_command_usage)
+        if(!title || !in_time || !cutoff_time || !out_path || show_command_usage)
         {
             char *usage =
                 "usage: hand2 collect-homework [--command-option] ... title deadline cutoff_time out_path"          "\n"
@@ -1106,7 +1106,7 @@ run_hand(int arg_count, char **args)
             write_error("Too many arguments");
         }
 
-        if(!title || !template_repo || !in_time || !cutoff_time || !out_path || show_command_usage)
+        if(!title || !template_repo || !template_branch || !in_time || !cutoff_time || !out_path || show_command_usage)
         {
             char *usage =
                 "usage: hand2 grade-homework [--command-option] ... title template_repository template_branch deadline cutoff_day out_path" "\n"
