@@ -148,12 +148,17 @@ invite_students(char *path, char *github_token, char *organization, char *team)
         github_users_exist(exist, &students, github_token);
 
         int invalid_count = 0;
+        int existing_count = 0;
+        int inviting_count = 0;
+        int success_count = 0;
+        int failure_count = 0;
         for(int i = 0; i < students.count; ++i)
         {
             for(int j = 0; j < existing_students.count; ++j)
             {
                 if(compare_case_insensitive(students.elem[i], existing_students.elem[j]))
                 {
+                    ++existing_count;
                     students.elem[i] = 0;
                     break;
                 }
@@ -165,6 +170,7 @@ invite_students(char *path, char *github_token, char *organization, char *team)
             {
                 if(compare_case_insensitive(students.elem[i], existing_invitations.elem[j]))
                 {
+                    ++inviting_count;
                     students.elem[i] = 0;
                     break;
                 }
@@ -183,8 +189,6 @@ invite_students(char *path, char *github_token, char *organization, char *team)
 
         if(invalid_count == 0)
         {
-            int failure_count = 0;
-            int success_count = 0;
             write_output("Inviting new members...");
             for(int i = 0; i < students.count; ++i)
             {
@@ -207,8 +211,8 @@ invite_students(char *path, char *github_token, char *organization, char *team)
             write_output("    Total students: %d", students.count);
             write_output("    New invitation (success): %d", success_count);
             write_output("    New invitation (failure): %d", failure_count);
-            write_output("    Existing members: %d", existing_students.count);
-            write_output("    Existing invitations: %d", existing_invitations.count);
+            write_output("    Existing members: %d", existing_count);
+            write_output("    Existing invitations: %d", inviting_count);
         }
         else
         {
