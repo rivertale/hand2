@@ -298,7 +298,7 @@ retrieve_username(char *out, size_t max_size, char *github_token)
 
     char *response = get_response(&group, 0);
     cJSON *json = cJSON_Parse(response);
-    if(!json)
+    if(response[0] && !json)
         write_error("JSON corrupted: %s", response);
 
     cJSON *username = cJSON_GetObjectItemCaseSensitive(json, "login");
@@ -374,7 +374,7 @@ retrieve_issue_numbers_by_title(int *out_numbers, StringArray *repos, char *gith
 
                 char *response = get_response(&group, i);
                 cJSON *json = cJSON_Parse(response);
-                if(!json)
+                if(response[0] && !json)
                     write_error("JSON corrupted: %s", response);
 
                 int issue_count_in_page = 0;
@@ -423,7 +423,7 @@ retrieve_creation_times(time_t *out_times, StringArray *repos, char *github_toke
         {
             char *response = get_response(&group, i);
             cJSON *json = cJSON_Parse(response);
-            if(!json)
+            if(response[0] && !json)
                 write_error("JSON corrupted: %s", response);
 
             cJSON *creation_time = cJSON_GetObjectItemCaseSensitive(json, "created_at");
@@ -458,7 +458,7 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
         {
             char *response = get_response(&group, i);
             cJSON *json = cJSON_Parse(response);
-            if(!json)
+            if(response[0] && !json)
                 write_error("JSON corrupted: %s", response);
 
             cJSON *default_branch = cJSON_GetObjectItemCaseSensitive(json, "default_branch");
@@ -506,7 +506,7 @@ retrieve_latest_commits(GitCommitHash *out_hash, StringArray *repos, StringArray
         {
             char *response = get_response(&group, i);
             cJSON *json = cJSON_Parse(response);
-            if(!json)
+            if(response[0] && !json)
                 write_error("JSON corrupted: %s", response);
 
             cJSON *commit = cJSON_GetObjectItemCaseSensitive(json, "commit");
@@ -570,7 +570,7 @@ retrieve_team_members(char *github_token, char *organization, char *team)
         {
             char *response = get_response(&group, i);
             cJSON *json = cJSON_Parse(response);
-            if(!json)
+            if(response[0] && !json)
                 write_error("JSON corrupted: %s", response);
 
             count_in_page = 0;
@@ -617,7 +617,7 @@ retrieve_existing_invitations(char *github_token, char *organization, char *team
         {
             char *response = get_response(&group, i);
             cJSON *json = cJSON_Parse(response);
-            if(!json)
+            if(response[0] && !json)
                 write_error("JSON corrupted: %s", response);
 
             count_in_page = 0;
@@ -670,7 +670,7 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
         {
             char *response = get_response(&group, i);
             cJSON *json = cJSON_Parse(response);
-            if(!json)
+            if(response[0] && !json)
                 write_error("JSON corrupted: %s", response);
 
             count_in_page = 0;
@@ -746,7 +746,7 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
 
                 char *response = get_response(&group, i);
                 cJSON *json = cJSON_Parse(response);
-                if(!json)
+                if(response[0] && !json)
                     write_error("JSON corrupted: %s", response);
 
                 cJSON *event = 0;
@@ -915,7 +915,7 @@ retrieve_spreadsheet(StringArray *out, char *google_token, char *spreadsheet_id)
 
     char *response = get_response(&group, 0);
     cJSON *json = cJSON_Parse(response);
-    if(!json)
+    if(response[0] && !json)
         write_error("JSON corrupted: %s", response);
 
     cJSON *sheets = cJSON_GetObjectItemCaseSensitive(json, "sheets");
@@ -963,7 +963,7 @@ retrieve_sheet(char *google_token, char *spreadsheet, char *name)
 
     char *response = get_response(&group, 0);
     cJSON *json = cJSON_Parse(response);
-    if(!json)
+    if(response[0] && !json)
         write_error("JSON corrupted: %s", response);
 
     cJSON *row = 0;
