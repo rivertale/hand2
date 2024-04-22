@@ -1,8 +1,10 @@
 #!/bin/sh
+cd "$(dirname "$0")"
+base_dir="$(pwd "$0")"
 image_name="hand2_linux"
 
 # build docker if needed
-cd "$(dirname "$0")"
+cd "${base_dir}"
 docker inspect --type=image "${image_name}" 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]
 then
@@ -19,7 +21,7 @@ do
 done
 
 # set working directory
-cd "$(dirname "$0")"
+cd "${base_dir}"
 if [ -d ../build ];
 then
     cd ../build
