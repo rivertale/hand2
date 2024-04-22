@@ -881,15 +881,15 @@ run_hand(int arg_count, char **args)
         }
     }
 
+    char *command = next_arg(&parser);
     // NOTE: if config does not exist, show usage and quit
-    if(!ensure_config_exists(config_path))
+    if(command && !ensure_config_exists(config_path))
     {
         show_usage = 1;
         write_output("Config not found, default config created at '%s'", config_path);
         write_output("");
     }
 
-    char *command = next_arg(&parser);
     if(show_usage || !command)
     {
         char *usage =
