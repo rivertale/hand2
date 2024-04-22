@@ -376,10 +376,10 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
 {
     int exit_code = -1;
     HANDLE callback_lock = (HANDLE)context->callback_lock;
-    if(context->on_progress)
+    if(context->on_progression)
     {
         WaitForSingleObject(callback_lock, INFINITE);
-        context->on_progress(index, context->work_count, work_dir);
+        context->on_progression(index, context->work_count, work_dir);
         ReleaseMutex(callback_lock);
     }
 
@@ -540,10 +540,10 @@ win32_exec_process(ThreadContext *context, int index, char *command, char *work_
         }
     }
 
-    if(context->on_complete)
+    if(context->on_completion)
     {
         WaitForSingleObject(callback_lock, INFINITE);
-        context->on_complete(index, context->work_count, exit_code, work_dir, stdout_content.memory, stderr_content.memory);
+        context->on_completion(index, context->work_count, exit_code, work_dir, stdout_content.memory, stderr_content.memory);
         ReleaseMutex(callback_lock);
     }
     free_growable_buffer(&stdout_content);
@@ -573,7 +573,7 @@ win32_thread_proc(LPVOID param)
 
 static void
 win32_wait_for_completion(int thread_count, int work_count, Work *works,
-                          WorkOnProgressCallback *on_progress, WorkOnCompleteCallback *on_complete)
+                          WorkOnProgressionCallback *on_progression, WorkOnCompletionCallback *on_completion)
 {
     HANDLE callback_lock = CreateMutexA(0, 0, 0);
     if(callback_lock)
@@ -587,8 +587,8 @@ win32_wait_for_completion(int thread_count, int work_count, Work *works,
             contexts[i].work_count = work_count;
             contexts[i].works = works;
             contexts[i].next_to_work = &next_to_work;
-            contexts[i].on_progress = on_progress;
-            contexts[i].on_complete = on_complete;
+            contexts[i].on_progression = on_progression;
+            contexts[i].on_completion = on_completion;
             contexts[i].callback_lock = (void *)callback_lock;
             thread_handles[i] = CreateThread(0, 1024 * 1024, win32_thread_proc, &contexts[i], 0, 0);
         }

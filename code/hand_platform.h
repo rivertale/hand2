@@ -1,5 +1,5 @@
-typedef void WorkOnProgressCallback(int index, int count, char *work_dir);
-typedef void WorkOnCompleteCallback(int index, int count, int exit_code, char *work_dir, char *stdout_content, char *stderr_content);
+typedef void WorkOnProgressionCallback(int index, int count, char *work_dir);
+typedef void WorkOnCompletionCallback(int index, int count, int exit_code, char *work_dir, char *stdout_content, char *stderr_content);
 
 typedef struct Work
 {
@@ -17,8 +17,8 @@ typedef struct ThreadContext
     Work *works;
     volatile int *next_to_work;
     void *callback_lock;
-    WorkOnProgressCallback *on_progress;
-    WorkOnCompleteCallback *on_complete;
+    WorkOnProgressionCallback *on_progression;
+    WorkOnCompletionCallback *on_completion;
 } ThreadContext;
 
 typedef struct Platform
@@ -30,7 +30,7 @@ typedef struct Platform
     // how to stop the grade process on timeout (in case we use other grading process in the future), and
     // also requires a way to convey the container name or id.
     void (*wait_for_completion)(int thread_count, int work_count, Work *works,
-                                WorkOnProgressCallback *on_progress, WorkOnCompleteCallback *on_complete);
+                                WorkOnProgressionCallback *on_progression, WorkOnCompletionCallback *on_completion);
 
     int (*copy_directory)(char *target_path, char *source_path);
     int (*rename_directory)(char *target_path, char *source_path);

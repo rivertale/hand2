@@ -269,10 +269,10 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
 {
     int exit_code = -1;
     pthread_mutex_t *callback_lock = (pthread_mutex_t *)context->callback_lock;
-    if(context->on_progress)
+    if(context->on_progression)
     {
         pthread_mutex_lock(callback_lock);
-        context->on_progress(index, context->work_count, work_dir);
+        context->on_progression(index, context->work_count, work_dir);
         pthread_mutex_unlock(callback_lock);
     }
 
@@ -398,10 +398,10 @@ linux_exec_process(ThreadContext *context, int index, char *command, char *work_
         }
     }
 
-    if(context->on_complete)
+    if(context->on_completion)
     {
         pthread_mutex_lock(callback_lock);
-        context->on_complete(index, context->work_count, exit_code, work_dir, stdout_content.memory, stderr_content.memory);
+        context->on_completion(index, context->work_count, exit_code, work_dir, stdout_content.memory, stderr_content.memory);
         pthread_mutex_unlock(callback_lock);
     }
     free_growable_buffer(&stdout_content);
@@ -432,7 +432,7 @@ linux_thread_proc(void *param)
 
 static void
 linux_wait_for_completion(int thread_count, int work_count, Work *works,
-                          WorkOnProgressCallback *on_progress, WorkOnCompleteCallback *on_complete)
+                          WorkOnProgressionCallback *on_progression, WorkOnCompletionCallback *on_completion)
 {
     pthread_mutex_t callback_lock;
     if(pthread_mutex_init(&callback_lock, 0) == 0)
@@ -447,8 +447,8 @@ linux_wait_for_completion(int thread_count, int work_count, Work *works,
             contexts[i].work_count = work_count;
             contexts[i].works = works;
             contexts[i].next_to_work = &next_to_work;
-            contexts[i].on_progress = on_progress;
-            contexts[i].on_complete = on_complete;
+            contexts[i].on_progression = on_progression;
+            contexts[i].on_completion = on_completion;
             contexts[i].callback_lock = &callback_lock;
             thread_is_valid[i] = (pthread_create(&thread_handles[i], 0, linux_thread_proc, &contexts[i]) == 0);
         }

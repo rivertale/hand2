@@ -400,13 +400,13 @@ format_report_by_file_replacement(GrowableBuffer *format, char *dir)
 }
 
 static void
-grade_homework_on_progress(int index, int count, char *work_dir)
+grade_homework_on_progression(int index, int count, char *work_dir)
 {
     write_output("[%d/%d] Grading '%s'", index + 1, count, work_dir);
 }
 
 static void
-grade_homework_on_complete(int index, int count, int exit_code, char *work_dir, char *stdout_content, char *stderr_content)
+grade_homework_on_completion(int index, int count, int exit_code, char *work_dir, char *stdout_content, char *stderr_content)
 {
     (void)stdout_content;
     if(exit_code != 0)
@@ -546,7 +546,7 @@ grade_homework(char *title, char *out_path,
     int late_submission_count = 0;
     int failure_count = 0;
     write_output("Start grading...");
-    platform.wait_for_completion(thread_count, repos.count, works, grade_homework_on_progress, grade_homework_on_complete);
+    platform.wait_for_completion(thread_count, repos.count, works, grade_homework_on_progression, grade_homework_on_completion);
 
     write_output("Generating report...");
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
@@ -706,7 +706,7 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
 }
 
 static void
-announce_grade(char *title, char *feedback_repo, int dry, char *only_repo,
+announce_grade(char *title, char *feedback_repo, int dry, char *only_repo, int issue_interval,
                char *github_token, char *organization, char *google_token, char *spreadsheet_id, char *student_label, char *id_label)
 {
     write_log("title=%s, feedback_repo=%s, org=%s, dry=%d, only_repo=%s, spreadsheet=%s, student_label=%s, id_label=%s",
@@ -811,7 +811,7 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo,
                     }
                     // NOTE: sleep to bypass the github rate limit
                     // TODO: need further investigation on the error messages github returns
-                    platform.sleep(1000);
+                    platform.sleep(issue_interval);
                 }
 
                 write_output("");
@@ -1160,6 +1160,7 @@ run_hand(int arg_count, char **args)
     {
         int show_command_usage = 0;
         int dry = 0;
+        int issue_interval = 3500;
         char *only_repo = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
@@ -1169,6 +1170,8 @@ run_hand(int arg_count, char **args)
                 dry = 1;
             else if(compare_string(option, "--only-repo"))
                 only_repo = next_arg(&parser);
+            else if(compare_string(option, "--interval"))
+                issue_interval = atoi(next_arg(&parser));
             else
                 write_error("Unknown option '%s'", option);
         }
@@ -1183,13 +1186,15 @@ run_hand(int arg_count, char **args)
         if(!title || show_command_usage)
         {
             char *usage =
-                "usage: hand2 announce-grade [--command-option] ... title"                          "\n"
-                                                                                                    "\n"
-                "[arguments]"                                                                       "\n"
-                "    title    title of the homework"                                                "\n"
-                "[command-options]"                                                                 "\n"
-                "    --dry                 perform a trial run without making any remote changes"   "\n"
-                "    --only-repo <name>    only announce grade for the repository named <name>"     "\n";
+                "usage: hand2 announce-grade [--command-option] ... title"                                      "\n"
+                                                                                                                "\n"
+                "[arguments]"                                                                                   "\n"
+                "    title    title of the homework"                                                            "\n"
+                "[command-options]"                                                                             "\n"
+                "    --dry                        perform a trial run without making any remote changes"        "\n"
+                "    --interval <milliseconds>    milliseconds between issue creation to bypass GitHub rate"    "\n"
+                "                                 limit (default is 3500)"                                      "\n"
+                "    --only-repo <name>           only announce grade for the repository named <name>"          "\n";
             write_output(usage);
             goto CLEANUP;
         }
@@ -1200,8 +1205,8 @@ run_hand(int arg_count, char **args)
         char *google_token = config.value[Config_google_token];
         char *github_token = config.value[Config_github_token];
         char *organization = config.value[Config_organization];
-        announce_grade(title, feedback_repo, dry, only_repo, github_token, organization,
-                       google_token, spreadsheet_id, student_label, id_label);
+        announce_grade(title, feedback_repo, dry, only_repo, issue_interval,
+                       github_token, organization, google_token, spreadsheet_id, student_label, id_label);
     }
     else
     {
