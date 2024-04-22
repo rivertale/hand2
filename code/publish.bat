@@ -15,6 +15,7 @@ REM prepare files
 if exist hand2 rmdir /s /q hand2
 del /f "hand2-v%version%.zip" 2>nul
 mkdir hand2
+mkdir hand2\docker
 copy ..\build\hand.exe hand2 1>nul
 if %ERRORLEVEL% neq 0 (
     set abort_archive=1
@@ -34,6 +35,11 @@ copy ..\build\hand hand2 1>nul
 if %ERRORLEVEL% neq 0 (
     set abort_archive=1
     echo Can't find ..\build\hand
+)
+copy ..\build\docker\* hand2\docker 1>nul
+if %ERRORLEVEL% neq 0 (
+    set abort_archive=1
+    echo Can't find ..\build\docker
 )
 if %abort_archive% neq 0 goto ABORT
 
