@@ -854,6 +854,7 @@ run_hand(int arg_count, char **args)
     format_string(log_path, MAX_PATH_LEN, "%s/%d-%02d-%02d_%02d-%02d-%02d.log",
                   g_log_dir, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
                   time.tm_hour, time.tm_min, time.tm_sec);
+    Config config = {0};
 
     // NOTE: parse options
     int show_usage = 0;
@@ -889,7 +890,7 @@ run_hand(int arg_count, char **args)
     }
 
     char *command = next_arg(&parser);
-    if(show_usage || ! command)
+    if(show_usage || !command)
     {
         char *usage =
             "usage: hand2 [--options] ... command [--command-options] ... [args] ..."   "\n"
@@ -909,7 +910,6 @@ run_hand(int arg_count, char **args)
         goto CLEANUP;
     }
 
-    Config config;
     if(!load_config(&config, config_path))
     {
         write_error("Unable to load config '%s'", config_path);
