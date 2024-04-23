@@ -1,16 +1,18 @@
 #!/bin/sh
+cd "$(dirname "$0")"
+base_dir="$(pwd "$0")"
 image_name="hand2_external_linux"
 include_dir="hand/code/include_linux"
 library_dir="hand/code/lib_linux"
 log_dir="hand/linux_external/log"
 
 # build docker
-cd "$(dirname "$0")"
+cd "${base_dir}"
 docker build --no-cache -t "${image_name}" .
 if [ $? -eq 0 ]; then echo "Output docker image: ${image_name}"; fi
 
 # build external library
-cd "$(dirname "$0")"
+cd "${base_dir}"
 cd ..
 docker run --rm --user $(id -u):$(id -g) --volume "$(pwd):/hand" "${image_name}" sh -c "
     echo \"[Copying enviroment logs]\"
