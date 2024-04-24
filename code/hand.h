@@ -55,6 +55,15 @@ hash_is_valid(GitCommitHash *hash)
     return result;
 }
 
+static int
+compare_hash(GitCommitHash *a, GitCommitHash *b)
+{
+    int result = 0;
+    if(a && b)
+        result = compare_string(a->full, b->full);
+    return result;
+}
+
 static time_t
 parse_time(char *string, int time_zone)
 {

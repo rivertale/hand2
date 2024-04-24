@@ -698,8 +698,12 @@ retrieve_repos_by_prefix(char *github_token, char *organization, char *prefix)
 // NOTE:
 // - we don't believe commit time since it can be modifed by students.
 // - we return creation time of the repository and the latest commit as the last resort, this will
-//   happen when there aren't any push events before the cutoff (the creation of the repo is not a
-//   push event). if the students never push, the latest commit is the commit they accept the homework.
+//   happen when:
+//     1. there aren't any push events before the cutoff (note that the creation of the repo is not
+//        a push event).
+//     2. github api doesn't report push events correctly (the lastest commit is not pushed by any
+//        push events).
+// - if the students never push the latest commit is the commit they accept the homework.
 
 // NOTE: push events only retain for 90 days, if the student only push 90 days before you collect and
 // grade it, it will assume the student pushes the latest commit in Day 1 (when accepting homework).
@@ -709,8 +713,12 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
 {
     clear_memory(out_hash, repos->count * sizeof(*out_hash));
     clear_memory(out_push_time, repos->count * sizeof(*out_push_time));
+    time_t *latest_push_times = (time_t *)allocate_memory(repos->count * sizeof(*latest_push_times));
     time_t *last_resort_push_times = (time_t *)allocate_memory(repos->count * sizeof(*last_resort_push_times));
+    GitCommitHash *latest_push_hashes = (GitCommitHash *)allocate_memory(repos->count * sizeof(*latest_push_hashes));
     GitCommitHash *last_resort_hashes = (GitCommitHash *)allocate_memory(repos->count * sizeof(*last_resort_hashes));
+    clear_memory(latest_push_times, repos->count * sizeof(*latest_push_times));
+    clear_memory(latest_push_hashes, repos->count * sizeof(*latest_push_hashes));
     retrieve_creation_times(last_resort_push_times, repos, github_token, organization);
     retrieve_latest_commits(last_resort_hashes, repos, req_branches, github_token, organization);
 
@@ -765,11 +773,18 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                        cJSON_IsString(ref) && compare_string(ref->valuestring, req_ref))
                     {
                         time_t push_time = parse_time(created_at->valuestring, TIME_ZONE_UTC0);
+                        GitCommitHash hash = init_git_commit_hash(push_hash->valuestring);
+                        if(push_time > latest_push_times[at + i])
+                        {
+                            latest_push_times[at + i] = push_time;
+                            latest_push_hashes[at + i] = hash;
+                        }
+
                         if(push_time < cutoff)
                         {
                             worker_done[i] = 1;
                             out_push_time[at + i] = push_time;
-                            out_hash[at + i] = init_git_commit_hash(push_hash->valuestring);
+                            out_hash[at + i] = hash;
                             break;
                         }
                     }
@@ -806,10 +821,20 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
                     }
                 }
 
+                GitCommitHash latest_hash = last_resort_hashes[at + i];
+                if(latest_push_times[at + i] &&
+                   !compare_hash(&latest_push_hashes[at + i], &latest_hash) && latest_push_times[at + i] < cutoff)
+                {
+                    // NOTE: the latest hash is not reported by any push events, (this happen when github doesn't
+                    // report the push event correctly or the events are expired), since we don't know the push
+                    // time of the latest commit, we use the previous known push time
+                    out_hash[at + i] = latest_hash;
+                    out_push_time[at + i] = latest_push_times[at + i];
+                }
                 if(!out_push_time[at + i])
                 {
-                    out_push_time[at + i] = last_resort_push_times[at + i];
                     out_hash[at + i] = last_resort_hashes[at + i];
+                    out_push_time[at + i] = last_resort_push_times[at + i];
                 }
 
                 if(event_count_in_page == 0)
@@ -820,7 +845,9 @@ retrieve_pushes_before_cutoff(GitCommitHash *out_hash, time_t *out_push_time, St
         }
     }
     free_memory(last_resort_hashes);
+    free_memory(latest_push_hashes);
     free_memory(last_resort_push_times);
+    free_memory(latest_push_times);
 #undef MAX_WORKER
 }
 
