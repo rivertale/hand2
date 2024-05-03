@@ -39,7 +39,7 @@ config_check(Config *config)
     int penalty_is_int = 1;
     for(char *c = penalty_per_day; *c; ++c)
     {
-        if(*c < '0' && '9' < *c)
+        if(*c < '0' || '9' < *c)
         {
             penalty_is_int = 0;
             break;
