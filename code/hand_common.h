@@ -204,7 +204,7 @@ format_string(char *buffer, size_t size, char *format, ...)
     }
     else if((size_t)required_size >= size)
     {
-        write_log("Fatal: buffer too short: %s", buffer);
+        write_error("Fatal: buffer too short: %s", buffer);
         exit(0);
     }
 }
