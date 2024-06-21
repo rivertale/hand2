@@ -49,7 +49,7 @@ hand2 helps you manage your course using `GitHub` and `Google Sheets`. It incorp
 
 
 ## Install
-Download pre-built x64 binaries from [release](https://github.com/Compiler-s24/hand2/releases). You can also build from the source following instructions in [How to build](#how-to-build).
+Download pre-built x64 binaries from [release](../../releases/latest). You can also build from the source following instructions in [How to build](#how-to-build).
 
 
 ## Getting started
@@ -865,7 +865,7 @@ The dependencies of Windows and Linux are pre-built and placed within `code/`. I
 
 
 ## How to publish
-Before publishing the program as an archive to [release](https://github.com/Compiler-s24/hand2/releases), ensure that you have built both the Windows and Linux programs. The archive will include Windows, Linux, and Docker versions of the program.
+Before publishing the program as an archive to [release](../../releases), ensure that you have built both the Windows and Linux programs. The archive will include Windows, Linux, and Docker versions of the program.
 
 The published archive remains uncompressed for Windows, and will only be compressed for Linux if `zip` is available. Consider using the Docker script to ensure the files are compressed.
 
