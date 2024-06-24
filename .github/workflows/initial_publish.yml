@@ -1,0 +1,59 @@
+name: initial_publish
+
+on:
+    push:
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+jobs:
+    check_publish:
+        if: github.ref_name == github.event.repository.default_branch
+        runs-on: ubuntu-latest
+        outputs:
+            publish_status: ${{steps.step.outputs.publish_status}}
+            publish_version: ${{steps.step.outputs.publish_version}}
+        steps:
+            - id: step
+              run: |
+                echo "publish_status=$(curl -s \
+                    -H "Accept: application/vnd.github.v3+json" \
+                    -H "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    -w "%{http_code}" --output /dev/null \
+                    ${{github.api_url}}/repos/${{github.repository}}/releases/latest)" >> "$GITHUB_OUTPUT"
+                echo "publish_version=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+    windows_build:
+        needs: check_publish
+        if: needs.check_publish.outputs.publish_status == '404' # 404 must be single-quoted
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+            - run: cd code && cmd /c build.bat
+            - uses: actions/upload-artifact@v4
+              with:
+                name: windows_build_files
+                path: build/
+            - run: echo "${{github.event.repository.default_branch}}"
+    linux_build_and_publish:
+        needs: [check_publish, windows_build]
+        if: needs.check_publish.outputs.publish_status == '404' # 404 must be single-quoted
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - run: chmod +x code/*.sh
+            - run: chmod +x docker/*.sh
+            - run: bash docker/build.sh
+            - uses: actions/download-artifact@v4
+              with:
+                name: windows_build_files
+                path: build/
+            - run: chmod +x docker/publish.sh
+            - run: bash docker/publish.sh ${{needs.check_publish.outputs.publish_version}}
+            - uses: softprops/action-gh-release@v2
+              with:
+                tag_name: "v${{needs.check_publish.outputs.publish_version}}"
+                name: "hand2-v${{needs.check_publish.outputs.publish_version}}"
+                token: ${{secrets.GITHUB_TOKEN}}
+                files: "publish/hand2-v${{needs.check_publish.outputs.publish_version}}.zip"
