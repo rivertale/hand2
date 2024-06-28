@@ -186,7 +186,7 @@ penalty_per_day = "15"
       <br>![google-spreadsheet-02](docs/google-spreadsheet-02.png)
 
 <a id="email"></a>
-- `email`: Ensure this email is linked to your GitHub account. It's used to commit feedbacks to [`feedback_repository`](#feedback_repository) when grading homework.
+- `email`: The email should be linked to your GitHub account. It's used to commit feedbacks to [`feedback_repository`](#feedback_repository) when grading homework.
 
 <a id="grade_command"></a>
 - `grade_command`: Command executed under the homework directory for grading.
@@ -422,7 +422,7 @@ Retrieve late submission penalty via `collect-homework`, and grade students' hom
 
        1. If the repository doesn't exist, output a score of 0 and skip the remaining actions.
 
-       2. Generates feedback `./hw1/reports/<student_id>.md`. The file replacement is performed at this stage, see details at [Feedback format](#feedback_format).
+       2. Generates feedback `./hw1/reports/<student_id>.md`. The file replacement is performed at this step, see details at [Feedback format](#feedback_format).
 
        3. Parses the first number in [score file](#score_relative_path) and output it to `hw1-score.txt` as the student's score.
 
@@ -553,11 +553,11 @@ Open an issue in every student's repository as the grade announcement, the conte
     
    2. Finds the sheet `hw1` in the spredsheet.
     
-   3. Generates issue contents for each student, derived from `hw-feedback/hw1/reports/<student_id>.md` and the sheet `hw1`. The sheet replacements are performed at this stage, see details at [Feedback format](#feedback-format).
+   3. Generates issue contents for each student, derived from `hw-feedback/hw1/reports/<student_id>.md` and the sheet `hw1`. The sheet replacements are performed at this step, see details at [Feedback format](#feedback-format).
 
    4. Iterates through the sheet, and performs the following actions for each student's repository:
 
-       1. If an issue named `Grade for hw1` exists, update it to match the new content; otherwise, create a new issue.
+       1. If an issue named `Grade for hw1` exists, update it to match the new content; Otherwise, create a new issue.
        - Use the flag `--dry` to output the issue content without actually editing or creating the issue.
    
    <details>
@@ -657,7 +657,7 @@ The GitHub organization structure:
 ```
 - `<organization>`: GitHub organization for the course. Students join this organization to receive homework, submit homework, and access the discussion forum.
 - `tmpl-hwX`: Templates for homework hwX. Students create their homework repository from these templates and submit their homework through commits.
-- `<feedback-repository>`: Usually named `hw-feedback`, it stores feedbacks to students before announcing grades. See details at [Feedback format](#feedback-format).
+- `<feedback-repository>`: Usually named `hw-feedback`, it stores feedback templates and the feedbacks to students before announcing grades. See details at [Feedback format](#feedback-format).
 - `<...>`: Other repositories, such as the course website, are not used by hand2.
 - `<ta-team>`: Team for the professor and teaching assistants, it has administrative privileges over the entire organization.
 - `<student-team>`: Team for students, the members of ta-team can also join it.
@@ -681,9 +681,9 @@ The Google spreadsheet structure:
   
   </details>
 - `hwX`: *Homework sheet* for managing grades for hwX. The first row of the sheet is called `label`. A valid *homework sheet* must contain the following labels:
-    - students' GitHub username, see also [username_label](#username_label).
-    - students' IDs, see also [student_id_label](#student_id_label).
-- `<...>`: Other sheets, such as student info, are not used by hand2.
+    - Students' GitHub username, see also [username_label](#username_label).
+    - Students' IDs, see also [student_id_label](#student_id_label).
+- `<...>`: Other sheets, such as term grade, are not used by hand2.
 
 
 ### Timezone
@@ -695,7 +695,7 @@ Deadline is the start of late submission, and Cutoff is the end of late submissi
 - `deadline`: Time when late submission begins.
 - `cutoff_time`: Duration (in days) from the start of late submission to its conclusion.
 
-For example, the late submission of `hw1` is 2024-03-21 23:59:59 -> 2024-03-24 23:59:59. Hence, `deadline = 2024-03-21-23-59-59` and `cutoff_time = 3`.
+For example, the late submission of `hw1` is from 2024-03-21 23:59:59 to 2024-03-24 23:59:59. Hence, `deadline` is `2024-03-21-23-59-59` and `cutoff_time` is `3`.
 
 
 ### Feedback format
@@ -850,17 +850,17 @@ Enable logging with the flag `--log` for any command. Logs will be saved to `./l
 ### Docker
 1. Run `docker/build.sh` to build the program with the Linux build script inside Docker.
 2. The built program can be found under `build/`.
-3. Run `docker/run.sh` [args] ...` to execute the program inside Docker.
+3. Run `docker/run.sh [args] ...` to execute the program inside Docker.
 4. To debug hand2 with GDB inside Docker, run `docker/debug.sh [args] ...`.
 5. Any calls to `build.sh`, `run.sh` or `debug.sh` automatically build the Docker image if needed.
 
 
 ## How to build the dependency
-The dependencies of Windows and Linux are pre-built and placed within `code/`. If you only need to modify the program's source code, you can safely skip this section. However, in case you wish to build the dependencies yourself, here is how the dependencies are built:
+The dependencies of Windows and Linux are pre-built and placed within `code/`. If you only want to modify the program's source code, you can safely skip this section. However, in case you wish to build the dependencies yourself, here is how the dependencies are built:
 
 ### Windows
 1. Run `win32_external\build.bat` to build and install the required dependencies on Windows. You must run under MSVC x64 native tools command prompt.
-2. To automatically download and extract the dependencies, `curl` and `tar` are required in your `PATH`. Alternatively, you can manually download the dependencies, the URL and required directory structure will displayed by `build.bat` if the download fails.
+2. To automatically download and extract the dependencies, `curl` and `tar` are required in your `PATH`. Alternatively, you can manually download the dependencies, the URL and required directory structure will be displayed by `win32_external\build.bat` if the download fails.
 3. The include files and libraries are placed in `code\include_win32` and `code\lib_win32`, respectively.
 4. `win32_external\deps` stores the source files and the build output for the dependencies. You can safely delete it after the build process.
 5. `win32_external\log` stores logs during the build process. To see how logs are generated, look into `win32_external\build.bat`.
