@@ -334,22 +334,29 @@ Invite students to join the GitHub organization at the start of the semester.
 ### Announce homework
 We use GitHub Classroom to distribute homework. Take `hw0` in Compiler-s24 as an example.
 
-1. Go to **Create an assignment**.
+1. Go to **Create new repository**.
    <br>![github-classroom-01](docs/github-classroom-01.png)
 
-2. Fill in the **Assignment title** -> **Continue**.
+2. Fill in the **Repository template** and the **Repository name**, and press **Create repository**.
+   - (*Note: The repository allows you to modify `tmpl-hw0` after announcing the assignment and avoid leaking past commits to students. You may not need to create the repository due to the upcoming changes, see [GitHub Classroom: Creating Assignment Repositories with Forks Beta Update](https://github.com/orgs/community/discussions/127455/)*)
    <br>![github-classroom-02](docs/github-classroom-02.png)
 
-3. Fill in the template **GitHub repository** `Compiler-s24/tmpl-hw0` -> **Continue**.
-   <br>![github-classroom-03](docs/github-classroom-03.png)
+3. Go to **Create an assignment** in GitHub Classroom.
+   <br>![github-classroom-01](docs/github-classroom-03.png)
 
-4. Press **Create assignment**.
-   <br>![github-classroom-04](docs/github-classroom-04.png)
+4. Fill in the **Assignment title** -> **Continue**.
+   <br>![github-classroom-02](docs/github-classroom-04.png)
 
-5. Copy the url to `Homeworks/README.md` in repository `private`.
-   <br>![github-classroom-05](docs/github-classroom-05.png)
+5. Fill in the template **GitHub repository** `Compiler-s24/tmpl-hw0` -> **Continue**.
+   <br>![github-classroom-03](docs/github-classroom-05.png)
 
-6. Publish the announcement on the course website, and create the announcement issue in the `Discussion` repository.
+6. Press **Create assignment**.
+   <br>![github-classroom-04](docs/github-classroom-06.png)
+
+7. Copy the url to `Homeworks/README.md` in repository `private`.
+   <br>![github-classroom-05](docs/github-classroom-07.png)
+
+8. Publish the announcement on the course website, and create the announcement issue in the `Discussion` repository.
 
 
 ### Grade homework
