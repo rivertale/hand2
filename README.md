@@ -1,27 +1,13 @@
 # hand2
 
-hand2 helps you manage your course using `GitHub` and `Google Sheets`. It incorporates features from *[invisible-hand](https://github.com/ianchen-tw/invisible-hand)* and other helper programs, such as *HW-manager* and *get-commits*.
+hand2 helps you manage your course using `GitHub` and `Google Sheets`. It incorporates features from *[invisible-hand](https://github.com/ianchen-tw/invisible-hand)* and other helper tools, such as *HW-manager* and *get-commits*.
 
 
 ## Table of contents
 - [Install](#install)
 - [Getting started](#getting-started)
     - [Create configuration](#create-configuration)
-    - [Configuration](#configuration)
-        - [github_access_token](#github_access_token)
-        - [google_api_key](#google_api_key)
-        - [organization](#organization)
-        - [ta_team](#ta_team)
-        - [student_team](#student_team)
-        - [feedback_repository](#feedback_repository)
-        - [spreadsheet](#spreadsheet)
-        - [username_label](#username_label)
-        - [student_id_label](#student_id_label)
-        - [email](#email)
-        - [grade_command](#grade_command)
-        - [grade_thread](#grade_thread)
-        - [score_relative_path](#score_relative_path)
-        - [penalty_per_day](#penalty_per_day)
+    - [Configuring](#configuring)
 - [Workflow](#workflow)
     - [Config check](#config-check)
     - [Invite students](#invite-students)
@@ -49,18 +35,18 @@ hand2 helps you manage your course using `GitHub` and `Google Sheets`. It incorp
 
 
 ## Install
-Download pre-built x64 binaries from [release](../../releases/latest). You can also build from the source following instructions in [How to build](#how-to-build).
+Download pre-built x64 binaries from [release](../../releases/latest). You can also build from the source by following the instructions in [How to build](#how-to-build).
 
 
 ## Getting started
-hand2 runs on Windows, Linux, or Docker environments. To show usage, run the following command:
+hand2 can work with Windows, Linux, and Docker environments. To show the usage, run the following command:
 > Use Docker environment is recommended.
 - Windows: `.\hand.exe --help`
 - Linux: `./hand --help`
 - Docker: `docker/run.sh --help`
 
 
-### Create configuration
+### Create the configuration
 If there's no existing `config.txt`, run the program with any command creates a default configuration under the executable's directory. For example:
 ```
 ./hand config-check
@@ -71,7 +57,7 @@ If there's no existing `config.txt`, run the program with any command creates a 
 ```
 Config not found, default config created at '/hand/config.txt'
 
-usage: hand2 [--options] ... command [--command-options] ... [args] ...
+usage: hand [--options] ... command [--command-options] ... [args] ...
 [options]
     --help    show this message
     --log     log to log/YYYY-MM-DD_hh-mm-ss.log
@@ -89,8 +75,8 @@ usage: hand2 [--options] ... command [--command-options] ... [args] ...
 </details>
 
 
-### Configuration
-Before looking into the configuration, you might want to review the [course structure](#course-structure). Here's a sample `config.txt` for Compiler-s24. Descriptions for each field are provided below.
+### Configuring
+Before looking into the configuration, you might want to review the [course structure](#course-structure). Here's a sample `config.txt` for Compiler-s24, descriptions for each field are provided below.
 > The personal information is obscured in this section.
 ```ini
 # config.txt
@@ -114,8 +100,7 @@ score_relative_path = "./test/result/score.txt"
 penalty_per_day = "15"
 ```
 
-<a id="github_access_token"></a>
-- `github_access_token`: See how to create a GitHub classic personal access token [here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic), or follow the guide:
+- `github_access_token`: See how to create a GitHub classic personal access token [here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) or follow the guide:
     <details>
     <summary>Guide</summary>
 
@@ -134,8 +119,7 @@ penalty_per_day = "15"
 
     </details>
 
-<a id="google_api_key"></a>
-- `google_api_key`: See how to create a Google API key [here](https://support.google.com/googleapi/answer/6158862), or follow the guide:
+- `google_api_key`: See how to create a Google API key [here](https://support.google.com/googleapi/answer/6158862) or follow the guide:
     <details>
     <summary>Guide</summary>
 
@@ -152,15 +136,11 @@ penalty_per_day = "15"
 
     </details>
 
-- Obtain the following fields from the course organization:
-<a id="organization"></a>
-<a id="ta_team"></a>
-<a id="student_team"></a>
-<a id="feedback_repository"></a>
-    - `organization`
-    - `ta_team`
-    - `student_team`
-    - `feedback_repository`
+- `organization`
+- `ta_team`
+- `student_team`
+- `feedback_repository`
+    - Obtain these fields from the course organization:
   ```
   <organization>: Compiler-s24
   │
@@ -176,29 +156,21 @@ penalty_per_day = "15"
      └─ <student-team>: Students
   ```
 
-<a id="spreadsheet"></a>
-<a id="username_label"></a>
-<a id="student_id_label"></a>
-- Obtain the following fields from the spreadsheet:
-    - `spreadsheet`
-    - `username_label`
-    - `student_id_label`
-      <br>![google-spreadsheet-02](docs/google-spreadsheet-02.png)
+- `spreadsheet`
+- `username_label`
+- `student_id_label`
+    - Obtain these fields from the spreadsheet:
+  <br>![google-spreadsheet-02](docs/google-spreadsheet-02.png)
 
-<a id="email"></a>
 - `email`: The email should be linked to your GitHub account. It's used to commit feedbacks to [`feedback_repository`](#feedback_repository) when grading homework.
 
-<a id="grade_command"></a>
 - `grade_command`: Command executed under the homework directory for grading.
-    - (*Note: The field value can be enclosed by single quotes(`'`) or double quotes (`"`), single quotes are used here to escape the double quotes*)
+    - (*Note: The fields can be enclosed by single quotes(`'`) or double quotes (`"`), single quotes are used here to escape the double quotes*)
 
-<a id="grade_thread"></a>
 - `grade_thread`: Number of threads used for parallel grading.
 
-<a id="score_relative_path"></a>
-- `score_relative_path`: Path to the score file relative to the homework directory. The score file is generated by `grade_command`.
+- `score_relative_path`: Score file path relative to the homework directory. The score file should be generated by `grade_command`.
 
-<a id="penalty_per_day"></a>
 - `penalty_per_day`: Penalty per day for late submission (in percentage).
 
 
@@ -337,45 +309,48 @@ We use GitHub Classroom to distribute homework. Take `hw0` in Compiler-s24 as an
 1. Go to **Create new repository**.
    <br>![github-classroom-01](docs/github-classroom-01.png)
 
-2. Fill in the **Repository template** and the **Repository name**, and press **Create repository**.
-   - (*Note: The repository allows you to modify `tmpl-hw0` after announcing the assignment and avoid leaking past commits to students. You may not need to create the repository due to the upcoming changes, see [GitHub Classroom: Creating Assignment Repositories with Forks Beta Update](https://github.com/orgs/community/discussions/127455/)*)
+2. Fill in **Repository template** and **Repository name** -> **Create repository**.
+   - (*Note: Creating this repository allows you to modify `tmpl-hw0` after announcing the assignment and avoid leaking past commits to students. You may not need it due to the upcoming changes, see [GitHub Classroom: Creating Assignment Repositories with Forks Beta Update](https://github.com/orgs/community/discussions/127455/)*)
    <br>![github-classroom-02](docs/github-classroom-02.png)
 
 3. Go to **Create an assignment** in GitHub Classroom.
    <br>![github-classroom-01](docs/github-classroom-03.png)
 
-4. Fill in the **Assignment title** -> **Continue**.
+4. Fill in **Assignment title** -> **Continue**.
    <br>![github-classroom-02](docs/github-classroom-04.png)
 
-5. Fill in the template **GitHub repository** `Compiler-s24/tmpl-hw0` -> **Continue**.
+5. Fill in **GitHub repository** -> **Continue**.
    <br>![github-classroom-03](docs/github-classroom-05.png)
 
-6. Press **Create assignment**.
+6. **Create assignment**.
    <br>![github-classroom-04](docs/github-classroom-06.png)
 
-7. Copy the url to `Homeworks/README.md` in repository `private`.
+7. Copy the url to `Homeworks/README.md` in the `private` repository.
    <br>![github-classroom-05](docs/github-classroom-07.png)
 
-8. Publish the announcement on the course website, and create the announcement issue in the `Discussion` repository.
+8. Publish the announcement on the course website, and create an issue in the `Discussion` repository to announce the homework.
 
 
 ### Grade homework
-Retrieve late submission penalty via `collect-homework`, and grade students' homework via `grade-homework`. Take `hw1` in Compiler-s24 as an example:
+Retrieve late submission penalty and grade students' homework. Take `hw1` in Compiler-s24 as an example:
 - Deadline: 2024-03-21 23:59:59
 - Penalty: 15% per day (weekends count as 1 day)
 - Late submission duration: 3 days
 
-(Retrieve penalty)
+*(Retrieve penalty)*
 
 1. **Run command: `./hand collect-homework hw1 2024-03-21-23-59-59 3 hw1-penalty.txt`**
 
-   (*What hand2 actually does*)
-   
+   <details>
+   <summary>(What hand2 actually does)</summary>
+
    1. Retrieves the last push time before `2024-03-24 23:59:59` for students and calculate their penalties.
    
    2. Finds the sheet `hw1` in the spreadsheet.
    
    3. Iterates through the sheet and outputs a penalty for each student (100% if not submitted).
+
+   </details>
    
    <details>
    <summary>Output</summary>
@@ -399,36 +374,39 @@ Retrieve late submission penalty via `collect-homework`, and grade students' hom
 
 3. **Copy the penalties from `hw1-penalty.txt` to the sheet `hw1`.**
 
-(Grade homework)
+*(Grade homework)*
 
 4. **Run command: `./hand grade-homework hw1 tmpl-hw1 solution 2024-03-21-23-59-59 3 hw1-score.txt`**
-   - (*Note: If you are using WSL, launch the program in Docker via `docker/run.sh`. See details at [Using WSL](#using-wsl)*)
+   - (*Note: If you are using WSL, launch the program with Docker via `docker/run.sh`. See details at [Using WSL](#using-wsl)*)
 
-   (*What hand2 actually does*)
+   <details>
+   <summary>(What hand2 actually does)</summary>
    
    1. Retrieves the last push time before `2024-03-24 23:59:59` for students.
 
    2. Finds the sheet `hw1` in the spreadsheet.
-   
-   3. Clones the repository `hw-feedback` and the branch `solution` in `tmpl-hw1`.
+
+   3. Clones the `hw-feedback` repository and the `solution` branch in `tmpl-hw1`.
 
    4. Finds repositories prefixed by `hw1` in `Compiler-s24`, and clones their last commits before the cutoff.
 
-   5. Replaces the directories `./docker` and `./test` in students' repositories with those in `tmpl-hw1`.
+   5. Replaces the directories `./docker` and `./test` in students' repositories with those from `tmpl-hw1`.
 
-   6. Iterates through students' repositories and executes the [grade command](#grade_command). Multiple [grading threads](#grade_thread) are launched, with each thread grading one student's repository simultaneously.
+   6. Iterates through students' repositories and executes the [grade command](#grade_command). Multiple [grading threads](#grade_thread) are launched, each thread grades one student's repository simultaneously.
 
    7. Iterates through the sheet, performs the following actions for each student:
 
        1. If the repository doesn't exist, output a score of 0 and skip the remaining actions.
 
-       2. Generates feedback `./hw1/reports/<student_id>.md`. The file replacement is performed at this step, see details at [Feedback format](#feedback_format).
+       2. Generates feedback `./hw1/reports/<student_id>.md` in `hw-feedback`. File replacements are performed here, see details at [Feedback format](#feedback_format).
 
        3. Parses the first number in [score file](#score_relative_path) and output it to `hw1-score.txt` as the student's score.
 
    8. Commits and pushes `hw-feedback` to GitHub (the committer is retrieved from [github_access_token](#github_access_token) and the [email](#email) is from the configuration).
        - Use the flag `--dry` to skip this step. For example: `./hand grade-homework --dry hw1 tmpl-hw1 solution 2024-03-21-23-59-59 3 hw1-score.txt`
-   
+
+   </details>
+
    <details>
    <summary>Output</summary>
 
@@ -543,23 +521,26 @@ Retrieve late submission penalty via `collect-homework`, and grade students' hom
 
 
 ### Announce grade
-Open an issue in every student's repository as the grade announcement, the content is derived from `hw-feedback` and the *homework sheet*. Take `hw1` in Compiler-s24 as an example:
+Open an issue in every student's repository as grade announcement, the content is generated from `hw-feedback` and the *homework sheet*. Take `hw1` in Compiler-s24 as an example:
 
 1. **Run command: `./hand announce-grade hw1`**
 
-   (*What hand2 actually does*)
-   
-   1. Clones the repository `hw-feedback`.
-    
-   2. Finds the sheet `hw1` in the spredsheet.
-    
-   3. Generates issue contents for each student, derived from `hw-feedback/hw1/reports/<student_id>.md` and the sheet `hw1`. The sheet replacements are performed at this step, see details at [Feedback format](#feedback-format).
+   <details>
+   <summary>(What hand2 actually does)</summary>
 
-   4. Iterates through the sheet, and performs the following actions for each student's repository:
+   1. Clones the repository `hw-feedback`.
+
+   2. Finds the sheet `hw1` in the spredsheet.
+
+   3. Generates issue contents for each student from `hw-feedback/hw1/reports/<student_id>.md` and the sheet `hw1`. Sheet replacements are performed here, see details at [Feedback format](#feedback-format).
+
+   4. Iterates through the sheet, and performs the following actions in each student's repository:
 
        1. If an issue named `Grade for hw1` exists, update it to match the new content; Otherwise, create a new issue.
        - Use the flag `--dry` to output the issue content without actually editing or creating the issue.
-   
+
+   </details>
+
    <details>
    <summary>Output</summary>
 
@@ -619,6 +600,7 @@ Open an issue in every student's repository as the grade announcement, the conte
    </details>
 
 2. (Optional) **Run the command again if there are failed announcements.**
+    - (*Note: GitHub might block some requests due to our rapid issue creation. In this case, we simply need to run it again.*) 
 
 ### Clean
 Delete unnecessary files, such as logs and caches.
@@ -655,7 +637,7 @@ The GitHub organization structure:
    ├─ <ta-team>
    └─ <student-team>
 ```
-- `<organization>`: GitHub organization for the course. Students join this organization to receive homework, submit homework, and access the discussion forum.
+- `<organization>`: The course GitHub organization. Students join this organization to receive homework, submit homework, and access the discussion forum.
 - `tmpl-hwX`: Templates for homework hwX. Students create their homework repository from these templates and submit their homework through commits.
 - `<feedback-repository>`: Usually named `hw-feedback`, it stores feedback templates and the feedbacks to students before announcing grades. See details at [Feedback format](#feedback-format).
 - `<...>`: Other repositories, such as the course website, are not used by hand2.
@@ -674,12 +656,7 @@ The Google spreadsheet structure:
 ```
 - `<spreadsheet>`: Google spreadsheet for organizing students' grades. it must be visible to the public for hand2 to work.
     - (*Note: hand2 doesn't require write access, and will not write to the spreadsheet.*)
-  <details>
-  <summary>Spreadsheet example</summary>
-  
-  ![google-spreadsheet-01](docs/google-spreadsheet-01.png)
-  
-  </details>
+  <br>![google-spreadsheet-01](docs/google-spreadsheet-01.png)
 - `hwX`: *Homework sheet* for managing grades for hwX. The first row of the sheet is called `label`. A valid *homework sheet* must contain the following labels:
     - Students' GitHub username, see also [username_label](#username_label).
     - Students' IDs, see also [student_id_label](#student_id_label).
@@ -691,15 +668,15 @@ Timezone is always UTC+8.
 
 
 ### Deadline and Cutoff
-Deadline is the start of late submission, and Cutoff is the end of late submission. They are often passed in as `deadline` and `cutoff_time`.
+Deadline is the start of late submission, and Cutoff is the end of late submission. They are often passed in as `deadline` and `cutoff_days`.
 - `deadline`: Time when late submission begins.
-- `cutoff_time`: Duration (in days) from the start of late submission to its conclusion.
+- `cutoff_days`: Duration (in days) from the start of late submission to its conclusion.
 
-For example, the late submission of `hw1` is from 2024-03-21 23:59:59 to 2024-03-24 23:59:59. Hence, `deadline` is `2024-03-21-23-59-59` and `cutoff_time` is `3`.
+For example, the late submission of `hw1` is from `2024-03-21 23:59:59` to `2024-03-24 23:59:59`. Hence, `deadline` is `2024-03-21-23-59-59` and `cutoff_days` is `3`.
 
 
 ### Feedback format
-A feedback follows a two-stage transformation before it's delivered to a student's issue. Take `hw1` in Compiler-s24 as an example,
+A feedback follows a two-stage transformation before it's delivered to students. Take `hw1` in Compiler-s24 as an example,
 
 1. Initially, a feedback template `./report_template_hw1.md` is located in the repository `hw-feedback`.
    <details>
@@ -737,10 +714,10 @@ A feedback follows a two-stage transformation before it's delivered to a student
 
    </details>
 
-2. **Stage 1**: After grading homework, hand2 replaces `${./<...>}` in the template with corresponding files within the student's repository.
+2. **File replacement (stage 1)**: After grading homework, hand2 replaces `${./<...>}` in the template with corresponding files within the student's repository.
    - *(Note: If the file doesn't exist, it will be replaced with an empty string.)*
 
-   For example: the student's repository contains `./test/diff.txt`:
+   For example, the student's repository contains `./test/diff.txt`:
    ```
    abcdef
 
@@ -781,13 +758,13 @@ A feedback follows a two-stage transformation before it's delivered to a student
    ````
    </details>
 
-3. **Stage 2**: When announcing grade, hand2 replaces `${<...>}` in `hw-feedback` with corresponding data from the sheet `hw1`.
+3. **Sheet replacement (stage 2)**: When announcing grade, hand2 replaces `${<...>}` in `hw-feedback` with corresponding data from the sheet `hw1`.
    - *(Note: If the label doesn't exist in the sheet, it will result in an error.)*
 
-   For example, we are announcing for `username-01`, and the sheet has the form:
+   For example, we are announcing grade for `username-01`, and the sheet has the form:
    <br>![google-spreadsheet-03](docs/google-spreadsheet-03.png)
 
-   The transformed feedbacks are used as issue content for grade announcements.
+   The announced issue will have the following transformed feedback.
    <details>
    <summary>Issue: Grade for hw1</summary>
 
@@ -826,12 +803,12 @@ A feedback follows a two-stage transformation before it's delivered to a student
 
 
 ### Logging
-Enable logging with the flag `--log` for any command. Logs will be saved to `./log/YYYY-MM-DD_hh-mm-ss.log`. For example: `./hand --log config-check`
+Enable logging with the flag `--log` for any command. Logs will be saved to `./log/YYYY-MM-DD_hh-mm-ss.log`. For example: `./hand --log config-check`.
 
 
 ### Using WSL
 - Running a Docker container on WSL can occasionally mess up the `inode` of `..` that points to `/mnt`. This problem is observed in development, and it consistently causes failure when trying to query the full path, which is crucial for both the homework make scripts and hand2.
-- Run command `docker/run.sh ...` to use the Docker version of hand2 in WSL instead. The Docker scripts support Docker in Docker (DinD), allowing you to grade students' homework even when the grading script launches a Docker container.
+- In WSL, run command `docker/run.sh ...` to use the Docker version of hand2 instead. The Docker scripts support Docker in Docker (DinD), allowing you to grade students' homework even when the grading script launches a Docker container.
 
 
 ## How to build
