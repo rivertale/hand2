@@ -345,6 +345,91 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
     free_string_array(&repos);
 }
 
+static void
+bulk_clone(char *parent_dir, char *title, time_t deadline, time_t cutoff, char *template_repo, char *template_branch,
+           char *github_token, char *organization)
+{
+    tm t0 = calendar_time(deadline);
+    tm t1 = calendar_time(cutoff);
+    write_log("title=%s, template_repo=%s, template_branch=%s, org=%s"
+              "deadline=%d-%02d-%02d_%02d:%02d:%02d, cutoff=%d-%02d-%02d_%02d:%02d:%02d",
+              title, template_repo, template_branch, organization,
+              t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec,
+              t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
+
+    static char username[MAX_URL_LEN];
+    static char template_dir[MAX_PATH_LEN];
+    static char template_test_dir[MAX_PATH_LEN];
+    static char template_docker_dir[MAX_PATH_LEN];
+
+    if(!retrieve_username(username, MAX_URL_LEN, github_token))
+    {
+        write_error("Unable to retrieve username");
+        return;
+    }
+
+    if(template_repo && template_branch)
+    {
+        write_output("Retrieving homework template...");
+        GitCommitHash template_hash = retrieve_latest_commit(github_token, organization, template_repo, template_branch);
+        if(!cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, &template_hash))
+        {
+            write_error("Unable to retrieve '%s/%s'", organization, template_repo);
+            return;
+        }
+        format_string(template_test_dir, MAX_PATH_LEN, "%s/test", template_dir);
+        format_string(template_docker_dir, MAX_PATH_LEN, "%s/docker", template_dir);
+    }
+
+    platform.create_directory(parent_dir);
+
+    write_output("Retrieving repos with prefix '%s'...", title);
+    StringArray repos = retrieve_repos_by_prefix(github_token, organization, title);
+
+    write_output("Retrieving default branches...");
+    StringArray branches = retrieve_default_branches(&repos, github_token, organization);
+    assert(branches.count == repos.count);
+
+    write_output("Retrieving pushes before deadline...");
+    GitCommitHash *hash = (GitCommitHash *)allocate_memory(repos.count * sizeof(*hash));
+    time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
+    retrieve_pushes_before_cutoff(hash, push_time, &repos, &branches, github_token, organization, cutoff);
+
+    write_output("Retrieving student repositories...");
+    for(int i = 0; i < repos.count; ++i)
+    {
+        static char dir[MAX_PATH_LEN];
+        format_string(dir, MAX_PATH_LEN, "%s/%s", parent_dir, repos.elem[i]);
+        write_output("Retrieving homework from '%s'", repos.elem[i]);
+        if(clone_repository(dir, username, github_token, organization, repos.elem[i], hash[i]))
+        {
+            if(template_repo && template_branch)
+            {
+                static char test_dir[MAX_PATH_LEN];
+                static char docker_dir[MAX_PATH_LEN];
+                format_string(test_dir, MAX_PATH_LEN, "%s/test", dir);
+                format_string(docker_dir, MAX_PATH_LEN, "%s/docker", dir);
+                platform.delete_directory(test_dir);
+                platform.delete_directory(docker_dir);
+                platform.copy_directory(test_dir, template_test_dir);
+                platform.copy_directory(docker_dir, template_docker_dir);
+            }
+        }
+    }
+
+    write_output("");
+    write_output("[Summary]");
+    write_output("    Total repositories: %d", repos.count);
+    write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
+                 t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
+    write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
+                 t1.tm_year + 1900, t1.tm_mon + 1, t1.tm_mday, t1.tm_hour, t1.tm_min, t1.tm_sec);
+    free_memory(hash);
+    free_memory(push_time);
+    free_string_array(&branches);
+    free_string_array(&repos);
+}
+
 static GrowableBuffer
 format_report_by_file_replacement(GrowableBuffer *format, char *dir)
 {
@@ -893,19 +978,20 @@ run_hand(int arg_count, char **args)
     if(show_usage || !command)
     {
         char *usage =
-            "usage: hand2 [--options] ... command [--command-options] ... [args] ..."   "\n"
-            "[options]"                                                                 "\n"
-            "    --help    show this message"                                           "\n"
-            "    --log     log to log/YYYY-MM-DD_hh-mm-ss.log"                          "\n"
-            "[command]"                                                                 "\n"
-            "    config-check       check if the config is valid"                       "\n"
-            "    invite-students    invite student into github organization"            "\n"
-            "    collect-homework   collect homework and retrieve late submission info" "\n"
-            "    grade-homework     grade homework"                                     "\n"
-            "    announce-grade     announce grade"                                     "\n"
-            "    clean              delete unrelated files such as logs and caches"     "\n"
-            "[common-command-options]"                                                  "\n"
-            "    --help             show the help message regards to the command"       "\n";
+            "usage: hand [--options] ... command [--command-options] ... [args] ..."        "\n"
+            "[options]"                                                                     "\n"
+            "    --help    show this message"                                               "\n"
+            "    --log     log to log/YYYY-MM-DD_hh-mm-ss.log"                              "\n"
+            "[command]"                                                                     "\n"
+            "    config-check       check if the config is valid"                           "\n"
+            "    invite-students    invite student into github organization"                "\n"
+            "    collect-homework   collect homework and retrieve late submission info"     "\n"
+            "    bulk-clone         clone students' repositories for a specific homework"   "\n"
+            "    grade-homework     grade homework and generate feedbacks"                  "\n"
+            "    announce-grade     announce grade in students' repository issues"          "\n"
+            "    clean              delete unrelated files such as logs and caches"         "\n"
+            "[common-command-options]"                                                      "\n"
+            "    --help             show the help message regards to the command"           "\n";
         write_output(usage);
         goto CLEANUP;
     }
@@ -940,7 +1026,7 @@ run_hand(int arg_count, char **args)
         if(show_command_usage)
         {
             char *usage =
-                "usage: hand2 clean"    "\n"
+                "usage: hand clean"     "\n"
                                         "\n"
                 "[arguments]"           "\n"
                 ""                      "\n"
@@ -973,7 +1059,7 @@ run_hand(int arg_count, char **args)
         if(show_command_usage)
         {
             char *usage =
-                "usage: hand2 config-check" "\n"
+                "usage: hand config-check"  "\n"
                                             "\n"
                 "[arguments]"               "\n"
                 ""                          "\n"
@@ -1007,7 +1093,7 @@ run_hand(int arg_count, char **args)
         if(!input_path || show_command_usage)
         {
             char *usage =
-                "usage: hand2 invite-students [--command-options] ... path" "\n"
+                "usage: hand invite-students [--command-options] ... path"  "\n"
                                                                             "\n"
                 "[arguments]"                                               "\n"
                 "    path    file path of listed github handle to invite"   "\n"
@@ -1041,8 +1127,8 @@ run_hand(int arg_count, char **args)
         }
 
         char *title = next_arg(&parser);
-        char *in_time = next_arg(&parser);
-        char *cutoff_time = next_arg(&parser);
+        char *in_deadline = next_arg(&parser);
+        char *cutoff_days = next_arg(&parser);
         char *out_path = next_arg(&parser);
         if(next_arg(&parser))
         {
@@ -1050,15 +1136,15 @@ run_hand(int arg_count, char **args)
             write_error("Too many arguments");
         }
 
-        if(!title || !in_time || !cutoff_time || !out_path || show_command_usage)
+        if(!title || !in_deadline || !cutoff_days || !out_path || show_command_usage)
         {
             char *usage =
-                "usage: hand2 collect-homework [--command-option] ... title deadline cutoff_time out_path"          "\n"
+                "usage: hand collect-homework [--command-options] ... title deadline cutoff_days out_path"          "\n"
                                                                                                                     "\n"
                 "[arguments]"                                                                                       "\n"
                 "    title                 title of the homework"                                                   "\n"
                 "    deadline              deadline of the homework in YYYY-MM-DD-hh-mm-ss"                         "\n"
-                "    cutoff_time           max late submission time after deadline (in days)"                       "\n"
+                "    cutoff_days           max late submission days after deadline"                                 "\n"
                 "    out_path              output file that lists penalty for all students (in the same order of"   "\n"
                 "                          the spreadsheet)"                                                        "\n"
                 "[command-options]"                                                                                 "\n"
@@ -1073,15 +1159,67 @@ run_hand(int arg_count, char **args)
         char *spreadsheet_id = config.value[Config_spreadsheet];
         char *student_label = config.value[Config_username_label];
         int penalty_per_day = atoi(config.value[Config_penalty_per_day]);
-        time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
-        time_t cutoff = deadline + atoi(cutoff_time) * 86400;
+        time_t deadline = parse_time(in_deadline, TIME_ZONE_UTC8);
+        time_t cutoff = deadline + atoi(cutoff_days) * 86400;
         if(!deadline)
         {
-            write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_time);
+            write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_deadline);
             goto CLEANUP;
         }
         collect_homework(title, out_path, deadline, cutoff, penalty_per_day, is_weekends_one_day, only_repo,
                          github_token, organization, google_token, spreadsheet_id, student_label);
+    }
+    else if(compare_string(command, "bulk-clone"))
+    {
+        int show_command_usage = 0;
+        for(char *option = next_option(&parser); option; option = next_option(&parser))
+        {
+            if(compare_string(option, "--help"))
+                show_command_usage = 1;
+        }
+
+        char *out_dir = next_arg(&parser);
+        char *title = next_arg(&parser);
+        char *in_deadline = next_arg(&parser);
+        char *cutoff_days = next_arg(&parser);
+        char *template_repo = next_arg(&parser);
+        char *template_branch = next_arg(&parser);
+        if(next_arg(&parser))
+        {
+            show_command_usage = 1;
+            write_error("Too many arguments");
+        }
+
+        if(!out_dir || !title || !in_deadline || !cutoff_days || (!template_repo != !template_branch) || show_command_usage)
+        {
+            char *usage =
+                "usage: hand bulk-clone [--command-options] ... out_dir title deadline cutoff_days [template_repo template_branch]"     "\n"
+                                                                                                                                        "\n"
+                "[arguments]"                                                                                                           "\n"
+                "    out_dir            parent directory that the repositories clone into"                                              "\n"
+                "    title              title of the homework"                                                                          "\n"
+                "    deadline           deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                                "\n"
+                "    cutoff_days        max late submission days after deadline"                                                        "\n"
+                "    template_repo      repository name of the homework template (optional)"                                            "\n"
+                "    template_branch    the branch of template_repo that contains all testcases (optional)"                             "\n"
+                "[command-options]"                                                                                                     "\n";
+            write_output(usage);
+            goto CLEANUP;
+        }
+
+        size_t out_dir_len = string_len(out_dir);
+        if(out_dir_len > 0 && (out_dir[out_dir_len - 1] == '/' || out_dir[out_dir_len - 1] == '\\'))
+            out_dir[out_dir_len - 1] = 0;
+        char *github_token = config.value[Config_github_token];
+        char *organization = config.value[Config_organization];
+        time_t deadline = parse_time(in_deadline, TIME_ZONE_UTC8);
+        time_t cutoff = deadline + atoi(cutoff_days) * 86400;
+        if(!deadline)
+        {
+            write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_deadline);
+            goto CLEANUP;
+        }
+        bulk_clone(out_dir, title, deadline, cutoff, template_repo, template_branch, github_token, organization);
     }
     else if(compare_string(command, "grade-homework"))
     {
@@ -1106,8 +1244,8 @@ run_hand(int arg_count, char **args)
         char *title = next_arg(&parser);
         char *template_repo = next_arg(&parser);
         char *template_branch = next_arg(&parser);
-        char *in_time = next_arg(&parser);
-        char *cutoff_time = next_arg(&parser);
+        char *in_deadline = next_arg(&parser);
+        char *cutoff_days = next_arg(&parser);
         char *out_path = next_arg(&parser);
         if(next_arg(&parser))
         {
@@ -1115,22 +1253,21 @@ run_hand(int arg_count, char **args)
             write_error("Too many arguments");
         }
 
-        if(!title || !template_repo || !template_branch || !in_time || !cutoff_time || !out_path || show_command_usage)
+        if(!title || !template_repo || !template_branch || !in_deadline || !cutoff_days || !out_path || show_command_usage)
         {
             char *usage =
-                "usage: hand2 grade-homework [--command-option] ... title template_repository template_branch deadline cutoff_day out_path" "\n"
-                                                                                                                                            "\n"
-                "[arguments]"                                                                                                               "\n"
-                "    title                 title of the homework"                                                                           "\n"
-                "    template_repo         homework template repository name"                                                               "\n"
-                "    template_branch       the template_repo branch that contains all testcases"                                            "\n"
-                "    deadline              deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                                 "\n"
-                "    cutoff_time           max late submission time after deadline (in days)"                                               "\n"
-                "    out_path              output file that lists score for all students (in the same order of the"                         "\n"
-                "                          spreadsheet)"                                                                                    "\n"
-                "[command-options]"                                                                                                         "\n"
-                "    --dry                 perform a trial run without making any remote changes"                                           "\n"
-                "    --only-repo <name>    only grade homework for the repository named <name>"                                             "\n";
+                "usage: hand grade-homework [--command-options] ... title template_repo template_branch deadline cutoff_days out_path"  "\n"
+                                                                                                                                        "\n"
+                "[arguments]"                                                                                                           "\n"
+                "    title                 title of the homework"                                                                       "\n"
+                "    template_repo         repository name of the homework template"                                                    "\n"
+                "    template_branch       the branch of template_repo that contains all testcases"                                     "\n"
+                "    deadline              deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                             "\n"
+                "    cutoff_days           max late submission days after deadline"                                                     "\n"
+                "    out_path              output file that lists score for all students (in the same order of the spreadsheet)"        "\n"
+                "[command-options]"                                                                                                     "\n"
+                "    --dry                 perform a trial run without making any remote changes"                                       "\n"
+                "    --only-repo <name>    only grade homework for the repository named <name>"                                         "\n";
             write_output(usage);
             goto CLEANUP;
         }
@@ -1145,11 +1282,11 @@ run_hand(int arg_count, char **args)
         char *feedback_repo = config.value[Config_feedback_repo];
         char *score_relative_path = config.value[Config_score_relative_path];
         int thread_count = atoi(config.value[Config_grade_thread_count]);
-        time_t deadline = parse_time(in_time, TIME_ZONE_UTC8);
-        time_t cutoff = deadline + atoi(cutoff_time) * 86400;
+        time_t deadline = parse_time(in_deadline, TIME_ZONE_UTC8);
+        time_t cutoff = deadline + atoi(cutoff_days) * 86400;
         if(!deadline)
         {
-            write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_time);
+            write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_deadline);
             goto CLEANUP;
         }
         grade_homework(title, out_path, deadline, cutoff, template_repo, template_branch, feedback_repo,
@@ -1186,7 +1323,7 @@ run_hand(int arg_count, char **args)
         if(!title || show_command_usage)
         {
             char *usage =
-                "usage: hand2 announce-grade [--command-option] ... title"                                      "\n"
+                "usage: hand announce-grade [--command-options] ... title"                                      "\n"
                                                                                                                 "\n"
                 "[arguments]"                                                                                   "\n"
                 "    title    title of the homework"                                                            "\n"
