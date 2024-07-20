@@ -736,6 +736,7 @@ grade_homework(char *title, char *out_path,
 
     if(dry)
     {
+        platform.delete_directory(dry_feedback_dir);
         platform.rename_directory(dry_feedback_dir, feedback_dir);
         write_output("DRY RUN: reports are not pushed, you can view the generated reports at '%s'", dry_feedback_report_dir);
     }
