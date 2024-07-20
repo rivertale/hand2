@@ -108,6 +108,12 @@ compare_case_insensitive(char *a, char *b)
 }
 
 static int
+is_digit(char c)
+{
+    return ('0' <= c && c <= '9');
+}
+
+static int
 is_number(char *string)
 {
     int result = 1;
