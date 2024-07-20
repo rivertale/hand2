@@ -13,6 +13,7 @@ hand2 helps you manage your course using `GitHub` and `Google Sheets`. It incorp
     - [Invite students](#invite-students)
     - [Announce homework](#announce-homework)
     - [Grade homework](#grade-homework)
+    - [Announce grade](#announce-grade)
     - [Bulk clone](#bulk-clone)
     - [Clean](#clean)
 - [Explanation](#explanation)
