@@ -260,7 +260,7 @@ load_config(Config *config, char *path)
         if(!config->value[i])
         {
             success = 0;
-            write_error("Config: incomplete config because key '%s' not found", g_config_name[i]);
+            write_error("Config: incomplete config, key '%s' not found", g_config_name[i]);
         }
     }
     return success;

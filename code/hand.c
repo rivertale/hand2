@@ -4,6 +4,78 @@
 #include "hand_curl.c"
 #include "hand_git2.c"
 
+static time_t
+calculate_cutoff(time_t deadline, int cutoff_days, int is_weekends_one_day)
+{
+    // NOTE: to determine the weekday for the weekends-count-as-1-day policy, from the late submission starts,
+    // the majority of the next 24 hours determines the weekdays, (when equals, the later weekday is considered).
+    //
+    // for example, if the late submission starts at 8:00 on Sunday, within the next 24 hours, 16 hours fall
+    // on Sunday, therefore submissions within 24 hours are considered late for a "Sunday", this is important
+    // when calculating penalty for weekends.
+    //
+    // more examples:
+    //
+    // 1. late submission starts at 23:59:59 (Fri.):
+    //    (1) submit at 00:00:00 (Sat.) is considered { Saturday }, therefore a 1-day penalty.
+    //    (2) submit at 23:59:59 (Sat.) is considered { Saturday }, therefore a 1-day penalty.
+    //    (3) submit at 00:00:00 (Sun.) is considered { Saturday, Sunday }, therefore a 1-day penalty (since
+    //        Saturday + Sunday count as 1 day).
+    //    (4) submit at 00:00:00 (Mon.) is considered { Saturday, Sunday, Monday }, therefore a 2-day penalty
+    //        (since Saturday + Sunday count as 1 day).
+    //
+    // 2. late submission starts at 11:59:59 (Fri.):
+    //    (1) submit at 11:59:59 (Sat.) is considered { Friday } since the majority of these 24 hours are Friday.
+    //        This is a 1-day penalty.
+    //    (2) submit at 11:59:59 (Sun.) is considered { Friday, Saturday }, therefore a 2-day penalty.
+    //    (3) submit at 11:59:59 (Mon.) is considered { Friday, Saturday, Sunday }, therefore a 2-day penalty
+    //        (since Saturday + Sunday count as 1 day).
+    //
+    // 3. late submission starts at 12:00:00 (Fri.):
+    //    (1) submit at 12:00:00 (Sat.) is considered { Saturday }. Since Friday and Saturday both take up 12
+    //        hours in these 24 hours, the later weekday is used. This is a 1-day penalty.
+    //    (2) submit at 12:00:00 (Sun.) is considered { Saturday, Sunday } therfore a 1-day penalty (since
+    //        Saturday + Sunday count as 1 day).
+    //    (3) submit at 12:00:00 (Mon.) is considered { Saturday, Sunday, Monday }, therfore a 2-day penalty
+    //        (since Saturday + Sunday count as 1 day)
+
+    time_t cutoff = deadline;
+    int day_left = cutoff_days;
+    if(is_weekends_one_day)
+    {
+        while(day_left > 0)
+        {
+            tm t = calendar_time(cutoff);
+            int weekday = (t.tm_hour < 12) ? t.tm_wday : (t.tm_wday + 1) % 7;
+            int weekend_day_before_old_cutoff = (weekday + 6) / 7 + weekday / 7;
+            int weekend_day_before_new_cutoff = (weekday + day_left + 6) / 7 + (weekday + day_left) / 7;
+            cutoff += day_left * 86400;
+            day_left = (weekend_day_before_new_cutoff - weekend_day_before_old_cutoff) / 2;
+        }
+    }
+    return cutoff + day_left * 86400;
+}
+
+static int
+calculate_late_submission_day(time_t deadline, time_t submission_time, int is_weekends_one_day)
+{
+    int delay = 0;
+    if(submission_time > deadline)
+    {
+        delay = (int)((submission_time - deadline + 86399) / 86400);
+        assert(delay > 0);
+        if(is_weekends_one_day)
+        {
+            tm t = calendar_time(deadline);
+            int first_penalty_weekday = (t.tm_hour < 12) ? t.tm_wday : (t.tm_wday + 1) % 7;
+            int weekend_day_before_deadline = (first_penalty_weekday + 6) / 7 + first_penalty_weekday / 7;
+            int weekend_day_before_submission = (first_penalty_weekday + delay + 6) / 7 + (first_penalty_weekday + delay) / 7;
+            delay -= (weekend_day_before_submission - weekend_day_before_deadline) / 2;
+        }
+    }
+    return delay;
+}
+
 static void
 delete_cache_and_log(void)
 {
@@ -30,21 +102,12 @@ config_check(Config *config)
     char *email = config->value[Config_email];
     char *grade_thread_count = config->value[Config_grade_thread_count];
     char *penalty_per_day = config->value[Config_penalty_per_day];
+    char *weekends_as_one_day = config->value[Config_weekends_as_one_day];
     char *score_relative_path = config->value[Config_score_relative_path];
     write_log("org=%s, ta_team=%s, student_team=%s, grade_command=%s, feedback_repo=%s, "
               "spreadsheet_id=%s, username_label=%s, id_label=%s, email=%s, thread_count=%s, penalty=%s, score_path=%s",
               organization, ta_team, student_team, grade_command, feedback_repo,
               spreadsheet_id, username_label, id_label, email, grade_thread_count, penalty_per_day, score_relative_path);
-
-    int penalty_is_int = 1;
-    for(char *c = penalty_per_day; *c; ++c)
-    {
-        if(*c < '0' || '9' < *c)
-        {
-            penalty_is_int = 0;
-            break;
-        }
-    }
 
     static char username[MAX_URL_LEN];
     StringArray spreadsheet = {0};
@@ -66,7 +129,8 @@ config_check(Config *config)
         ok[Config_spreadsheet] = retrieve_spreadsheet(&spreadsheet, google_token, spreadsheet_id);
     }
     ok[Config_grade_thread_count] = (atoi(grade_thread_count) > 0);
-    ok[Config_penalty_per_day] = penalty_is_int;
+    ok[Config_penalty_per_day] = is_number(penalty_per_day);
+    ok[Config_weekends_as_one_day] = is_number(weekends_as_one_day);
 
     write_output("");
     write_output("[GitHub]");
@@ -111,6 +175,7 @@ config_check(Config *config)
     write_output("[Misc]");
     write_output("    Use %s grading thread ... %s", grade_thread_count, ok[Config_grade_thread_count] ? "OK" : "Not a positive integer");
     write_output("    Penalty per day is %s%% ... %s", penalty_per_day, ok[Config_penalty_per_day] ? "OK" : "Not a integer");
+    write_output("    Weekends as one day is %s ... %s", weekends_as_one_day, ok[Config_weekends_as_one_day] ? "OK" : "Not a integer");
     write_output("    Score read from: {hwdir}/%s ... nocheck", score_relative_path);
     write_output("    Grading command: %s ... nocheck", grade_command);
 
@@ -270,18 +335,8 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
     retrieve_pushes_before_cutoff(hash, push_time, &repos, &branches, github_token, organization, cutoff);
 
-    // NOTE: for the weekends-count-as-1-day policy, the examples use the time format 0:00:00 ~ 23:59:59.
-    // 1. if the late submission starts at 11:59:59 (Fri.):
-    //    (1) submit at 11:59:59 (Sat.) is counted as 1-day, hour  0-24 are treated as Friday.
-    //    (2) submit at 11:59:59 (Sun.) is counted as 2-day, hour 24-48 are treated as Saturday.
-    //    (3) submit at 11:59:59 (Mon.) is counted as 2-day, hour 48-72 are treated as Sunday.
-    // 2. if the late submission starts at 12:00:00 (Fri.):
-    //    (1) submit at 12:00:00 (Sat.) is counted as 1-day, hour  0-24 are treated as Saturday.
-    //    (2) submit at 12:00:00 (Sun.) is counted as 1-day, hour 24-48 are treated as Sunday.
-    //    (3) submit at 12:00:00 (Mon.) is counted as 2-day, hour 48-72 are treated as Monday.
     int submission_count = 0;
     int late_submission_count = 0;
-    int start_weekday = (t0.tm_hour < 12) ? t0.tm_wday : (t0.tm_wday + 1) % 7;
 
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
     int student_x = find_label(&sheet, student_label);
@@ -298,26 +353,17 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
             ++submission_count;
             if(push_time[index] > deadline)
             {
-                delay = (int)((push_time[index] - deadline + 86399) / 86400);
-                assert(delay > 0);
-                if(is_weekends_one_day)
-                {
-                    int weekend_before_deadline = (start_weekday + 6) / 7 + start_weekday / 7;
-                    int weekend_before_cutoff = (start_weekday + delay + 6) / 7 + (start_weekday + delay) / 7;
-                    int weekend_day_count = weekend_before_cutoff - weekend_before_deadline;
-                    delay -= (weekend_day_count / 2);
-                }
-
+                delay = calculate_late_submission_day(deadline, push_time[index], is_weekends_one_day);
                 if(late_submission_count == 0)
                 {
                     write_output("");
                     write_output("[Late submission]");
-                    write_output("%3s  %12s  %-19s  %-24s  %-40s",
+                    write_output("%3s  %12s  %-19s  %-24s  %-8s",
                                  "#", "delay (days)", "push_time", "repository", "hash");
                 }
                 ++late_submission_count;
                 tm t = calendar_time(push_time[index]);
-                write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-40s",
+                write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-8s",
                              late_submission_count, delay,
                              t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
                              repos.elem[index], hash[index].trim);
@@ -1109,7 +1155,6 @@ run_hand(int arg_count, char **args)
     else if(compare_string(command, "collect-homework"))
     {
         int show_command_usage = 0;
-        int is_weekends_one_day = 1;
         char *only_repo = 0;
         for(char *option = next_option(&parser); option; option = next_option(&parser))
         {
@@ -1117,8 +1162,6 @@ run_hand(int arg_count, char **args)
                 show_command_usage = 1;
             else if(compare_string(option, "--only-repo"))
                 only_repo = next_arg(&parser);
-            else if(compare_string(option, "--no-weekends"))
-                is_weekends_one_day = 0;
             else
             {
                 show_command_usage = 1;
@@ -1148,8 +1191,7 @@ run_hand(int arg_count, char **args)
                 "    out_path              output file that lists penalty for all students (in the same order of"   "\n"
                 "                          the spreadsheet)"                                                        "\n"
                 "[command-options]"                                                                                 "\n"
-                "    --only-repo <name>    only collect homework for the repository named <name>"                   "\n"
-                "    --no-weekends         weekends are not considered as one day"                                  "\n";
+                "    --only-repo <name>    only collect homework for the repository named <name>"                   "\n";
             write_output(usage);
             goto CLEANUP;
         }
@@ -1159,8 +1201,9 @@ run_hand(int arg_count, char **args)
         char *spreadsheet_id = config.value[Config_spreadsheet];
         char *student_label = config.value[Config_username_label];
         int penalty_per_day = atoi(config.value[Config_penalty_per_day]);
+        int is_weekends_one_day = atoi(config.value[Config_weekends_as_one_day]);
         time_t deadline = parse_time(in_deadline, TIME_ZONE_UTC8);
-        time_t cutoff = deadline + atoi(cutoff_days) * 86400;
+        time_t cutoff = calculate_cutoff(deadline, atoi(cutoff_days), is_weekends_one_day);
         if(!deadline)
         {
             write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_deadline);
@@ -1213,7 +1256,7 @@ run_hand(int arg_count, char **args)
         char *github_token = config.value[Config_github_token];
         char *organization = config.value[Config_organization];
         time_t deadline = parse_time(in_deadline, TIME_ZONE_UTC8);
-        time_t cutoff = deadline + atoi(cutoff_days) * 86400;
+        time_t cutoff = calculate_cutoff(deadline, atoi(cutoff_days), atoi(config.value[Config_weekends_as_one_day]));
         if(!deadline)
         {
             write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_deadline);
@@ -1283,7 +1326,7 @@ run_hand(int arg_count, char **args)
         char *score_relative_path = config.value[Config_score_relative_path];
         int thread_count = atoi(config.value[Config_grade_thread_count]);
         time_t deadline = parse_time(in_deadline, TIME_ZONE_UTC8);
-        time_t cutoff = deadline + atoi(cutoff_days) * 86400;
+        time_t cutoff = calculate_cutoff(deadline, atoi(cutoff_days), atoi(config.value[Config_weekends_as_one_day]));
         if(!deadline)
         {
             write_error("Invalid time format: %s, requires YYYY-MM-DD-hh-mm-ss", in_deadline);

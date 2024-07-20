@@ -2,20 +2,21 @@
 
 enum
 {
-    Config_github_token         = 0,
-    Config_google_token         = 1,
-    Config_organization         = 2,
-    Config_ta_team              = 3,
-    Config_student_team         = 4,
-    Config_feedback_repo        = 5,
-    Config_spreadsheet          = 6,
-    Config_username_label       = 7,
-    Config_student_id_label     = 8,
-    Config_email                = 9,
-    Config_grade_command        = 10,
-    Config_grade_thread_count   = 11,
-    Config_score_relative_path  = 12,
-    Config_penalty_per_day      = 13,
+    Config_github_token = 0,
+    Config_google_token = 1,
+    Config_organization = 2,
+    Config_ta_team = 3,
+    Config_student_team = 4,
+    Config_feedback_repo = 5,
+    Config_spreadsheet = 6,
+    Config_username_label = 7,
+    Config_student_id_label = 8,
+    Config_email = 9,
+    Config_grade_command = 10,
+    Config_grade_thread_count = 11,
+    Config_score_relative_path = 12,
+    Config_penalty_per_day = 13,
+    Config_weekends_as_one_day = 14,
     Config_one_past_last,
 };
 
@@ -35,6 +36,7 @@ static char *g_config_name[Config_one_past_last] =
     "grade_thread",
     "score_relative_path",
     "penalty_per_day",
+    "weekends_as_one_day",
 };
 
 static char g_default_config[] =
@@ -85,7 +87,10 @@ static char g_default_config[] =
     "score_relative_path = \"./test/result/score.txt\""                                                                         "\n"
                                                                                                                                 "\n"
     "# Penalty received per day for late submission (in percentage)"                                                            "\n"
-    "penalty_per_day = \"15\""                                                                                                  "\n";
+    "penalty_per_day = \"15\""                                                                                                  "\n"
+                                                                                                                                "\n"
+    "# If not 0, weekends are considered as one day when calculating penalty"                                                   "\n"
+    "weekends_as_one_day = \"1\""                                                                                               "\n";
 
 enum
 {

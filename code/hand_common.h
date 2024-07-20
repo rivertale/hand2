@@ -107,6 +107,21 @@ compare_case_insensitive(char *a, char *b)
     return 1;
 }
 
+static int
+is_number(char *string)
+{
+    int result = 1;
+    for(char *c = string; *c; ++c)
+    {
+        if(*c < '0' || '9' < *c)
+        {
+            result = 0;
+            break;
+        }
+    }
+    return result;
+}
+
 static tm
 calendar_time(time_t time)
 {
