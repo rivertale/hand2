@@ -623,7 +623,7 @@ Open an issue in every student's repository as grade announcement, the content i
    </details>
 
 2. (Optional) **Run the command again if there are failed announcements.**
-    - (*Note: GitHub might block some requests due to our rapid issue creation. In this case, we simply need to run it again.*) 
+    - (*Note: GitHub might block some requests due to our rapid issue creation. In this case, we simply need to run it again.*)
 
 
 ### Bulk clone
