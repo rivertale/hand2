@@ -13,6 +13,7 @@ hand2 helps you manage your course using `GitHub` and `Google Sheets`. It incorp
     - [Invite students](#invite-students)
     - [Announce homework](#announce-homework)
     - [Grade homework](#grade-homework)
+    - [Bulk clone](#bulk-clone)
     - [Clean](#clean)
 - [Explanation](#explanation)
     - [Course structure](#course-structure)
@@ -344,7 +345,7 @@ Retrieve late submission penalty and grade students' homework. Take `hw1` in Com
    <details>
    <summary>(What hand2 actually does)</summary>
 
-   1. Retrieves the last push time before `2024-03-24 23:59:59` for students and calculate their penalties.
+   1. Retrieves students' last pushed commit before `2024-03-24 23:59:59` and calculate their penalties.
    
    2. Finds the sheet `hw1` in the spreadsheet.
    
@@ -382,13 +383,13 @@ Retrieve late submission penalty and grade students' homework. Take `hw1` in Com
    <details>
    <summary>(What hand2 actually does)</summary>
    
-   1. Retrieves the last push time before `2024-03-24 23:59:59` for students.
+   1. Retrieves students' last pushed commit before `2024-03-24 23:59:59`.
 
    2. Finds the sheet `hw1` in the spreadsheet.
 
    3. Clones the `hw-feedback` repository and the `solution` branch in `tmpl-hw1`.
 
-   4. Finds repositories prefixed by `hw1` in `Compiler-s24`, and clones their last commits before the cutoff.
+   4. Finds repositories prefixed by `hw1` in Compiler-s24, and clones their last pushed commits before the cutoff.
 
    5. Replaces the directories `./docker` and `./test` in students' repositories with those from `tmpl-hw1`.
 
@@ -601,6 +602,163 @@ Open an issue in every student's repository as grade announcement, the content i
 
 2. (Optional) **Run the command again if there are failed announcements.**
     - (*Note: GitHub might block some requests due to our rapid issue creation. In this case, we simply need to run it again.*) 
+
+
+### Bulk clone
+Bulk clone students' repositories on specific homework for any other purposes, such as checking for plagiarism. Take `hw1` in Compiler-s24 as an example:
+
+To clone the repositories directly,
+
+1. **Run command: `./hand bulk-clone ./hw1 hw1 2024-03-21-23-59-59 3`**.
+
+   <details>
+   <summary>(What hand2 actually does)</summary>
+
+   1. Retrieves students' last pushed commit before `2024-03-24 23:59:59`.
+
+   2. Finds repositories prefixed by `hw1` in Compiler-s24, and clones their last pushed commits before the cutoff.
+
+   </details>
+
+   <details>
+   <summary>Output</summary>
+
+   ```
+   Retrieving repos with prefix 'hw1'...
+   Retrieving default branches...
+   Retrieving pushes before deadline...
+   Retrieving student repositories...
+   Retrieving homework from 'hw1-username-01'
+   Retrieving homework from 'hw1-username-02'
+   Retrieving homework from 'hw1-username-03'
+   Retrieving homework from 'hw1-username-04'
+   Retrieving homework from 'hw1-username-05'
+   Retrieving homework from 'hw1-username-06'
+   Retrieving homework from 'hw1-username-07'
+   Retrieving homework from 'hw1-username-08'
+   Retrieving homework from 'hw1-username-09'
+   Retrieving homework from 'hw1-username-10'
+   Retrieving homework from 'hw1-username-11'
+   Retrieving homework from 'hw1-username-12'
+   Retrieving homework from 'hw1-username-13'
+   Retrieving homework from 'hw1-username-14'
+   Retrieving homework from 'hw1-username-15'
+   Retrieving homework from 'hw1-username-16'
+   Retrieving homework from 'hw1-username-17'
+   Retrieving homework from 'hw1-username-18'
+   Retrieving homework from 'hw1-username-19'
+   Retrieving homework from 'hw1-username-20'
+   Retrieving homework from 'hw1-username-21'
+   Retrieving homework from 'hw1-username-22'
+   Retrieving homework from 'hw1-username-23'
+   Retrieving homework from 'hw1-username-24'
+   Retrieving homework from 'hw1-username-25'
+   Retrieving homework from 'hw1-username-26'
+   Retrieving homework from 'hw1-username-27'
+   Retrieving homework from 'hw1-username-28'
+   Retrieving homework from 'hw1-username-29'
+   Retrieving homework from 'hw1-username-30'
+   Retrieving homework from 'hw1-username-31'
+   Retrieving homework from 'hw1-username-32'
+   Retrieving homework from 'hw1-username-33'
+   Retrieving homework from 'hw1-username-34'
+   Retrieving homework from 'hw1-username-35'
+   Retrieving homework from 'hw1-username-36'
+   Retrieving homework from 'hw1-username-37'
+   Retrieving homework from 'hw1-username-38'
+   Retrieving homework from 'hw1-username-39'
+   Retrieving homework from 'hw1-username-40'
+   Retrieving homework from 'hw1-username-41'
+   Retrieving homework from 'hw1-username-42'
+
+   [Summary]
+       Total repositories: 42
+       Deadline: 2024-03-21 23:59:59
+       Cutoff: 2024-03-24 23:59:59
+   ```
+
+   </details>
+
+2. **`./hw1` contains all repositories for hw1**.
+
+Or to clone the repositories and replace the `./test` and `./docker` folder,
+
+1. **Run command: `./hand bulk-clone ./hw1 hw1 2024-03-21-23-59-59 3 tmpl-hw1 solution`**.
+
+   <details>
+   <summary>(What hand2 actually does)</summary>
+
+   1. Retrieves students' last pushed commit before `2024-03-24 23:59:59`.
+
+   2. Clones the `solution` branch in `tmpl-hw1`.
+
+   3. Finds repositories prefixed by `hw1` in Compiler-s24, and clones their last pushed commits before the cutoff.
+
+   4. Replaces the directories `./docker` and `./test` in students' repositories with those from `tmpl-hw1`.
+
+   </details>
+
+   <details>
+   <summary>Output</summary>
+
+   ```
+   Retrieving repos with prefix 'hw1'...
+   Retrieving default branches...
+   Retrieving pushes before deadline...
+   Retrieving student repositories...
+   Retrieving homework from 'hw1-username-01'
+   Retrieving homework from 'hw1-username-02'
+   Retrieving homework from 'hw1-username-03'
+   Retrieving homework from 'hw1-username-04'
+   Retrieving homework from 'hw1-username-05'
+   Retrieving homework from 'hw1-username-06'
+   Retrieving homework from 'hw1-username-07'
+   Retrieving homework from 'hw1-username-08'
+   Retrieving homework from 'hw1-username-09'
+   Retrieving homework from 'hw1-username-10'
+   Retrieving homework from 'hw1-username-11'
+   Retrieving homework from 'hw1-username-12'
+   Retrieving homework from 'hw1-username-13'
+   Retrieving homework from 'hw1-username-14'
+   Retrieving homework from 'hw1-username-15'
+   Retrieving homework from 'hw1-username-16'
+   Retrieving homework from 'hw1-username-17'
+   Retrieving homework from 'hw1-username-18'
+   Retrieving homework from 'hw1-username-19'
+   Retrieving homework from 'hw1-username-20'
+   Retrieving homework from 'hw1-username-21'
+   Retrieving homework from 'hw1-username-22'
+   Retrieving homework from 'hw1-username-23'
+   Retrieving homework from 'hw1-username-24'
+   Retrieving homework from 'hw1-username-25'
+   Retrieving homework from 'hw1-username-26'
+   Retrieving homework from 'hw1-username-27'
+   Retrieving homework from 'hw1-username-28'
+   Retrieving homework from 'hw1-username-29'
+   Retrieving homework from 'hw1-username-30'
+   Retrieving homework from 'hw1-username-31'
+   Retrieving homework from 'hw1-username-32'
+   Retrieving homework from 'hw1-username-33'
+   Retrieving homework from 'hw1-username-34'
+   Retrieving homework from 'hw1-username-35'
+   Retrieving homework from 'hw1-username-36'
+   Retrieving homework from 'hw1-username-37'
+   Retrieving homework from 'hw1-username-38'
+   Retrieving homework from 'hw1-username-39'
+   Retrieving homework from 'hw1-username-40'
+   Retrieving homework from 'hw1-username-41'
+   Retrieving homework from 'hw1-username-42'
+
+   [Summary]
+       Total repositories: 42
+       Deadline: 2024-03-21 23:59:59
+       Cutoff: 2024-03-24 23:59:59
+   ```
+
+   </details>
+
+2. **`./hw1` contains all repositories for hw1 with `./test` and `./docker` folder replaced by `solution` branch in `tmpl-hw1`**.
+
 
 ### Clean
 Delete unnecessary files, such as logs and caches.
