@@ -67,8 +67,9 @@ usage: hand [--options] ... command [--command-options] ... [args] ...
     config-check       check if the config is valid
     invite-students    invite student into github organization
     collect-homework   collect homework and retrieve late submission info
-    grade-homework     grade homework
-    announce-grade     announce grade
+    bulk-clone         clone students' repositories for a specific homework
+    grade-homework     grade homework and generate feedbacks
+    announce-grade     announce grade in students' repository issues
     clean              delete unrelated files such as logs and caches
 [common-command-options]
     --help             show the help message regards to the command
