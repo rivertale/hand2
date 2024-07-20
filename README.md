@@ -625,6 +625,7 @@ Open an issue in every student's repository as grade announcement, the content i
 2. (Optional) **Run the command again if there are failed announcements.**
     - (*Note: GitHub might block some requests due to our rapid issue creation. In this case, we simply need to run it again.*)
 
+3. **Publish an announcement to inform students that the grades have been announced.**
 
 ### Bulk clone
 Bulk clone students' repositories on specific homework for any other purposes, such as checking for plagiarism. Take `hw1` in Compiler-s24 as an example:
