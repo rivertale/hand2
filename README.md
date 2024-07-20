@@ -345,11 +345,13 @@ Retrieve late submission penalty and grade students' homework. Take `hw1` in Com
    <details>
    <summary>(What hand2 actually does)</summary>
 
-   1. Retrieves students' last pushed commit before `2024-03-24 23:59:59` and calculate their penalties.
+   1. Finds repositories prefixed by `hw1` in Compiler-s24.
+
+   2. Retrieves their last pushed commit before `2024-03-24 23:59:59` and calculate the penalties.
    
-   2. Finds the sheet `hw1` in the spreadsheet.
+   3. Finds the `hw1` sheet in the spreadsheet.
    
-   3. Iterates through the sheet and outputs a penalty for each student (100% if not submitted).
+   4. Iterates through the sheet and outputs a penalty for each student (100% if not submitted).
 
    </details>
    
@@ -383,19 +385,21 @@ Retrieve late submission penalty and grade students' homework. Take `hw1` in Com
    <details>
    <summary>(What hand2 actually does)</summary>
    
-   1. Retrieves students' last pushed commit before `2024-03-24 23:59:59`.
+   1. Finds repositories prefixed by `hw1` in Compiler-s24.
 
-   2. Finds the sheet `hw1` in the spreadsheet.
+   2. Retrieves their last pushed commit before `2024-03-24 23:59:59`.
 
    3. Clones the `hw-feedback` repository and the `solution` branch in `tmpl-hw1`.
 
-   4. Finds repositories prefixed by `hw1` in Compiler-s24, and clones their last pushed commits before the cutoff.
+   4. Clones the repositories based on their last pushed commits.
 
-   5. Replaces the directories `./docker` and `./test` in students' repositories with those from `tmpl-hw1`.
+   5. Replaces the directories `./docker` and `./test` in the repositories with those from `tmpl-hw1`.
 
    6. Iterates through students' repositories and executes the [grade command](#grade_command). Multiple [grading threads](#grade_thread) are launched, each thread grades one student's repository simultaneously.
 
-   7. Iterates through the sheet, performs the following actions for each student:
+   7. Finds the `hw1` sheet in the spreadsheet.
+
+   8. Iterates through the sheet, performs the following actions for each student:
 
        1. If the repository doesn't exist, output a score of 0 and skip the remaining actions.
 
@@ -403,7 +407,7 @@ Retrieve late submission penalty and grade students' homework. Take `hw1` in Com
 
        3. Parses the first number in [score file](#score_relative_path) and output it to `hw1-score.txt` as the student's score.
 
-   8. Commits and pushes `hw-feedback` to GitHub (the committer is retrieved from [github_access_token](#github_access_token) and the [email](#email) is from the configuration).
+   9. Commits and pushes `hw-feedback` to GitHub (the committer is retrieved from [github_access_token](#github_access_token) and the [email](#email) is from the configuration).
        - Use the flag `--dry` to skip this step. For example: `./hand grade-homework --dry hw1 tmpl-hw1 solution 2024-03-21-23-59-59 3 hw1-score.txt`
 
    </details>
@@ -529,9 +533,9 @@ Open an issue in every student's repository as grade announcement, the content i
    <details>
    <summary>(What hand2 actually does)</summary>
 
-   1. Clones the repository `hw-feedback`.
+   1. Clones the `hw-feedback` repository.
 
-   2. Finds the sheet `hw1` in the spredsheet.
+   2. Finds the `hw1` sheet in the spreadsheet.
 
    3. Generates issue contents for each student from `hw-feedback/hw1/reports/<student_id>.md` and the sheet `hw1`. Sheet replacements are performed here, see details at [Feedback format](#feedback-format).
 
@@ -614,9 +618,11 @@ To clone the repositories directly,
    <details>
    <summary>(What hand2 actually does)</summary>
 
-   1. Retrieves students' last pushed commit before `2024-03-24 23:59:59`.
+   1. Finds repositories prefixed by `hw1` in Compiler-s24.
 
-   2. Finds repositories prefixed by `hw1` in Compiler-s24, and clones their last pushed commits before the cutoff.
+   2. Retrieves their last pushed commit before `2024-03-24 23:59:59`.
+
+   3. Clones the repositories based on their last pushed commits.
 
    </details>
 
@@ -679,7 +685,7 @@ To clone the repositories directly,
 
    </details>
 
-2. **`./hw1` contains all repositories for hw1**.
+2. **`./hw1` contains all hw1 repositories**.
 
 Or to clone the repositories and replace the `./test` and `./docker` folder,
 
@@ -688,13 +694,15 @@ Or to clone the repositories and replace the `./test` and `./docker` folder,
    <details>
    <summary>(What hand2 actually does)</summary>
 
-   1. Retrieves students' last pushed commit before `2024-03-24 23:59:59`.
+   1. Clones the `solution` branch in `tmpl-hw1`.
 
-   2. Clones the `solution` branch in `tmpl-hw1`.
+   2. Finds repositories prefixed by `hw1` in Compiler-s24.
 
-   3. Finds repositories prefixed by `hw1` in Compiler-s24, and clones their last pushed commits before the cutoff.
+   3. Retrieves their last pushed commit before `2024-03-24 23:59:59`.
 
-   4. Replaces the directories `./docker` and `./test` in students' repositories with those from `tmpl-hw1`.
+   4. Clones the repositories based on their last pushed commits.
+
+   5. Replaces the directories `./docker` and `./test` in the repositories with those from `tmpl-hw1`.
 
    </details>
 
@@ -757,7 +765,7 @@ Or to clone the repositories and replace the `./test` and `./docker` folder,
 
    </details>
 
-2. **`./hw1` contains all repositories for hw1 with `./test` and `./docker` folder replaced by `solution` branch in `tmpl-hw1`**.
+2. **`./hw1` contains all hw1 repositories with `./test` and `./docker` folder replaced by `solution` branch in `tmpl-hw1`**.
 
 
 ### Clean
