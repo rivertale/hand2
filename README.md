@@ -239,6 +239,7 @@ Validate the content of `config.txt`.
    [Misc]
        Use 8 grading thread ... OK
        Penalty per day is 15% ... OK
+       Weekends as one day is 1 ... OK
        Score read from: {hwdir}/./test/result/score.txt ... nocheck
        Grading command: make activate ARGS="make autograde" ... nocheck
 
