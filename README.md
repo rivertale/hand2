@@ -12,6 +12,7 @@ hand2 helps you manage your course using `GitHub` and `Google Sheets`. It incorp
     - [Config check](#config-check)
     - [Invite students](#invite-students)
     - [Announce homework](#announce-homework)
+    - [Patch homework](#patch-homework)
     - [Grade homework](#grade-homework)
     - [Announce grade](#announce-grade)
     - [Bulk clone](#bulk-clone)
@@ -351,6 +352,25 @@ We use GitHub Classroom to distribute homework. Take `hw0` in Compiler-s24 as an
    <br>![github-classroom-05](docs/github-classroom-07.png)
 
 8. Publish the announcement on the course website, and create an issue in the `Discussion` repository to announce the homework.
+
+
+### Patch homework
+Patch the homework template under these situations:
+
+- The template has bugs or unclear specifications.
+
+- The assignment is announced before the the previous assignment's late submission ends. In this case, remove parts of the code that contain the previous assignment's answer from the template, announce the assignment, and then patch the template after the late submission ends.
+
+Take a `hw0` bug in Compiler-s24 as an example: the variables `Last Make` and `Docker ENV FLAG` aren't substituted correctly.
+
+1. Modify `tmpl-hw0` and commit the changes.
+   <br>![patch-homework-01](docs/patch-homework-01.png)
+
+2. Commit or merge the changes to `tmpl-hw0-for-students`. You can manipulate the commits here to control which commits students can see.
+   <br>![patch-homework-02](docs/patch-homework-02.png)
+
+3. Create an issue in the `Discussion` repository to announce the patch. Explain the changes and remind students to sync their forks. Here's an [example](docs/patch-homework-03.md) of the announcement.
+   - In Compiler-s24, students' repositories are forks created by GitHub Classroom, please check if this is still the case before following the example.
 
 
 ### Grade homework
