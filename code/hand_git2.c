@@ -116,7 +116,6 @@ cache_repository(char *dir, size_t size,
 {
     int success = 0;
     GitCommitHash hash = req_hash ? *req_hash : retrieve_latest_commit(github_token, organization, repo, 0);
-    assert(!req_hash || hash_is_valid(&hash));
     if(hash_is_valid(&hash))
     {
         format_string(dir, size, "%s/%s_%s", g_cache_dir, repo, hash.full);
