@@ -288,11 +288,12 @@ Invite students to join the GitHub organization at the start of the semester.
    Invite 'username-04' to 'Compiler-s24/Students'
 
    [Summary]
+       Student team: Compiler-s24/Students
        Total students: 4
        New invitations (success): 4
        New invitations (failure): 0
-       Existing members: 0
-       Existing invitations: 0
+       Already in team: 0
+       Already invited: 0
    ```
 
    </details>
@@ -324,11 +325,12 @@ Invite students to join the GitHub organization at the start of the semester.
    Invite 'username-08' to 'Compiler-s24/Students'
 
    [Summary]
+       Student team: Compiler-s24/Students
        Total students: 8
        New invitations (success): 4
        New invitations (failure): 0
-       Existing members: 0
-       Existing invitations: 4
+       Already in team: 0
+       Already invited: 4
    ```
 
    </details>
@@ -411,11 +413,13 @@ Retrieve late submission penalty and grade students' homework. Take `hw1` in Com
    Retrieving repositories with prefix 'hw1'...
    Retrieving default branches...
    Retrieving pushes before deadline...
+   Retrieving sheet...
 
    [Summary]
-       Total students: 49
-       Total submissions: 42
-       Late submissions: 0
+       Total students in sheet: 49
+       Total repositories: 42
+       Total submitted students: 42
+       Late submitted students: 0
        Deadline: 2024-03-21 23:59:59
        Cutoff: 2024-03-25 23:59:59
    ```
@@ -556,13 +560,15 @@ Retrieve late submission penalty and grade students' homework. Take `hw1` in Com
    [40/42] Grading '/hand/cache/hw1-username-40_eaf5fd17fc63f3872e5dbbfbb059a0113a3c52fa'
    [41/42] Grading '/hand/cache/hw1-username-41_6522b7bb6f7905dd7ac6991d1dd0147c12e07920'
    [42/42] Grading '/hand/cache/hw1-username-42_8737e0a1bd78c5ad1c6aca258d27c16d0e1ff3d0'
+   Retrieving sheet...
    Generating report...
 
    [Summary]
-       Total students: 49
-       Total submissions: 42
-       Late submissions: 0
-       Failed submissions: 0
+       Total students in sheet: 49
+       Total repositories: 42
+       Total submitted students: 42
+       Late submitted students: 0
+       Failed submitted students: 0
        Deadline: 2024-03-21 23:59:59
        Cutoff: 2024-03-25 23:59:59
    ```
@@ -602,6 +608,7 @@ Open an issue in every student's repository as grade announcement, the content i
    Retrieving feedback repository...
    Retrieving repos with prefix 'hw1'...
    Retrieving issue 'Grade for hw1'...
+   Retrieving sheet...
    Announce grade for 'hw1-username-01'
    Announce grade for 'hw1-username-02'
    Announce grade for 'hw1-username-03'
@@ -646,9 +653,10 @@ Open an issue in every student's repository as grade announcement, the content i
    Announce grade for 'hw1-username-42'
 
    [Summary]
-       Total students: 49
-       Total announcements: 42
-       Failed announcements: 0
+       Total students in sheet: 49
+       Total repositories: 42
+       Total announced students: 42
+       Failed announced students: 0
    ```
 
    </details>
