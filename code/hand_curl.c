@@ -471,7 +471,7 @@ retrieve_default_branches(StringArray *repos, char *github_token, char *organiza
                 // NOTE: must align to the number of repository, so we write a empty string even when we can't find the
                 // default branch name
                 append_string_array(&result, "");
-                write_error("Default branch can't be found for '%s/%s'", organization, repos->elem[i]);
+                write_error("Can't find default branch for '%s/%s'", organization, repos->elem[i]);
             }
             cJSON_Delete(json);
         }

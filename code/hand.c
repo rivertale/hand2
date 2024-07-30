@@ -49,7 +49,7 @@ calculate_cutoff(time_t deadline, int cutoff_days, int is_weekends_one_day)
             int weekday = (t.tm_hour < 12) ? t.tm_wday : (t.tm_wday + 1) % 7;
             int weekend_day_before_old_cutoff = (weekday + 6) / 7 + weekday / 7;
             int weekend_day_before_new_cutoff = (weekday + day_left + 6) / 7 + (weekday + day_left) / 7;
-            cutoff += day_left * 86400;
+            cutoff += (time_t)day_left * 86400;
             day_left = (weekend_day_before_new_cutoff - weekend_day_before_old_cutoff) / 2;
         }
     }
@@ -245,7 +245,7 @@ invite_students(char *path, char *github_token, char *organization, char *team)
                 continue;
             if(!exist[i])
             {
-                write_error("GitHub user '%s' does not exist", students.elem[i]);
+                write_error("GitHub user '%s' doesn't exist", students.elem[i]);
                 ++invalid_count;
                 students.elem[i] = 0;
                 break;
@@ -273,11 +273,12 @@ invite_students(char *path, char *github_token, char *organization, char *team)
 
             write_output("");
             write_output("[Summary]");
+            write_output("    Student team: %s/%s", organization, team);
             write_output("    Total students: %d", students.count);
             write_output("    New invitations (success): %d", success_count);
             write_output("    New invitations (failure): %d", failure_count);
-            write_output("    Existing members: %d", existing_count);
-            write_output("    Existing invitations: %d", inviting_count);
+            write_output("    Already in team: %d", existing_count);
+            write_output("    Already invited: %d", inviting_count);
         }
         else
         {
@@ -317,6 +318,13 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
     StringArray repos = {0};
     if(only_repo)
     {
+        write_output("Retrieving repository '%s'...", only_repo);
+        GitCommitHash only_repo_hash = retrieve_latest_commit(github_token, organization, only_repo, 0);
+        if(!hash_is_valid(&only_repo_hash))
+        {
+            write_error("Unable to retrieve '%s/%s'", organization, only_repo);
+            return;
+        }
         repos = allocate_string_array();
         append_string_array(&repos, only_repo);
     }
@@ -335,50 +343,80 @@ collect_homework(char *title, char *out_path, time_t deadline, time_t cutoff,
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
     retrieve_pushes_before_cutoff(hash, push_time, &repos, &branches, github_token, organization, cutoff);
 
+    for(int i = 0; i < repos.count; ++i)
+    {
+        tm t = calendar_time(push_time[i]);
+        write_log("[%d]: %s/%s:%s %d-%02d-%02d_%02d-%02d-%02d",
+                  i, repos.elem[i], branches.elem[i], hash[i].full,
+                  t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+    }
+
     int submission_count = 0;
     int late_submission_count = 0;
 
+    write_output("Retrieving sheet...");
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-    int student_x = find_label(&sheet, student_label);
-    for(int y = 0; y < sheet.height; ++y)
+    if(sheet.width > 0 && sheet.height > 0)
     {
-        static char req_repo[256];
-        char *student = get_value(&sheet, student_x, y);
-        format_string(req_repo, sizeof(req_repo), "%s-%s", title, student);
-
-        int delay = 0;
-        int index = find_index_case_insensitive(&repos, req_repo);
-        if(index != -1)
+        int student_x = find_label(&sheet, student_label);
+        if(student_x >= 0)
         {
-            ++submission_count;
-            if(push_time[index] > deadline)
+            for(int y = 0; y < sheet.height; ++y)
             {
-                delay = calculate_late_submission_day(deadline, push_time[index], is_weekends_one_day);
-                if(late_submission_count == 0)
+                char *student = get_value(&sheet, student_x, y);
+                write_log("[%d]: %s", y, student);
+            }
+
+            for(int y = 0; y < sheet.height; ++y)
+            {
+                static char req_repo[256];
+                char *student = get_value(&sheet, student_x, y);
+                format_string(req_repo, sizeof(req_repo), "%s-%s", title, student);
+
+                int delay = 0;
+                int index = find_index_case_insensitive(&repos, req_repo);
+                if(index != -1)
                 {
-                    write_output("");
-                    write_output("[Late submission]");
-                    write_output("%3s  %12s  %-19s  %-24s  %-8s",
-                                 "#", "delay (days)", "push_time", "repository", "hash");
+                    ++submission_count;
+                    if(push_time[index] > deadline)
+                    {
+                        delay = calculate_late_submission_day(deadline, push_time[index], is_weekends_one_day);
+                        if(late_submission_count == 0)
+                        {
+                            write_output("");
+                            write_output("[Late submission]");
+                            write_output("%3s  %12s  %-19s  %-24s  %-8s",
+                                         "#", "delay (days)", "push_time", "repository", "hash");
+                        }
+                        ++late_submission_count;
+                        tm t = calendar_time(push_time[index]);
+                        write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-8s",
+                                     late_submission_count, delay,
+                                     t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+                                     repos.elem[index], hash[index].trim);
+                    }
                 }
-                ++late_submission_count;
-                tm t = calendar_time(push_time[index]);
-                write_output("%3d  %12d  %4d-%02d-%02d_%02d:%02d:%02d  %-24s  %-8s",
-                             late_submission_count, delay,
-                             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
-                             repos.elem[index], hash[index].trim);
+
+                if(!only_repo || index != -1)
+                    fprintf(out_file, "%d%%\n", max(100 - penalty_per_day * delay, 0));
             }
         }
-
-        if(!only_repo || index != -1)
-            fprintf(out_file, "%d%%\n", max(100 - penalty_per_day * delay, 0));
+        else
+        {
+            write_error("Label '%s' not found in sheet '%s'", student_label, title);
+        }
+    }
+    else
+    {
+        write_error("Sheet '%s' is empty in spreadsheet '%s'", title, spreadsheet_id);
     }
 
     write_output("");
     write_output("[Summary]");
-    write_output("    Total students: %d", sheet.height);
-    write_output("    Total submissions: %d", submission_count);
-    write_output("    Late submissions: %d", late_submission_count);
+    write_output("    Total students in sheet: %d", sheet.height);
+    write_output("    Total repositories: %d", repos.count);
+    write_output("    Total submitted students: %d", submission_count);
+    write_output("    Late submitted students: %d", late_submission_count);
     write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
     write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
@@ -420,7 +458,7 @@ bulk_clone(char *parent_dir, char *title, time_t deadline, time_t cutoff, char *
         GitCommitHash template_hash = retrieve_latest_commit(github_token, organization, template_repo, template_branch);
         if(!cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, &template_hash))
         {
-            write_error("Unable to retrieve '%s/%s'", organization, template_repo);
+            write_error("Unable to retrieve '%s/%s/%s'", organization, template_repo, template_branch);
             return;
         }
         format_string(template_test_dir, MAX_PATH_LEN, "%s/test", template_dir);
@@ -541,9 +579,7 @@ grade_homework_on_completion(int index, int count, int exit_code, char *work_dir
 {
     (void)stdout_content;
     if(exit_code != 0)
-    {
         write_output("[%d/%d] Fail '%s'\n%s", index + 1, count, work_dir, stderr_content);
-    }
 }
 
 static void
@@ -584,7 +620,7 @@ grade_homework(char *title, char *out_path,
     GitCommitHash template_hash = retrieve_latest_commit(github_token, organization, template_repo, template_branch);
     if(!cache_repository(template_dir, MAX_PATH_LEN, username, github_token, organization, template_repo, &template_hash))
     {
-        write_error("Unable to retrieve '%s/%s'", organization, template_repo);
+        write_error("Unable to retrieve '%s/%s/%s'", organization, template_repo, template_branch);
         return;
     }
 
@@ -617,6 +653,13 @@ grade_homework(char *title, char *out_path,
     StringArray repos = {0};
     if(only_repo)
     {
+        write_output("Retrieving repository '%s'...", only_repo);
+        GitCommitHash only_repo_hash = retrieve_latest_commit(github_token, organization, only_repo, 0);
+        if(!hash_is_valid(&only_repo_hash))
+        {
+            write_error("Unable to retrieve '%s/%s'", organization, only_repo);
+            return;
+        }
         repos = allocate_string_array();
         append_string_array(&repos, only_repo);
     }
@@ -634,6 +677,14 @@ grade_homework(char *title, char *out_path,
     GitCommitHash *hash = (GitCommitHash *)allocate_memory(repos.count * sizeof(*hash));
     time_t *push_time = (time_t *)allocate_memory(repos.count * sizeof(*push_time));
     retrieve_pushes_before_cutoff(hash, push_time, &repos, &branches, github_token, organization, cutoff);
+
+    for(int i = 0; i < repos.count; ++i)
+    {
+        tm t = calendar_time(push_time[i]);
+        write_log("[%d]: %s/%s:%s %d-%02d-%02d_%02d-%02d-%02d",
+                  i, repos.elem[i], branches.elem[i], hash[i].full,
+                  t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+    }
 
     write_output("Retrieving student repositories...");
     Work *works = (Work *)allocate_memory(repos.count * sizeof(*works));
@@ -679,84 +730,111 @@ grade_homework(char *title, char *out_path,
     write_output("Start grading...");
     platform.wait_for_completion(thread_count, repos.count, works, grade_homework_on_progression, grade_homework_on_completion);
 
-    write_output("Generating report...");
+    write_output("Retrieving sheet...");
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
-    int student_x = find_label(&sheet, student_label);
-    int id_x = find_label(&sheet, id_label);
-    for(int y = 0; y < sheet.height; ++y)
+    if(sheet.width > 0 && sheet.height > 0)
     {
-        static char req_name[256];
-        char *student = get_value(&sheet, student_x, y);
-        char *student_id = get_value(&sheet, id_x, y);
-        format_string(req_name, sizeof(req_name), "%s-%s", title, student);
-
-        double score = 0;
-        int index = find_index_case_insensitive(&repos, req_name);
-        if(index != -1)
+        int student_x = find_label(&sheet, student_label);
+        int id_x = find_label(&sheet, id_label);
+        if(student_x >= 0 && id_x >= 0)
         {
-            ++submission_count;
-            if(push_time[index] > deadline)
-                ++late_submission_count;
-            if(works[index].exit_code != 0)
-                ++failure_count;
-
-            if(works[index].exit_code == 0)
+            for(int y = 0; y < sheet.height; ++y)
             {
-                static char report_path[MAX_PATH_LEN];
-                static char score_path[MAX_PATH_LEN];
-                format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id);
-                format_string(score_path, MAX_PATH_LEN, "%s/%s", works[index].work_dir, score_relative_path);
+                char *student_id = get_value(&sheet, id_x, y);
+                char *student = get_value(&sheet, student_x, y);
+                write_log("[%d]: %s %s", y, student_id, student);
+            }
 
-                platform.delete_file(report_path);
-                GrowableBuffer score_content = read_entire_file(score_path);
-                for(char *c = score_content.memory; *c; ++c)
+            write_output("Generating report...");
+            for(int y = 0; y < sheet.height; ++y)
+            {
+                static char req_name[256];
+                char *student = get_value(&sheet, student_x, y);
+                char *student_id = get_value(&sheet, id_x, y);
+                format_string(req_name, sizeof(req_name), "%s-%s", title, student);
+
+                double score = 0;
+                int index = find_index_case_insensitive(&repos, req_name);
+                if(index != -1)
                 {
-                    if('0' <= *c && *c <= '9')
+                    ++submission_count;
+                    if(push_time[index] > deadline)
+                        ++late_submission_count;
+                    if(works[index].exit_code != 0)
+                        ++failure_count;
+
+                    if(works[index].exit_code == 0)
                     {
-                        score = atof(c);
-                        break;
+                        static char report_path[MAX_PATH_LEN];
+                        static char score_path[MAX_PATH_LEN];
+                        format_string(report_path, MAX_PATH_LEN, "%s/%s.md", feedback_report_dir, student_id);
+                        format_string(score_path, MAX_PATH_LEN, "%s/%s", works[index].work_dir, score_relative_path);
+
+                        platform.delete_file(report_path);
+                        GrowableBuffer score_content = read_entire_file(score_path);
+                        for(char *c = score_content.memory; *c; ++c)
+                        {
+                            if('0' <= *c && *c <= '9')
+                            {
+                                score = atof(c);
+                                break;
+                            }
+                        }
+                        free_growable_buffer(&score_content);
+
+                        GrowableBuffer report = format_report_by_file_replacement(&report_template, works[index].work_dir);
+                        FILE *report_file = platform.fopen(report_path, "wb");
+                        if(report_file)
+                        {
+                            fwrite(report.memory, report.used, 1, report_file);
+                            fclose(report_file);
+                        }
+                        free_growable_buffer(&report);
                     }
                 }
-                free_growable_buffer(&score_content);
 
-                GrowableBuffer report = format_report_by_file_replacement(&report_template, works[index].work_dir);
-                FILE *report_file = platform.fopen(report_path, "wb");
-                if(report_file)
+                if(!only_repo || index != -1)
+                    fprintf(out_file, "%f\n", score);
+            }
+
+            if(dry)
+            {
+                platform.delete_directory(dry_feedback_dir);
+                platform.rename_directory(dry_feedback_dir, feedback_dir);
+                write_output("DRY RUN: reports are not pushed, you can view the generated reports at '%s'", dry_feedback_report_dir);
+            }
+            else
+            {
+                write_output("Pushing reports...");
+                static char commit_message[64];
+                format_string(commit_message, sizeof(commit_message), "update %s report", title);
+                if(!push_to_remote(feedback_dir, github_token, commit_message, username, email))
                 {
-                    fwrite(report.memory, report.used, 1, report_file);
-                    fclose(report_file);
+                    write_error("Unable to push the reports");
                 }
-                free_growable_buffer(&report);
             }
         }
-
-        if(!only_repo || index != -1)
-            fprintf(out_file, "%f\n", score);
-    }
-
-    if(dry)
-    {
-        platform.delete_directory(dry_feedback_dir);
-        platform.rename_directory(dry_feedback_dir, feedback_dir);
-        write_output("DRY RUN: reports are not pushed, you can view the generated reports at '%s'", dry_feedback_report_dir);
+        else
+        {
+            if(student_x < 0)
+                write_error("Label '%s' not found in sheet '%s'", student_label, title);
+            if(id_x < 0)
+                write_error("Label '%s' not found in sheet '%s'", id_label, title);
+        }
     }
     else
     {
-        write_output("Pushing reports...");
-        static char commit_message[64];
-        format_string(commit_message, sizeof(commit_message), "update %s report", title);
-        if(!push_to_remote(feedback_dir, github_token, commit_message, username, email))
-        {
-            write_error("Unable to push the reports");
-        }
+        write_error("Sheet '%s' is empty in spreadsheet '%s'", title, spreadsheet_id);
     }
+
 
     write_output("");
     write_output("[Summary]");
-    write_output("    Total students: %d", sheet.height);
-    write_output("    Total submissions: %d", submission_count);
-    write_output("    Late submissions: %d", late_submission_count);
-    write_output("    Failed submissions: %d", failure_count);
+    write_output("    Total students in sheet: %d", sheet.height);
+    write_output("    Total repositories: %d", repos.count);
+    write_output("    Total submitted students: %d", submission_count);
+    write_output("    Late submitted students: %d", late_submission_count);
+    write_output("    Failed submitted students: %d", failure_count);
     write_output("    Deadline: %d-%02d-%02d %02d:%02d:%02d",
                  t0.tm_year + 1900, t0.tm_mon + 1, t0.tm_mday, t0.tm_hour, t0.tm_min, t0.tm_sec);
     write_output("    Cutoff: %d-%02d-%02d %02d:%02d:%02d",
@@ -772,7 +850,7 @@ grade_homework(char *title, char *out_path,
 }
 
 static int
-format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
+format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet, char *sheet_name)
 {
     int success = 1;
     *out = allocate_string_array();
@@ -813,10 +891,10 @@ format_feedback_issues(StringArray *out, StringArray *format, Sheet *sheet)
                     else
                     {
                         success = 0;
-                        // NOTE: we assume every report has the same labels, only reports label not found for
-                        // the first report
+                        // NOTE: since every report has the same labels, only report _label not found_ for the
+                        // first report to eliminate the repeated error
                         if(y == 0)
-                            write_error("Label not found: %s", label);
+                            write_error("Label '%s' not found in sheet '%s'", label, sheet_name);
                     }
                 }
                 depth = max(depth - 1, 0);
@@ -868,6 +946,13 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo, int i
     StringArray repos = {0};
     if(only_repo)
     {
+        write_output("Retrieving repository '%s'...", only_repo);
+        GitCommitHash only_repo_hash = retrieve_latest_commit(github_token, organization, only_repo, 0);
+        if(!hash_is_valid(&only_repo_hash))
+        {
+            write_error("Unable to retrieve '%s/%s'", organization, only_repo);
+            return;
+        }
         repos = allocate_string_array();
         append_string_array(&repos, only_repo);
     }
@@ -881,8 +966,13 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo, int i
     int *issue_numbers = (int *)allocate_memory(repos.count * sizeof(*issue_numbers));
     retrieve_issue_numbers_by_title(issue_numbers, &repos, github_token, organization, issue_title);
 
+    for(int i = 0; i < repos.count; ++i)
+        write_log("[%d]: %s issue #%d", i, repos.elem[i], issue_numbers[i]);
+
     int announcement_count = 0;
     int failure_count = 0;
+
+    write_output("Retrieving sheet...");
     Sheet sheet = retrieve_sheet(google_token, spreadsheet_id, title);
     if(sheet.width && sheet.height)
     {
@@ -890,6 +980,13 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo, int i
         int id_x = find_label(&sheet, id_label);
         if(student_x >= 0 && id_x >= 0)
         {
+            for(int y = 0; y < sheet.height; ++y)
+            {
+                char *student_id = get_value(&sheet, id_x, y);
+                char *student = get_value(&sheet, student_x, y);
+                write_log("[%d]: %s %s", y, student_id, student);
+            }
+
             StringArray reports = allocate_string_array();
             for(int y = 0; y < sheet.height; ++y)
             {
@@ -902,7 +999,7 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo, int i
             }
 
             StringArray issue_bodies;
-            if(format_feedback_issues(&issue_bodies, &reports, &sheet))
+            if(format_feedback_issues(&issue_bodies, &reports, &sheet, title))
             {
                 for(int y = 0; y < sheet.height; ++y)
                 {
@@ -945,12 +1042,6 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo, int i
                     // TODO: need further investigation on the error messages github returns
                     platform.sleep(issue_interval);
                 }
-
-                write_output("");
-                write_output("[Summary]");
-                write_output("    Total students: %d", sheet.height);
-                write_output("    Total announcements: %d", announcement_count);
-                write_output("    Failed announcements: %d", failure_count);
                 free_string_array(&issue_bodies);
             }
             else
@@ -962,15 +1053,21 @@ announce_grade(char *title, char *feedback_repo, int dry, char *only_repo, int i
         else
         {
             if(student_x < 0)
-                write_error("Label '%s' not found", student_label);
+                write_error("Label '%s' not found in sheet '%s", student_label, title);
             if(id_x < 0)
-                write_error("Label '%s' not found", id_label);
+                write_error("Label '%s' not found in sheet '%s'", id_label, title);
         }
     }
     else
     {
-        write_error("Sheet '%s' is empty under spreadsheet id '%s'", title, spreadsheet_id);
+        write_error("Sheet '%s' is empty in spreadsheet '%s'", title, spreadsheet_id);
     }
+    write_output("");
+    write_output("[Summary]");
+    write_output("    Total students in sheet: %d", sheet.height);
+    write_output("    Total repositories: %d", repos.count);
+    write_output("    Total announced students: %d", announcement_count);
+    write_output("    Failed announced students: %d", failure_count);
     free_sheet(&sheet);
     free_memory(issue_numbers);
     free_string_array(&repos);
@@ -1060,7 +1157,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("Unknown option '%s'", option);
+                write_error("Unrecognized option: %s", option);
             }
         }
 
@@ -1093,7 +1190,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("Unknown option '%s'", option);
+                write_error("Unrecognized option: %s", option);
             }
         }
 
@@ -1109,7 +1206,6 @@ run_hand(int arg_count, char **args)
                 "usage: hand config-check"  "\n"
                                             "\n"
                 "[arguments]"               "\n"
-                ""                          "\n"
                 "[command-options]"         "\n";
             write_output(usage);
             goto CLEANUP;
@@ -1126,7 +1222,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("Unknown option '%s'", option);
+                write_error("Unrecognized option: %s", option);
             }
         }
 
@@ -1140,11 +1236,11 @@ run_hand(int arg_count, char **args)
         if(!input_path || show_command_usage)
         {
             char *usage =
-                "usage: hand invite-students [--command-options] ... path"  "\n"
-                                                                            "\n"
-                "[arguments]"                                               "\n"
-                "    path    file path of listed github handle to invite"   "\n"
-                "[command-options]"                                         "\n";
+                "usage: hand invite-students [--command-options] ... path"          "\n"
+                                                                                    "\n"
+                "[arguments]"                                                       "\n"
+                "    path    path to the file containing GitHub username to invite" "\n"
+                "[command-options]"                                                 "\n";
             write_output(usage);
             goto CLEANUP;
         }
@@ -1166,7 +1262,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("Unknown option '%s'", option);
+                write_error("Unrecognized option: %s", option);
             }
         }
 
@@ -1220,6 +1316,11 @@ run_hand(int arg_count, char **args)
         {
             if(compare_string(option, "--help"))
                 show_command_usage = 1;
+            else
+            {
+                show_command_usage = 1;
+                write_error("Unrecognized option: %s", option);
+            }
         }
 
         char *out_dir = next_arg(&parser);
@@ -1237,16 +1338,16 @@ run_hand(int arg_count, char **args)
         if(!out_dir || !title || !in_deadline || !cutoff_days || (!template_repo != !template_branch) || show_command_usage)
         {
             char *usage =
-                "usage: hand bulk-clone [--command-options] ... out_dir title deadline cutoff_days [template_repo template_branch]"     "\n"
-                                                                                                                                        "\n"
-                "[arguments]"                                                                                                           "\n"
-                "    out_dir            parent directory that the repositories clone into"                                              "\n"
-                "    title              title of the homework"                                                                          "\n"
-                "    deadline           deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                                "\n"
-                "    cutoff_days        max late submission days after deadline"                                                        "\n"
-                "    template_repo      repository name of the homework template (optional)"                                            "\n"
-                "    template_branch    the branch of template_repo that contains all testcases (optional)"                             "\n"
-                "[command-options]"                                                                                                     "\n";
+                "usage: hand bulk-clone [--command-options] ... out_dir title deadline cutoff_days [template_repo template_branch]" "\n"
+                                                                                                                                    "\n"
+                "[arguments]"                                                                                                       "\n"
+                "    out_dir            parent directory that the repositories clone into"                                          "\n"
+                "    title              title of the homework"                                                                      "\n"
+                "    deadline           deadline of the homework in YYYY-MM-DD-hh-mm-ss"                                            "\n"
+                "    cutoff_days        max late submission days after deadline"                                                    "\n"
+                "    template_repo      (optional) repository name of the homework template"                                        "\n"
+                "    template_branch    (optional) the branch of template_repo that contains all testcases"                         "\n"
+                "[command-options]"                                                                                                 "\n";
             write_output(usage);
             goto CLEANUP;
         }
@@ -1281,7 +1382,7 @@ run_hand(int arg_count, char **args)
             else
             {
                 show_command_usage = 1;
-                write_error("Unknown option '%s'", option);
+                write_error("Unrecognized option: %s", option);
             }
         }
 
@@ -1354,7 +1455,10 @@ run_hand(int arg_count, char **args)
             else if(compare_string(option, "--interval"))
                 issue_interval = atoi(next_arg(&parser));
             else
-                write_error("Unknown option '%s'", option);
+            {
+                show_command_usage = 1;
+                write_error("Unrecognized option: %s", option);
+            }
         }
 
         char *title = next_arg(&parser);
@@ -1391,7 +1495,7 @@ run_hand(int arg_count, char **args)
     }
     else
     {
-        write_error("Unknown command %s", command);
+        write_error("Unrecognized command: %s", command);
     }
 
 CLEANUP:
