@@ -134,12 +134,20 @@ weekends_as_one_day = "1"
        <br>![google-api-key-01](docs/google-api-key-01.png)
     2. Fill in **Project name** -> **Create**.
        <br>![google-api-key-02](docs/google-api-key-02.png)
-    3. Go to **Credentials** -> **Create Credentials** -> **API key**.
+    3. Go to **Enabled APIs & services** -> **Enable APIs and services**.
        <br>![google-api-key-03](docs/google-api-key-03.png)
-    4. Go to **Edit API key**.
+    4. Search for **Google Sheets API**.
        <br>![google-api-key-04](docs/google-api-key-04.png)
-    5. Fill in **Name** -> **Save**, and copy the API key to `config.txt`.
+    5. Go to **Google Sheets API**.
        <br>![google-api-key-05](docs/google-api-key-05.png)
+    6. **Enable** Google Sheets API.
+       <br>![google-api-key-06](docs/google-api-key-06.png)
+    7. Go to **Credentials** -> **Create Credentials** -> **API key**.
+       <br>![google-api-key-07](docs/google-api-key-07.png)
+    8. Go to **Edit API key**.
+       <br>![google-api-key-08](docs/google-api-key-08.png)
+    9. Fill in **Name** -> **Save**, and copy the API key to `config.txt`.
+       <br>![google-api-key-09](docs/google-api-key-09.png)
 
     </details>
 
